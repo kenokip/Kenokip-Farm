@@ -9101,7 +9101,7 @@
   // Till's B2C-via-API access with Safaricom is unresolved (see SETUP-B2C.md
   // and the M-Pesa Business team correspondence). Flip both flags back to
   // true together once B2C is confirmed working.
-  var mpesaPayoutsEnabled = false;
+  var mpesaPayoutsEnabled = true;
   // Separate kill-switch for STK Push FROM the Paybill (a collection, not a
   // payout — money coming in, not going out — so it's lower-risk than
   // mpesaPayoutsEnabled above, but still needs MPESA_PAYOUT_PASSKEY set on
