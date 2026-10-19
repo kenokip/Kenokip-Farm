@@ -1,3 +1,9 @@
 node_modules/
-c2b.env
 *.log
+
+# Real local credential files for the one-off scripts in functions/ —
+# never the *.env.example templates, only the filled-in copies you make
+# from them (c2b.env, pesapal.env, etc.). See functions/c2b.env.example.
+c2b.env
+*.env
+!*.env.example

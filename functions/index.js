@@ -147,7 +147,7 @@ const DEPOSIT_SECRETS = ALL_SECRETS.concat([MPESA_PAYOUT_CONSUMER_KEY, MPESA_PAY
 // this to true once B2C is confirmed working end-to-end for the Paybill —
 // no redeploy of anything else needed, just this one flag plus
 // `firebase deploy --only functions`.
-const PAYOUTS_ENABLED = false;
+const PAYOUTS_ENABLED = true;
 
 // A pre-generated SecurityCredential is a long base64 blob (a few hundred
 // characters) — same threshold used for the certificate check, so a leftover
@@ -253,11 +253,19 @@ function orderNotificationText(order, orderId, kind, extra) {
   }
 }
 
+// Each send*() function below returns a short status string instead of just
+// resolving silently — 'sent', or a 'skipped-...' reason — so
+// sendOrderNotification can log exactly what happened for every channel on
+// every order action. Before this, a skip (not configured, or no
+// email/phone on the order) and a genuine success both produced zero log
+// output, which made "nothing arrived" impossible to diagnose from the logs
+// alone. Only an actual API failure still throws (caught by the caller).
 async function sendOrderEmail(order, text, subject) {
   const apiKey = sval(SENDGRID_API_KEY);
   const from = sval(SENDGRID_FROM_EMAIL);
   const to = String(order.email || '').trim();
-  if (!apiKey || !from || !to) return; // not configured, or no email on file — safe no-op
+  if (!apiKey || !from) return 'skipped-not-configured';
+  if (!to) return 'skipped-no-recipient';
   const fetch = require('node-fetch');
   const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
@@ -273,6 +281,7 @@ async function sendOrderEmail(order, text, subject) {
     const body = await resp.text().catch(() => '');
     throw new Error('SendGrid ' + resp.status + ': ' + body.slice(0, 300));
   }
+  return 'sent to ' + to;
 }
 
 // order.phone is stored digits-only (e.g. "254711222333" — see
@@ -294,7 +303,8 @@ async function sendOrderSms(order, text) {
   const apiKey = sval(AFRICASTALKING_API_KEY);
   const senderId = sval(AFRICASTALKING_SENDER_ID);
   const to = e164Phone(order.phone);
-  if (!username || !apiKey || !to) return; // not configured, or no phone on file — safe no-op
+  if (!username || !apiKey) return 'skipped-not-configured';
+  if (!to) return 'skipped-no-recipient';
   const fetch = require('node-fetch');
   const isSandbox = username === 'sandbox';
   const url = isSandbox
@@ -318,6 +328,8 @@ async function sendOrderSms(order, text) {
     const body = await resp.text().catch(() => '');
     throw new Error("Africa's Talking " + resp.status + ': ' + body.slice(0, 300));
   }
+  const respBody = await resp.text().catch(() => '');
+  return 'sent to ' + to + (isSandbox ? ' (SANDBOX — only delivers to numbers registered as test numbers in the AT simulator)' : '') + ' — ' + respBody.slice(0, 200);
 }
 
 async function sendOrderWhatsapp(order, text) {
@@ -325,11 +337,13 @@ async function sendOrderWhatsapp(order, text) {
   const apiKey = sval(AFRICASTALKING_API_KEY);
   const waNumber = sval(AFRICASTALKING_WA_NUMBER);
   const to = e164Phone(order.phone);
+  if (!username || !apiKey) return 'skipped-not-configured';
+  if (!to) return 'skipped-no-recipient';
   // A placeholder value like "not-set-yet" (used as a workaround for
   // Firebase's "secret payload cannot be empty" error when this secret was
   // first created) is non-empty but obviously not a real number — skip
   // quietly rather than making a doomed API call every time.
-  if (!username || !apiKey || !waNumber || !to || waNumber.charAt(0) !== '+') return;
+  if (!waNumber || waNumber.charAt(0) !== '+') return 'skipped-no-wa-number';
   const fetch = require('node-fetch');
   const resp = await fetch('https://chat.africastalking.com/whatsapp/message/send', {
     method: 'POST',
@@ -345,6 +359,7 @@ async function sendOrderWhatsapp(order, text) {
     const body = await resp.text().catch(() => '');
     throw new Error("Africa's Talking WhatsApp " + resp.status + ': ' + body.slice(0, 300));
   }
+  return 'sent to ' + to;
 }
 
 // The one function every order-status change below calls. Fires email,
@@ -358,11 +373,12 @@ async function sendOrderNotification(order, orderId, kind, extra) {
   try {
     const text = orderNotificationText(order, orderId, kind, extra);
     const subject = 'Kenokip Farm — update on your installation request';
-    await Promise.all([
-      sendOrderEmail(order, text, subject).catch((err) => logger.error('Order email notification failed', err, { orderId, kind })),
-      sendOrderSms(order, text).catch((err) => logger.error('Order SMS notification failed', err, { orderId, kind })),
-      sendOrderWhatsapp(order, text).catch((err) => logger.error('Order WhatsApp notification failed', err, { orderId, kind })),
+    const [emailResult, smsResult, waResult] = await Promise.all([
+      sendOrderEmail(order, text, subject).catch((err) => { logger.error('Order email notification failed', err, { orderId, kind }); return 'error: ' + err.message; }),
+      sendOrderSms(order, text).catch((err) => { logger.error('Order SMS notification failed', err, { orderId, kind }); return 'error: ' + err.message; }),
+      sendOrderWhatsapp(order, text).catch((err) => { logger.error('Order WhatsApp notification failed', err, { orderId, kind }); return 'error: ' + err.message; }),
     ]);
+    logger.info('Order notification results', { orderId, kind, email: emailResult, sms: smsResult, whatsapp: waResult });
   } catch (err) {
     logger.error('sendOrderNotification failed', err, { orderId, kind });
   }
@@ -1519,4 +1535,154 @@ exports.checkLicense = onCall({ region: 'us-central1' }, async (request) => {
   if (snap.empty) return { active: false };
   const o = snap.docs[0].data();
   return { active: o.status === 'paid_in_full' || o.status === 'installed', farmName: o.farmName || '' };
+});
+
+// ---------------------------------------------------------------------------
+// Team voice calling — Africa's Talking Voice + their browser Client SDK.
+//
+// The short version: ONE real phone number is rented from Africa's Talking
+// (a real recurring cost — see HOW-TO-TEAM-CALLING.md). Every team member
+// then gets a free, app-only "extension" (a short name like "kf-john-4f2a",
+// generated below, never a real phone number) that identifies THEIR browser
+// tab to Africa's Talking. calls.html uses Africa's Talking's own
+// africastalking-client SDK with a short-lived token (minted by
+// getCallToken below) to open a WebRTC connection — from there:
+//   - OUTBOUND (team member calls a farmer): entirely client-side.
+//     calls.html calls client.call("+254...") directly — no server
+//     involvement beyond minting the token once. The farmer sees the one
+//     rented number as caller ID, never the team member's personal number.
+//   - INBOUND (a farmer calls the rented number): Africa's Talking hits
+//     voiceCallback below, which has to tell it, in XML, which team
+//     member(s) to ring. This part — routing a real incoming call to a
+//     browser Client by name — is the one piece that genuinely needs a
+//     live test against Africa's Talking's current Voice docs before you
+//     rely on it (their docs weren't fully pinned down while building
+//     this). If calls don't ring on the browser side after setup, open
+//     Africa's Talking's Voice docs, find the exact <Dial> syntax for
+//     targeting a Client (not a phone number), and paste it over — same
+//     as we did to fix the SMS endpoint earlier.
+const AFRICASTALKING_VOICE_NUMBER = defineSecret('AFRICASTALKING_VOICE_NUMBER'); // the one rented number, e.g. +254711000000
+const CALL_TOKEN_SECRETS = [AFRICASTALKING_USERNAME, AFRICASTALKING_API_KEY, AFRICASTALKING_VOICE_NUMBER];
+
+function requireFarmAdmin(request) {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  if (request.auth.token.role !== 'administrator') {
+    throw new HttpsError('permission-denied', 'Only the administrator can do this.');
+  }
+  return request.auth;
+}
+
+function genCallExtension(name) {
+  const slug = String(name || 'team').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 12) || 'team';
+  const rand = Math.random().toString(36).slice(2, 8);
+  // Africa's Talking client names: no spaces, kept short and plain here.
+  return 'kf-' + slug + '-' + rand;
+}
+
+// Administrator generates (or regenerates) a team member's in-app calling
+// extension and assigns it to them — the "numbers... generated by me and
+// assigned to the team" piece. Safe to re-run on someone who already has
+// one (e.g. if you suspect it leaked) — it just replaces it.
+exports.adminGenerateCallExtension = onCall({ region: 'us-central1' }, async (request) => {
+  requireFarmAdmin(request);
+  const uid = String((request.data && request.data.uid) || '').trim();
+  if (!uid) throw new HttpsError('invalid-argument', 'Missing team member.');
+  const userSnap = await db.collection('users').doc(uid).get();
+  if (!userSnap.exists) throw new HttpsError('not-found', 'That team member was not found.');
+  const extension = genCallExtension(userSnap.data().name || userSnap.data().email);
+  await db.collection('users').doc(uid).set({ callExtension: extension }, { merge: true });
+  return { ok: true, extension };
+});
+
+// Administrator revokes a team member's calling extension (e.g. they left,
+// or you just want to turn calling off for them). Doesn't touch anything
+// else about their account.
+exports.adminRevokeCallExtension = onCall({ region: 'us-central1' }, async (request) => {
+  requireFarmAdmin(request);
+  const uid = String((request.data && request.data.uid) || '').trim();
+  if (!uid) throw new HttpsError('invalid-argument', 'Missing team member.');
+  await db.collection('users').doc(uid).set({ callExtension: admin.firestore.FieldValue.delete() }, { merge: true });
+  return { ok: true };
+});
+
+// Any signed-in team member with an assigned extension calls this from
+// calls.html to get a short-lived token for Africa's Talking's browser
+// Client SDK. Mints a fresh token every time calls.html loads rather than
+// storing one, so revoking someone's extension (above) takes effect the
+// next time they open the page, not just whenever a stored token expires.
+exports.getCallToken = onCall({ region: 'us-central1', secrets: CALL_TOKEN_SECRETS }, async (request) => {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const userSnap = await db.collection('users').doc(auth.uid).get();
+  const extension = userSnap.exists ? userSnap.data().callExtension : null;
+  if (!extension) {
+    throw new HttpsError('failed-precondition', 'You do not have a calling extension yet — ask the administrator to set one up for you.');
+  }
+  const username = sval(AFRICASTALKING_USERNAME);
+  const apiKey = sval(AFRICASTALKING_API_KEY);
+  const voiceNumber = sval(AFRICASTALKING_VOICE_NUMBER);
+  if (!username || !apiKey || !voiceNumber) {
+    throw new HttpsError('failed-precondition', 'Calling is not set up yet — see HOW-TO-TEAM-CALLING.md.');
+  }
+  const fetch = require('node-fetch');
+  const resp = await fetch('https://webrtc.africastalking.com/capability-token/request', {
+    method: 'POST',
+    headers: { 'apiKey': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      username: username,
+      clientName: extension,
+      phoneNumber: voiceNumber,
+      incoming: true,
+      outgoing: true,
+    }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    logger.error('getCallToken: capability-token request failed', { status: resp.status, body: body.slice(0, 300) });
+    throw new HttpsError('internal', "Could not get a calling token from Africa's Talking.");
+  }
+  const data = await resp.json();
+  return { token: data.token, extension: extension };
+});
+
+// Africa's Talking Voice callback for the one rented number — set this
+// exact URL (shown by `firebase deploy --only functions` after deploying,
+// also visible via `firebase functions:list`) as the "Callback URL" on
+// that number in the Africa's Talking dashboard. See the big comment above
+// this section for the inbound-routing caveat.
+exports.voiceCallback = onRequest({ region: 'us-central1' }, async (req, res) => {
+  res.set('Content-Type', 'text/xml');
+  try {
+    const body = req.body || {};
+    const callerNumber = String(body.callerNumber || body.from || '');
+    const sessionState = String(body.callSessionState || body.callSessionEvent || '');
+    logger.info('voiceCallback', { callerNumber, sessionState, body });
+
+    // Ring every team member who currently has an assigned extension.
+    // Africa's Talking's Dial action is documented for dialing phone
+    // numbers; whether it also accepts Client names in the same
+    // comma-separated phoneNumbers list the way this assumes is the one
+    // thing to verify live — see the comment above this section.
+    const usersSnap = await db.collection('users').where('callExtension', '!=', null).get();
+    const extensions = usersSnap.docs.map((d) => d.data().callExtension).filter(Boolean);
+
+    if (sessionState && sessionState.toLowerCase() !== 'new' ) {
+      // This is Africa's Talking calling back again after the Dial attempt
+      // ended (nobody answered, or the call finished) — don't dial again,
+      // just end the call politely.
+      res.send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, nobody is available to take your call right now. Please try again later.</Say></Response>');
+      return;
+    }
+
+    if (!extensions.length) {
+      res.send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Thank you for calling Kenokip Farm. Nobody is set up to take calls right now. Please try again later.</Say></Response>');
+      return;
+    }
+
+    const xml = '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Please hold while we connect you.</Say><Dial phoneNumbers="' + extensions.join(',') + '" record="true" sequential="false"></Dial></Response>';
+    res.send(xml);
+  } catch (err) {
+    logger.error('voiceCallback failed', err);
+    res.send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, something went wrong. Please try again later.</Say></Response>');
+  }
 });
