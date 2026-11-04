@@ -773,23 +773,26 @@ exports.mpesaStkCallback = onRequest({ secrets: [MPESA_WEBHOOK_SECRET, ...ORDER_
   res.status(200).send('ok');
 });
 
-// Administrator taps "Send via M-Pesa" — pushes real money OUT to a
-// recipient's phone via Safaricom's B2C API. Two things stand between a
-// tap and real money moving: (1) role check, right below — the
-// administrator only, since sending is the one action in this app that's
-// both real and irreversible; and (2) the administrator's personal Finance
-// PIN, or a fingerprint/Face check, confirmed via financeGuard's shared
-// verifyFinancePin/verifyFingerprintAssertion helpers before anything is
-// sent to Safaricom at all. (The old main-authenticator-code requirement
-// moved to being the "opening" method only — see security.js's
-// unlockFinancePortal / the Finance portal password+code gate — per the
-// administrator's own request; PIN/fingerprint alone is what confirms an
-// actual payout now.) A wrong PIN or fingerprint here counts toward the
-// same shared 3-strikes lockout as every other Finance security check, and
-// alerts the administrator the same way. Nothing is written to the Finance
-// ledger from this function directly — that only happens from
-// mpesaB2CResult below, once Safaricom actually confirms the payout went
+// Administrator taps "Send via M-Pesa" — pushes real money OUT to one or
+// more recipients' phones via Safaricom's B2C API, up to MAX_PAYOUT_BATCH
+// at a time (see mpesaWithdrawFormHtml/payoutPinQuickPinHtml in app.js).
+// Two things stand between a tap and real money moving: (1) role check,
+// right below — the administrator only, since sending is the one action in
+// this app that's both real and irreversible; and (2) the administrator's
+// dedicated Payout PIN, confirmed via financeGuard's shared verifyPayoutPin
+// helper before anything is sent to Safaricom at all. (Fingerprint/Face is
+// no longer offered as an alternative here — removed per the
+// administrator's own request; a full-screen Payout PIN entry, separate
+// from the personal Finance PIN used elsewhere, is the only confirmation
+// now.) A wrong PIN here counts toward the same shared 3-strikes lockout as
+// every other Finance security check, and alerts the administrator the
+// same way — ONE check confirms the whole batch, not one per recipient,
+// since from the administrator's point of view this is one "send" action
+// that happens to fan out to several people. Nothing is written to the
+// Finance ledger from this function directly — that only happens from
+// mpesaB2CResult below, once Safaricom actually confirms each payout went
 // through (exactly the same pattern as mpesaStkCallback for deposits).
+const MAX_PAYOUT_BATCH = 5;
 exports.initiateWithdrawal = onCall({ secrets: B2C_SECRETS, region: 'us-central1' }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in first.');
@@ -801,29 +804,41 @@ exports.initiateWithdrawal = onCall({ secrets: B2C_SECRETS, region: 'us-central1
     throw new HttpsError('failed-precondition', "Payouts aren't available on this M-Pesa account yet.");
   }
   await financeGuard.helpers.assertNotLocked();
-  const amount = Number(request.data && request.data.amount);
-  const phone = normalizePhone(request.data && request.data.phone);
-  const note = String((request.data && request.data.note) || '').slice(0, 100);
-  const pin = request.data && request.data.pin != null ? String(request.data.pin) : null;
-  const fingerprintResponse = request.data && request.data.fingerprintResponse;
-  if (!amount || amount <= 0) throw new HttpsError('invalid-argument', 'Enter a valid amount.');
-  if (!phone) throw new HttpsError('invalid-argument', 'Enter a valid Safaricom number, e.g. 0712345678.');
-  if (!pin && !fingerprintResponse) throw new HttpsError('invalid-argument', 'Enter your Finance PIN, or use fingerprint/Face.');
 
-  // Throws (failed-precondition / invalid-argument) on a wrong PIN or a
-  // fingerprint/Face check that doesn't match — nothing below this line
-  // runs, and the shared lockout streak advances, unless it passes.
+  const pin = request.data && request.data.pin != null ? String(request.data.pin) : null;
+  if (!pin) throw new HttpsError('invalid-argument', 'Enter your Payout PIN.');
+
+  // Accepts either a single {amount, phone, note} payout (back-compat with
+  // any older client) or a batch of up to MAX_PAYOUT_BATCH under
+  // `recipients` — the app's "pay many in one batch" option.
+  let recipientsInput = Array.isArray(request.data && request.data.recipients) ? request.data.recipients : null;
+  if (!recipientsInput) {
+    recipientsInput = [{ amount: request.data && request.data.amount, phone: request.data && request.data.phone, note: request.data && request.data.note }];
+  }
+  if (!recipientsInput.length) throw new HttpsError('invalid-argument', 'Add at least one recipient.');
+  if (recipientsInput.length > MAX_PAYOUT_BATCH) {
+    throw new HttpsError('invalid-argument', `Send to at most ${MAX_PAYOUT_BATCH} recipients at a time.`);
+  }
+  const recipients = recipientsInput.map((r) => ({
+    amount: Number(r && r.amount),
+    phone: normalizePhone(r && r.phone),
+    note: String((r && r.note) || '').slice(0, 100),
+  }));
+  for (const r of recipients) {
+    if (!r.amount || r.amount <= 0) throw new HttpsError('invalid-argument', 'Enter a valid amount for every recipient.');
+    if (!r.phone) throw new HttpsError('invalid-argument', 'Enter a valid Safaricom number for every recipient, e.g. 0712345678.');
+  }
+
+  // Throws (failed-precondition / invalid-argument) on a wrong Payout PIN —
+  // nothing below this line runs, and the shared lockout streak advances,
+  // unless it passes.
   try {
-    if (pin) {
-      await financeGuard.helpers.verifyFinancePin(request.auth.uid, pin);
-    } else {
-      await financeGuard.helpers.verifyFingerprintAssertion(request.auth.uid, fingerprintResponse);
-    }
+    await financeGuard.helpers.verifyPayoutPin(request.auth.uid, pin);
   } catch (err) {
-    await financeGuard.helpers.onFail(request, pin ? 'payout-pin' : 'payout-fingerprint', (err && err.message) || 'unknown');
+    await financeGuard.helpers.onFail(request, 'payout-pin', (err && err.message) || 'unknown');
     throw err;
   }
-  await financeGuard.helpers.onSuccess(request, pin ? 'payout-pin' : 'payout-fingerprint');
+  await financeGuard.helpers.onSuccess(request, 'payout-pin');
 
   const certPem = sval(MPESA_B2C_CERT);
   const precomputedCred = sval(MPESA_SECURITY_CREDENTIAL);
@@ -836,31 +851,50 @@ exports.initiateWithdrawal = onCall({ secrets: B2C_SECRETS, region: 'us-central1
   const callbackBase = sval(MPESA_CALLBACK_BASE_URL);
   const webhookKey = sval(MPESA_WEBHOOK_SECRET);
   const webhookQs = webhookKey ? `?key=${encodeURIComponent(webhookKey)}` : '';
-  try {
-    const securityCredential = resolveSecurityCredential({ precomputed: precomputedCred, initiatorPassword, certPem });
-    const result = await b2cSend({
-      env: sval(MPESA_ENV, 'sandbox'),
-      consumerKey: sval(MPESA_PAYOUT_CONSUMER_KEY),
-      consumerSecret: sval(MPESA_PAYOUT_CONSUMER_SECRET),
-      shortcode: sval(MPESA_PAYOUT_SHORTCODE),
-      initiatorName,
-      securityCredential,
-      phone,
-      amount,
-      remarks: note || 'Kenokip Farm payout',
-      resultUrl: `${callbackBase}/mpesaB2CResult${webhookQs}`,
-      timeoutUrl: `${callbackBase}/mpesaB2CTimeout${webhookQs}`,
-      commandId: 'BusinessPayment',
-    });
-    return {
-      ok: true,
-      message: 'Payout sent to Safaricom — it will show up here once confirmed.',
-      conversationId: result.ConversationID,
-    };
-  } catch (err) {
-    logger.error('B2C send failed', err);
-    throw new HttpsError('internal', 'Could not send the payout. Check your B2C setup (SETUP-B2C.md) and try again.');
+  const securityCredential = resolveSecurityCredential({ precomputed: precomputedCred, initiatorPassword, certPem });
+
+  // Sent one at a time, not in parallel — if Safaricom (or the account's
+  // own balance) rejects one partway through a batch, every recipient
+  // already sent before it still went out correctly, and the response
+  // below says exactly which succeeded and which didn't, instead of an
+  // all-or-nothing failure hiding a payout that actually went through.
+  const results = [];
+  for (const r of recipients) {
+    try {
+      const result = await b2cSend({
+        env: sval(MPESA_ENV, 'sandbox'),
+        consumerKey: sval(MPESA_PAYOUT_CONSUMER_KEY),
+        consumerSecret: sval(MPESA_PAYOUT_CONSUMER_SECRET),
+        shortcode: sval(MPESA_PAYOUT_SHORTCODE),
+        initiatorName,
+        securityCredential,
+        phone: r.phone,
+        amount: r.amount,
+        remarks: r.note || 'Kenokip Farm payout',
+        resultUrl: `${callbackBase}/mpesaB2CResult${webhookQs}`,
+        timeoutUrl: `${callbackBase}/mpesaB2CTimeout${webhookQs}`,
+        commandId: 'BusinessPayment',
+      });
+      results.push({ phone: r.phone, amount: r.amount, ok: true, conversationId: result.ConversationID });
+    } catch (err) {
+      logger.error('B2C send failed for ' + r.phone, err);
+      results.push({ phone: r.phone, amount: r.amount, ok: false, error: 'Could not send to this number.' });
+    }
   }
+
+  const sentCount = results.filter((x) => x.ok).length;
+  const failedCount = results.length - sentCount;
+  if (sentCount === 0) {
+    throw new HttpsError('internal', results.length === 1
+      ? 'Could not send that payout. Check your B2C setup (SETUP-B2C.md) and try again.'
+      : 'Could not send any of those payouts. Check your B2C setup (SETUP-B2C.md) and try again.');
+  }
+  const message = results.length === 1
+    ? 'Payout sent to Safaricom — it will show up here once confirmed.'
+    : (failedCount === 0
+      ? `All ${sentCount} payouts sent to Safaricom — they'll show up here once confirmed.`
+      : `${sentCount} of ${results.length} payouts sent; ${failedCount} failed — check the numbers for the one${failedCount === 1 ? '' : 's'} that didn't go through.`);
+  return { ok: true, message, results };
 });
 
 // Safaricom calls this once a B2C payout finishes processing, successfully

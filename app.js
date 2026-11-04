@@ -4348,6 +4348,7 @@
         (myDob ? ' <span class="hint">Currently: '+esc(fmtDate(new Date(myDob+'T00:00:00')))+'</span>' : ' <span class="hint">Kept private — see Team Directory for who else can see it.</span>')+
       '</div>'+
       (canSeeFinance() ? authAppSectionHTML() : '')+
+      (isAdmin() ? payoutPinSectionHTML() : '')+
       (isAdmin() ? birthdayPinSectionHTML() : '')+
       (isAdmin() ? awayToggleHTML() : '')+
       '<div style="display:flex; gap:10px; flex-wrap:wrap">'+
@@ -4428,6 +4429,26 @@
         '<div class="field-row" style="max-width:160px"><label>Confirm PIN</label><input class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" name="pin2" required></div>'+
         '<button class="btn" type="submit">'+(gs && gs.pinSet ? 'Change PIN' : 'Set PIN')+'</button>'+
       '</form>'+
+    '</div>';
+  }
+  // Dedicated Payout PIN — administrator only, entirely separate from the
+  // personal Finance PIN above (its own hash/length — see financeGuard.js's
+  // setPayoutPin/verifyPayoutPin). This is the ONLY thing that now confirms
+  // a "Send via M-Pesa" payout — entered on its own full-screen screen
+  // (payoutPinQuickPinHtml) once "Send" is tapped, not inline in that form.
+  function payoutPinSectionHTML(){
+    var gs = financeGuardStatus;
+    return '<div style="margin-bottom:14px; padding:12px; border:1px solid var(--border, #ddd); border-radius:10px">'+
+      '<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px"><span class="inline-ico" style="width:18px; height:18px">'+ICONS.lockClosed+'</span><strong>Payout PIN</strong></div>'+
+      '<p class="hint">A separate, dedicated PIN — not your Finance PIN, not your sign-in password — needed to confirm every "Send via M-Pesa" payout. Entered on its own screen after you tap Send.</p>'+
+      (gs===null ? '<p class="hint">Loading…</p>' : (
+        (gs.payoutPinSet ? '<p class="hint">✓ A PIN is set.</p>' : '')+
+        '<form data-form="set-payout-pin" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap">'+
+          '<div class="field-row" style="max-width:160px"><label>'+(gs.payoutPinSet ? 'New PIN' : 'PIN')+' (4–8 digits)</label><input class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" name="pin" required></div>'+
+          '<div class="field-row" style="max-width:160px"><label>Confirm PIN</label><input class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" name="pin2" required></div>'+
+          '<button class="btn" type="submit">'+(gs.payoutPinSet ? 'Change PIN' : 'Set PIN')+'</button>'+
+        '</form>'
+      ))+
     '</div>';
   }
   // Dedicated Birthday PIN — administrator only, entirely separate from the
@@ -6073,33 +6094,6 @@
       render();
     });
   }
-  // "Use fingerprint" from inside the Send-via-M-Pesa modal — gathers the
-  // already-typed phone/amount/note directly from the open modal's fields
-  // (this is a plain button, not a form submit, so handleForm's FormData
-  // helper doesn't apply here) and confirms the payout with a fingerprint/
-  // Face check instead of the PIN field.
-  function mpesaWithdrawWithFingerprint(){
-    if(!webauthnSupported()){ toast('Fingerprint/Face unlock needs a newer browser.'); return; }
-    var phone = ((document.getElementById('mpesa-withdraw-phone')||{}).value||'').trim();
-    var amount = Number((document.getElementById('mpesa-withdraw-amount')||{}).value||0);
-    var note = ((document.getElementById('mpesa-withdraw-note')||{}).value||'').trim();
-    if(!phone || !amount){ toast('Enter the recipient phone and amount first.'); return; }
-    var btn = document.getElementById('mpesa-withdraw-submit');
-    if(btn) btn.disabled = true;
-    firebase.functions().httpsCallable('startFinanceFingerprintUnlock')().then(function(res){
-      var publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(res.data);
-      return navigator.credentials.get({ publicKey: publicKey });
-    }).then(function(cred){
-      return firebase.functions().httpsCallable('initiateWithdrawal')({ amount: amount, phone: phone, note: note, fingerprintResponse: cred.toJSON() });
-    }).then(function(res){
-      closeModal();
-      toast((res.data && res.data.message) || 'Payout sent — it will show up here once Safaricom confirms it.');
-    }).catch(function(err){
-      if(btn) btn.disabled = false;
-      if(err && err.name==='NotAllowedError'){ toast('Cancelled.'); return; }
-      toast((err&&err.message)||'Could not send that payout.');
-    });
-  }
   function financePortalGateHTML(){
     if(financeGuardStatus===null) refreshFinanceGuardStatus();
     if(financeGuardStatus && financeGuardStatus.locked){
@@ -6282,6 +6276,41 @@
       '<div class="quickpin-links"><button type="button" class="linklike" data-action="close-modal">Cancel</button><span></span></div>'+
     '</div></div>';
   }
+  // Same pad again, this time to confirm an actual "Send via M-Pesa"
+  // payout — the dedicated Payout PIN, separate from the Finance PIN
+  // above, is the only thing that confirms a send now (see
+  // mpesaWithdrawFormHtml's "Send" button, which opens this screen instead
+  // of asking for a PIN or fingerprint inline). pendingWithdrawRecipients
+  // holds the already-validated recipient list from that form; it's
+  // submitted together with the PIN once the buffer fills, in one
+  // initiateWithdrawal call (one PIN check confirms the whole batch).
+  function payoutPinQuickPinHtml(){
+    revealPinMode = 'payout';
+    revealPinBuffer = '';
+    revealPinBusy = false;
+    var pinLen = (financeGuardStatus && financeGuardStatus.payoutPinLength) || 4;
+    var dotsHtml = '';
+    for(var i=0;i<pinLen;i++) dotsHtml += '<div class="quickpin-dot"></div>';
+    var padHtml = '<div class="quickpin-pad">'+
+      [1,2,3,4,5,6,7,8,9].map(function(k){ return '<button type="button" class="quickpin-key" data-action="revealpin-key:'+k+'">'+k+'</button>'; }).join('')+
+      '<span></span>'+
+      '<button type="button" class="quickpin-key" data-action="revealpin-key:0">0</button>'+
+      '<button type="button" class="quickpin-key ghost" data-action="revealpin-backspace" aria-label="Backspace">⌫</button>'+
+    '</div>';
+    var n = (pendingWithdrawRecipients && pendingWithdrawRecipients.length) || 1;
+    return '<div class="quickpin-fullscreen">'+
+      QUICKPIN_SCENE_HENS+
+      '<div class="quickpin-card">'+
+      '<button class="modal-close" data-action="close-modal" style="position:absolute; top:14px; right:14px; z-index:2; color:#EAF6F1">'+ICONS.close+'</button>'+
+      '<div class="quickpin-avatar-ring">'+avatarHTML(currentUser||{}, 84)+'</div>'+
+      '<div class="quickpin-title">Send via M-Pesa</div>'+
+      '<div class="quickpin-sub">Enter your Payout PIN'+(n>1?' to send '+n+' payouts':'')+'</div>'+
+      '<div class="quickpin-dots" id="revealpin-dots">'+dotsHtml+'</div>'+
+      '<div class="quickpin-status" id="revealpin-status">&nbsp;</div>'+
+      padHtml+
+      '<div class="quickpin-links"><button type="button" class="linklike" data-action="close-modal">Cancel</button><span></span></div>'+
+    '</div></div>';
+  }
   function revealPinRenderDots(){
     var wrap = document.getElementById('revealpin-dots');
     if(!wrap) return;
@@ -6303,6 +6332,8 @@
     if(revealPinBusy) return;
     var pinLen = revealPinMode==='birthday'
       ? ((birthdayGuardStatus && birthdayGuardStatus.pinLength) || 4)
+      : revealPinMode==='payout'
+      ? ((financeGuardStatus && financeGuardStatus.payoutPinLength) || 4)
       : ((financeGuardStatus && financeGuardStatus.pinLength) || 4);
     if(revealPinBuffer.length >= pinLen) return;
     revealPinBuffer += String(d);
@@ -6317,16 +6348,26 @@
   }
   function revealPinSubmit(){
     revealPinBusy = true;
-    revealPinSetStatus('Checking…');
+    revealPinSetStatus(revealPinMode==='payout' ? 'Sending…' : 'Checking…');
     var pinVal = revealPinBuffer;
-    var call = revealPinMode==='birthday'
-      ? firebase.functions().httpsCallable('getTeamBirthdays')({ pin: pinVal }).then(function(res){
-          teamBirthdays = (res.data && res.data.dobs) || {};
-          birthdaysRevealed = true;
-        })
-      : firebase.functions().httpsCallable('verifyFinancePinReveal')({ pin: pinVal }).then(function(){
-          financeRevealed = true;
-        });
+    var call;
+    if(revealPinMode==='birthday'){
+      call = firebase.functions().httpsCallable('getTeamBirthdays')({ pin: pinVal }).then(function(res){
+        teamBirthdays = (res.data && res.data.dobs) || {};
+        birthdaysRevealed = true;
+      });
+    } else if(revealPinMode==='payout'){
+      var recipients = pendingWithdrawRecipients || [];
+      call = firebase.functions().httpsCallable('initiateWithdrawal')({ pin: pinVal, recipients: recipients }).then(function(res){
+        pendingWithdrawRecipients = null;
+        mpesaWithdrawRecipients = null;
+        toast((res.data && res.data.message) || 'Payout sent — it will show up here once Safaricom confirms it.');
+      });
+    } else {
+      call = firebase.functions().httpsCallable('verifyFinancePinReveal')({ pin: pinVal }).then(function(){
+        financeRevealed = true;
+      });
+    }
     call.then(function(){
       closeModal();
       render();
@@ -6409,26 +6450,47 @@
       '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit" id="mpesa-deposit-submit">Send M-Pesa prompt</button></div>'+
     '</form>';
   }
+  var MPESA_WITHDRAW_MAX_RECIPIENTS = 5;
+  // Reads whatever's currently in the open modal's recipient rows back into
+  // mpesaWithdrawRecipients, so typed-but-not-yet-submitted values survive
+  // an add-recipient/remove-recipient re-render (openModal just replaces
+  // the DOM wholesale, so without this every row but the one just added or
+  // removed would appear to have been wiped).
+  function mpesaWithdrawSyncFromDOM(){
+    if(!mpesaWithdrawRecipients) return;
+    for(var i=0;i<mpesaWithdrawRecipients.length;i++){
+      var p = document.getElementById('mpesa-withdraw-phone-'+i);
+      var a = document.getElementById('mpesa-withdraw-amount-'+i);
+      var n = document.getElementById('mpesa-withdraw-note-'+i);
+      mpesaWithdrawRecipients[i] = {
+        phone: p ? p.value : (mpesaWithdrawRecipients[i].phone||''),
+        amount: a ? a.value : (mpesaWithdrawRecipients[i].amount||''),
+        note: n ? n.value : (mpesaWithdrawRecipients[i].note||'')
+      };
+    }
+  }
   function mpesaWithdrawFormHtml(){
-    var hasPin = !!(financeGuardStatus && financeGuardStatus.pinSet);
-    var hasFp = !!(financeGuardStatus && financeGuardStatus.fingerprintEnrolled);
-    var confirmHint = hasPin && hasFp ? 'Confirm with your Finance PIN, or fingerprint/Face.'
-      : hasPin ? 'Confirm with your Finance PIN.'
-      : hasFp ? 'Confirm with fingerprint/Face below.'
-      : 'Set up your personal Finance PIN or fingerprint/Face unlock first, from Settings → Your account.';
+    if(!mpesaWithdrawRecipients || !mpesaWithdrawRecipients.length) mpesaWithdrawRecipients = [{phone:'',amount:'',note:''}];
+    var multi = mpesaWithdrawRecipients.length > 1;
+    var rowsHtml = mpesaWithdrawRecipients.map(function(r, i){
+      return '<div class="field-grid" style="margin-top:'+(i===0?'0':'14px')+'; align-items:flex-end; gap:8px; padding-bottom:'+(multi?'10px':'0')+'; border-bottom:'+(multi?'1px solid var(--border, #eee)':'none')+'">'+
+        '<div class="field-row"><label>Recipient phone'+(multi?' #'+(i+1):'')+'</label><input class="field" type="tel" id="mpesa-withdraw-phone-'+i+'" placeholder="0712345678" value="'+esc(r.phone||'')+'" required'+(i===0?' autofocus':'')+'></div>'+
+        '<div class="field-row"><label>Amount (KES)</label><input class="field" type="number" min="1" step="1" id="mpesa-withdraw-amount-'+i+'" value="'+esc(r.amount||'')+'" required></div>'+
+        '<div class="field-row"><label>Note (optional)</label><input class="field" type="text" id="mpesa-withdraw-note-'+i+'" maxlength="100" value="'+esc(r.note||'')+'" placeholder="What this payout is for"></div>'+
+        (multi ? '<button type="button" class="icon-btn" title="Remove this recipient" data-action="mpesa-withdraw-remove-recipient:'+i+'">'+ICONS.trash+'</button>' : '')+
+      '</div>';
+    }).join('');
+    var addRowHtml = mpesaWithdrawRecipients.length < MPESA_WITHDRAW_MAX_RECIPIENTS
+      ? '<button type="button" class="btn sm" style="margin-top:12px" data-action="mpesa-withdraw-add-recipient">+ Add another recipient ('+mpesaWithdrawRecipients.length+'/'+MPESA_WITHDRAW_MAX_RECIPIENTS+')</button>'
+      : '<p class="hint" style="margin-top:12px">Up to '+MPESA_WITHDRAW_MAX_RECIPIENTS+' recipients per batch.</p>';
     return '<div class="modal-head"><h3>Send via M-Pesa</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
-    '<p class="hint">Sends real money out of the farm\'s M-Pesa account to the number below — this can\'t be undone once Safaricom processes it. '+confirmHint+'</p>'+
-    '<form data-form="mpesa-withdraw">'+
-      '<div class="field-row"><label>Recipient phone</label><input class="field" type="tel" name="phone" id="mpesa-withdraw-phone" placeholder="0712345678" required autofocus></div>'+
-      '<div class="field-row" style="margin-top:12px"><label>Amount (KES)</label><input class="field" type="number" min="1" step="1" name="amount" id="mpesa-withdraw-amount" required></div>'+
-      '<div class="field-row" style="margin-top:12px"><label>Note (optional)</label><input class="field" type="text" name="note" id="mpesa-withdraw-note" maxlength="100" placeholder="What this payout is for"></div>'+
-      (hasPin ? '<div class="field-row" style="margin-top:12px"><label>Your Finance PIN</label><input class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" name="pin" placeholder="Your PIN"></div>' : '')+
-      '<div class="modal-foot">'+
-        '<button type="button" class="btn" data-action="close-modal">Cancel</button>'+
-        (hasFp ? '<button type="button" class="btn" data-action="mpesa-withdraw-fingerprint">'+ICONS.fingerprint+' Fingerprint</button>' : '')+
-        '<button class="btn danger" type="submit" id="mpesa-withdraw-submit"'+((!hasPin&&!hasFp)?' disabled':'')+'>Send</button>'+
-      '</div>'+
-    '</form>';
+    '<p class="hint">Sends real money out of the farm\'s M-Pesa account to the number'+(multi?'s':'')+' below — this can\'t be undone once Safaricom processes it. You\'ll confirm with your Payout PIN on the next screen.</p>'+
+    rowsHtml+
+    addRowHtml+
+    '<div class="modal-foot">'+
+      '<button type="button" class="btn" data-action="close-modal">Cancel</button>'+
+      '<button class="btn danger" type="button" data-action="mpesa-withdraw-continue">Send</button>'+
+    '</div>';
   }
   // M-Pesa's real Account Balance / Transaction Status answers arrive a few
   // seconds after being requested (see checkAccountBalance /
@@ -7739,14 +7801,45 @@
         if(!isAdmin()){ toast('Only the administrator can send money out.'); break; }
         if(!mpesaEnabled){ toast('M-Pesa isn\'t set up on this deployment yet.'); break; }
         if(!mpesaPayoutsEnabled){ toast('Payouts aren\'t available on this M-Pesa account yet.'); break; }
-        // Payouts are confirmed with the Finance PIN or fingerprint/Face now
-        // (see mpesaWithdrawFormHtml/initiateWithdrawal) — the main
-        // authenticator app is no longer part of this flow, so it's no
-        // longer required just to open this form.
-        if(!(financeGuardStatus && (financeGuardStatus.pinSet || financeGuardStatus.fingerprintEnrolled))){
-          toast('Set up your personal Finance PIN or fingerprint/Face unlock first, in Settings → Your account.'); break;
+        // Payouts are confirmed with the dedicated Payout PIN now (see
+        // payoutPinQuickPinHtml/initiateWithdrawal) — fingerprint/Face is no
+        // longer offered for this, and the main authenticator app isn't
+        // part of this flow either, so it's not required just to open this
+        // form; only having a Payout PIN set is.
+        if(!(financeGuardStatus && financeGuardStatus.payoutPinSet)){
+          toast('Set up your Payout PIN first, in Settings → Your account.'); break;
+        }
+        mpesaWithdrawRecipients = null;
+        openModal(mpesaWithdrawFormHtml());
+        break;
+      case 'mpesa-withdraw-add-recipient':
+        mpesaWithdrawSyncFromDOM();
+        if(mpesaWithdrawRecipients.length < MPESA_WITHDRAW_MAX_RECIPIENTS){
+          mpesaWithdrawRecipients.push({phone:'',amount:'',note:''});
         }
         openModal(mpesaWithdrawFormHtml());
+        break;
+      case 'mpesa-withdraw-remove-recipient':
+        mpesaWithdrawSyncFromDOM();
+        mpesaWithdrawRecipients.splice(Number(a1), 1);
+        if(!mpesaWithdrawRecipients.length) mpesaWithdrawRecipients.push({phone:'',amount:'',note:''});
+        openModal(mpesaWithdrawFormHtml());
+        break;
+      case 'mpesa-withdraw-continue':
+        mpesaWithdrawSyncFromDOM();
+        var validRecipients = [];
+        for(var wi=0; wi<mpesaWithdrawRecipients.length; wi++){
+          var wr = mpesaWithdrawRecipients[wi];
+          var wrPhone = (wr.phone||'').trim();
+          var wrAmount = Number(wr.amount||0);
+          if(!wrPhone || !wrAmount){ toast('Enter the phone and amount for every recipient.'); return; }
+          validRecipients.push({ phone: wrPhone, amount: wrAmount, note: (wr.note||'').trim() });
+        }
+        if(!(financeGuardStatus && financeGuardStatus.payoutPinSet)){
+          toast('Set up your Payout PIN first, in Settings → Your account.'); break;
+        }
+        pendingWithdrawRecipients = validRecipients;
+        openModal(payoutPinQuickPinHtml());
         break;
       case 'mpesa-check-balance':
         if(!isAdminLevel()){ toast('Only the administrator or co-administrator can check the M-Pesa balance.'); break; }
@@ -7794,9 +7887,6 @@
         break;
       case 'quickpin-fingerprint':
         quickPinFingerprint();
-        break;
-      case 'mpesa-withdraw-fingerprint':
-        mpesaWithdrawWithFingerprint();
         break;
       case 'enroll-finance-fingerprint':
         enrollFinanceFingerprint();
@@ -8862,23 +8952,6 @@
       });
       return;
     }
-    if(name==='mpesa-withdraw'){
-      if(!isAdmin()){ toast('Only the administrator can send money out.'); return; }
-      if(!mpesaEnabled){ toast('M-Pesa isn\'t set up on this deployment yet.'); return; }
-      if(!mpesaPayoutsEnabled){ toast('Payouts aren\'t available on this M-Pesa account yet.'); return; }
-      var wAmount = Number(val('amount')||0), wPhone = (val('phone')||'').trim(), wNote = (val('note')||'').trim(), wPin = (val('pin')||'').trim();
-      if(!wPin){ toast('Enter your Finance PIN, or use the fingerprint button.'); return; }
-      var wBtn = document.getElementById('mpesa-withdraw-submit');
-      if(wBtn){ wBtn.disabled = true; wBtn.textContent = 'Sending…'; }
-      firebase.functions().httpsCallable('initiateWithdrawal')({ amount: wAmount, phone: wPhone, note: wNote, pin: wPin }).then(function(res){
-        closeModal();
-        toast((res.data && res.data.message) || 'Payout sent — it will show up here once Safaricom confirms it.');
-      }).catch(function(err){
-        if(wBtn){ wBtn.disabled = false; wBtn.textContent = 'Send'; }
-        toast((err && err.message) || 'Could not send that payout.');
-      });
-      return;
-    }
     if(name==='mpesa-txnstatus'){
       if(!isAdminLevel()){ toast('Only the administrator or co-administrator can check a transaction.'); return; }
       var txnId = (val('transactionId')||'').trim().toUpperCase();
@@ -8980,6 +9053,19 @@
       if(newPin!==newPin2){ toast('Those two PINs don\'t match.'); return; }
       firebase.functions().httpsCallable('setFinancePin')({ pin: newPin }).then(function(){
         toast('Your personal Finance PIN is set.');
+        refreshFinanceGuardStatus();
+        try{ form.reset(); }catch(e){}
+      }).catch(function(err){ toast((err&&err.message)||'Could not save that PIN.'); });
+      return;
+    }
+    if(name==='set-payout-pin'){
+      if(!isAdmin()){ toast('Only the administrator can set a Payout PIN.'); return; }
+      var newPayoutPin = (val('pin')||'').trim();
+      var newPayoutPin2 = (val('pin2')||'').trim();
+      if(!/^\d{4,8}$/.test(newPayoutPin)){ toast('Use a 4 to 8 digit PIN.'); return; }
+      if(newPayoutPin!==newPayoutPin2){ toast('Those two PINs don\'t match.'); return; }
+      firebase.functions().httpsCallable('setPayoutPin')({ pin: newPayoutPin }).then(function(){
+        toast('Your Payout PIN is set.');
         refreshFinanceGuardStatus();
         try{ form.reset(); }catch(e){}
       }).catch(function(err){ toast((err&&err.message)||'Could not save that PIN.'); });
@@ -9173,6 +9259,15 @@
   // revealPinPressDigit branch on it, to know which PIN length and which
   // Cloud Function apply.
   var revealPinMode = 'finance';
+  // "Send via M-Pesa" batch state. mpesaWithdrawRecipients holds the modal's
+  // current rows (phone/amount/note) while it's open — up to 5, kept here
+  // rather than only in the DOM so add/remove-recipient re-renders don't
+  // lose what's already been typed in the other rows. pendingWithdrawRecipients
+  // is the validated copy carried over to payoutPinQuickPinHtml once "Send"
+  // is tapped, so the actual initiateWithdrawal call fires only after the
+  // Payout PIN is entered.
+  var mpesaWithdrawRecipients = null;
+  var pendingWithdrawRecipients = null;
   // Birthday privacy: myDob is this signed-in account's own date of birth
   // (fetched via getMyDob — never stored on users/{uid}, see
   // privateProfiles/{uid} in firestore.rules). birthdaysRevealed/

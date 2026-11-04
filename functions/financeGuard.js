@@ -218,6 +218,12 @@ module.exports = function (admin, db, opts) {
       fingerprintDevices: (sec.webauthnCredentials || []).map((c) => ({ label: c.label || 'A device', addedAt: c.addedAt || null })),
       pinSet: !!sec.financePinHash,
       pinLength: sec.financePinLength || null,
+      // A separate PIN, checked separately from the Finance PIN above —
+      // see setPayoutPin/verifyPayoutPin below. Only the administrator can
+      // have one (only the administrator can send payouts), so these are
+      // simply absent for anyone else.
+      payoutPinSet: !!sec.payoutPinHash,
+      payoutPinLength: sec.payoutPinLength || null,
       isAdministrator: auth.token.role === 'administrator',
     };
   });
@@ -239,6 +245,42 @@ module.exports = function (admin, db, opts) {
     await SECURITY_REF(auth.uid).set({ financePinHash: hashPassword(pin), financePinLength: pin.length }, { merge: true });
     return { ok: true };
   });
+
+  // -----------------------------------------------------------------------
+  // Payout PIN — a second, separate PIN from the personal Finance PIN
+  // above, used only to confirm an actual "Send via M-Pesa" payout (see
+  // initiateWithdrawal in index.js). Deliberately its own hash/length, its
+  // own setter, and its own verify helper, so knowing one PIN never implies
+  // the other — set independently, administrator-only (only the
+  // administrator can send money out at all).
+  // -----------------------------------------------------------------------
+
+  const setPayoutPin = onCall({ region: 'us-central1' }, async (request) => {
+    const auth = requireAuth(request);
+    if (auth.token.role !== 'administrator') {
+      throw new HttpsError('permission-denied', 'Only the administrator can set a Payout PIN.');
+    }
+    const pin = String((request.data && request.data.pin) || '');
+    if (!/^\d{4,8}$/.test(pin)) throw new HttpsError('invalid-argument', 'Use a 4 to 8 digit PIN.');
+    await SECURITY_REF(auth.uid).set({ payoutPinHash: hashPassword(pin), payoutPinLength: pin.length }, { merge: true });
+    return { ok: true };
+  });
+
+  // Verifies the Payout PIN alone — the only thing that now confirms a
+  // "Send via M-Pesa" payout (fingerprint/Face is no longer offered for
+  // payouts; it's still used for opening the Finance portal itself). Wrong
+  // attempts still count toward the same shared 3-strikes lockout as every
+  // other Finance security check — see onFail/onSuccess below.
+  async function verifyPayoutPin(uid, pin) {
+    const snap = await SECURITY_REF(uid).get();
+    const data = snap.exists ? snap.data() : {};
+    if (!data.payoutPinHash) {
+      throw new HttpsError('failed-precondition', 'Set up your Payout PIN first, from Settings → Your account.');
+    }
+    if (!verifyPassword(String(pin || ''), data.payoutPinHash)) {
+      throw new HttpsError('invalid-argument', 'Incorrect PIN.');
+    }
+  }
 
   // -----------------------------------------------------------------------
   // Fingerprint / Face enrollment (WebAuthn "registration")
@@ -527,10 +569,14 @@ module.exports = function (admin, db, opts) {
       // duplicating the WebAuthn/PIN verification logic.
       verifyFinancePin,
       verifyFingerprintAssertion,
+      // Exposed the same way, for the same reason — initiateWithdrawal
+      // confirms a payout with this instead of verifyFinancePin now.
+      verifyPayoutPin,
     },
     triggers: {
       getFinanceGuardStatus,
       setFinancePin,
+      setPayoutPin,
       startFinanceFingerprintEnrollment,
       finishFinanceFingerprintEnrollment,
       removeFinanceFingerprint,
