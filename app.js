@@ -586,8 +586,8 @@
     // batch to value — same gating as the rest of this feature.
     if(hasGuineaFowl()){
       rows.push(
-        ['Guinea Fowl, 21+ wk', function(b){return batchSpecies(b)==='guineafowl' && ageWeeks(b)>=21;}, GUINEAFOWL_VALUE_TABLE.adult],
-        ['Guinea Fowl, 12–20 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=12 && w<=20;}, GUINEAFOWL_VALUE_TABLE.growerOlder],
+        ['Guinea Fowl, 28+ wk', function(b){return batchSpecies(b)==='guineafowl' && ageWeeks(b)>=28;}, GUINEAFOWL_VALUE_TABLE.adult],
+        ['Guinea Fowl, 12–27 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=12 && w<=27;}, GUINEAFOWL_VALUE_TABLE.growerOlder],
         ['Guinea Fowl, 9–11 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=9 && w<=11;}, GUINEAFOWL_VALUE_TABLE.growerYounger],
         ['Guinea Fowl, 4–8 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=4 && w<=8;}, GUINEAFOWL_VALUE_TABLE.chickOlder],
         ['Guinea Fowl, 2–3 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=2 && w<=3;}, GUINEAFOWL_VALUE_TABLE.chickMid],
@@ -621,6 +621,21 @@
   function ageWeeks(b, atDate){ atDate=atDate||new Date(); return Math.max(0, Math.floor((atDate-parseISO(b.birthDate))/(7*24*3600*1000))); }
   function ageGroupForWeeks(w){ return w<=8 ? 'chick' : (w<=20 ? 'grower' : 'layer'); }
   function ageGroupLabel(k){ return k==='chick'?'Chicks':(k==='grower'?'Growers':'Layers'); }
+  // Guinea Fowl mature noticeably slower than hens — point-of-lay is
+  // around 28 weeks, not 21 — so they get their own, wider "grower" band
+  // (9-27 weeks) instead of reusing the Hens thresholds above. Everywhere
+  // a batch's age-group gets computed for display or pricing, use these
+  // species-aware versions rather than ageGroupForWeeks/ageGroupLabel
+  // directly, so a Guinea Fowl batch isn't mislabeled "Adult"/"Layer" six
+  // weeks early.
+  function ageGroupForWeeksSpecies(w, species){
+    if(species==='guineafowl') return w<=8 ? 'chick' : (w<=27 ? 'grower' : 'layer');
+    return ageGroupForWeeks(w);
+  }
+  function ageGroupLabelSpecies(k, species){
+    if(species==='guineafowl' && k==='layer') return 'Adults';
+    return ageGroupLabel(k);
+  }
   function genderLabel(g){ return g==='female'?'hen':(g==='male'?'rooster':'unsexed bird'); }
   // ---- Guinea Fowl: poultry's second bird type ----------------------
   // Added alongside Hens, reusing the same Flock/Eggs/Brooding machinery
@@ -667,14 +682,17 @@
     chickMid: 150,      // 2-3 weeks
     chickYoungest: 100  // 0-1 weeks
   };
-  // Guinea Fowl's own price table — same age bands as Hens, but Guinea
-  // Fowl are worth noticeably more at every stage in the Kenyan market,
-  // and (confirmed against current listings) aren't priced differently
-  // by sex, so there's no separate "mature male" figure the way Cocks
-  // get one above.
+  // Guinea Fowl's own price table — worth noticeably more than Hens at
+  // every stage in the Kenyan market, and (confirmed against current
+  // listings) aren't priced differently by sex, so there's no separate
+  // "mature male" figure the way Cocks get one above. The age bands are
+  // wider than Hens' too — Guinea Fowl don't reach point-of-lay until
+  // around 28 weeks (vs. 21 for hens), so the "grower" band here runs
+  // 9-27 weeks and "adult" only starts at 28 (see ageGroupForWeeksSpecies
+  // above, which the Flock pages use for the same reason).
   var GUINEAFOWL_VALUE_TABLE = {
-    adult: 2200,         // 21+ weeks, either sex
-    growerOlder: 1800,   // 12-20 weeks
+    adult: 2200,         // 28+ weeks, either sex
+    growerOlder: 1800,   // 12-27 weeks
     growerYounger: 1200, // 9-11 weeks
     chickOlder: 700,     // 4-8 weeks
     chickMid: 400,       // 2-3 weeks
@@ -683,7 +701,7 @@
   function flockValuePerBird(b, atDate){
     var w = ageWeeks(b, atDate);
     if(batchSpecies(b)==='guineafowl'){
-      if(w>=21) return GUINEAFOWL_VALUE_TABLE.adult;
+      if(w>=28) return GUINEAFOWL_VALUE_TABLE.adult;
       if(w>=9) return w>=12 ? GUINEAFOWL_VALUE_TABLE.growerOlder : GUINEAFOWL_VALUE_TABLE.growerYounger;
       if(w>=4) return GUINEAFOWL_VALUE_TABLE.chickOlder;
       if(w>=2) return GUINEAFOWL_VALUE_TABLE.chickMid;
@@ -811,7 +829,7 @@
     state.flock.forEach(function(b){
       if(batchSpecies(b)!=='guineafowl') return;
       var c = currentCount(b); if(c<=0) return;
-      groups[ageGroupForWeeks(ageWeeks(b))] += c;
+      groups[ageGroupForWeeksSpecies(ageWeeks(b), 'guineafowl')] += c;
       total += c;
     });
     groups.total = total;
@@ -1534,7 +1552,7 @@
         '<td>'+fmtDate(parseISO(b.dateAdded))+'</td>'+
         '<td><span class="pill">'+speciesLabel(batchSpecies(b))+'</span></td>'+
         '<td><span class="pill '+b.gender+'">'+genderLabel(b.gender)+(b.gender!=='unsexed'?'s':'')+'</span></td>'+
-        '<td>'+wk+'w · '+ageGroupLabel(ageGroupForWeeks(wk))+'</td>'+
+        '<td>'+wk+'w · '+ageGroupLabelSpecies(ageGroupForWeeksSpecies(wk, batchSpecies(b)), batchSpecies(b))+'</td>'+
         '<td class="num">'+b.count+'</td>'+
         '<td class="num">'+c+'</td>'+
         '<td>'+esc(b.source||'—')+'</td>'+
