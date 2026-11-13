@@ -6078,6 +6078,9 @@
     if(mpesaEnabled && isAdmin()) actions += mpesaPayoutsEnabled
       ? '<button class="btn" data-action="open-mpesa-withdraw">Send via M-Pesa</button>'
       : '<button class="btn" data-action="open-mpesa-withdraw" title="Payouts aren\'t available on this M-Pesa account yet" style="opacity:.55">Send via M-Pesa</button>';
+    if(isAdmin()) actions += bankPayoutsEnabled
+      ? '<button class="btn" data-action="open-bank-withdraw">Send to bank account</button>'
+      : '<button class="btn" data-action="open-bank-withdraw" title="Bank payouts aren\'t set up on this deployment yet" style="opacity:.55">Send to bank account</button>';
     actions += addBtn('open-add-finance', isAdmin() ? 'Add transaction' : 'New transaction');
     return actions;
   }
@@ -6489,8 +6492,8 @@
   // holds the already-validated recipient list from that form; it's
   // submitted together with the PIN once the buffer fills, in one
   // initiateWithdrawal call (one PIN check confirms the whole batch).
-  function payoutPinQuickPinHtml(){
-    revealPinMode = 'payout';
+  function payoutPinQuickPinHtml(mode){
+    revealPinMode = mode || 'payout';
     revealPinBuffer = '';
     revealPinBusy = false;
     var pinLen = (financeGuardStatus && financeGuardStatus.payoutPinLength) || 4;
@@ -6502,13 +6505,14 @@
       '<button type="button" class="quickpin-key" data-action="revealpin-key:0">0</button>'+
       '<button type="button" class="quickpin-key ghost" data-action="revealpin-backspace" aria-label="Backspace">⌫</button>'+
     '</div>';
-    var n = (pendingWithdrawRecipients && pendingWithdrawRecipients.length) || 1;
+    var isBank = revealPinMode==='bankpayout';
+    var n = ((isBank ? pendingBankWithdrawRecipients : pendingWithdrawRecipients) || []).length || 1;
     return '<div class="quickpin-fullscreen">'+
       QUICKPIN_SCENE_HENS+
       '<div class="quickpin-card">'+
       '<button class="modal-close" data-action="close-modal" style="position:absolute; top:14px; right:14px; z-index:2; color:#EAF6F1">'+ICONS.close+'</button>'+
       '<div class="quickpin-avatar-ring">'+avatarHTML(currentUser||{}, 84)+'</div>'+
-      '<div class="quickpin-title">Send via M-Pesa</div>'+
+      '<div class="quickpin-title">'+(isBank?'Send to bank account':'Send via M-Pesa')+'</div>'+
       '<div class="quickpin-sub">Enter your Payout PIN'+(n>1?' to send '+n+' payouts':'')+'</div>'+
       '<div class="quickpin-dots" id="revealpin-dots">'+dotsHtml+'</div>'+
       '<div class="quickpin-status" id="revealpin-status">&nbsp;</div>'+
@@ -6537,7 +6541,7 @@
     if(revealPinBusy) return;
     var pinLen = revealPinMode==='birthday'
       ? ((birthdayGuardStatus && birthdayGuardStatus.pinLength) || 4)
-      : revealPinMode==='payout'
+      : (revealPinMode==='payout' || revealPinMode==='bankpayout')
       ? ((financeGuardStatus && financeGuardStatus.payoutPinLength) || 4)
       : ((financeGuardStatus && financeGuardStatus.pinLength) || 4);
     if(revealPinBuffer.length >= pinLen) return;
@@ -6553,7 +6557,7 @@
   }
   function revealPinSubmit(){
     revealPinBusy = true;
-    revealPinSetStatus(revealPinMode==='payout' ? 'Sending…' : 'Checking…');
+    revealPinSetStatus((revealPinMode==='payout' || revealPinMode==='bankpayout') ? 'Sending…' : 'Checking…');
     var pinVal = revealPinBuffer;
     var call;
     if(revealPinMode==='birthday'){
@@ -6567,6 +6571,13 @@
         pendingWithdrawRecipients = null;
         mpesaWithdrawRecipients = null;
         toast((res.data && res.data.message) || 'Payout sent — it will show up here once Safaricom confirms it.');
+      });
+    } else if(revealPinMode==='bankpayout'){
+      var bankRecipients = pendingBankWithdrawRecipients || [];
+      call = firebase.functions().httpsCallable('initiateBankPayout')({ pin: pinVal, recipients: bankRecipients }).then(function(res){
+        pendingBankWithdrawRecipients = null;
+        bankWithdrawRecipients = null;
+        toast((res.data && res.data.message) || 'Bank payout sent — it will show up here once confirmed.');
       });
     } else {
       call = firebase.functions().httpsCallable('verifyFinancePinReveal')({ pin: pinVal }).then(function(){
@@ -6695,6 +6706,62 @@
     '<div class="modal-foot">'+
       '<button type="button" class="btn" data-action="close-modal">Cancel</button>'+
       '<button class="btn danger" type="button" data-action="mpesa-withdraw-continue">Send</button>'+
+    '</div>';
+  }
+  // ---- Bank-account payouts (IntaSend / PesaLink) --------------------
+  // A second payout rail alongside "Send via M-Pesa" above — same batch-
+  // of-5, same dedicated Payout PIN to confirm, same "fill in a list,
+  // then Send" shape. The one real difference is the Bank field, which
+  // needs a live list of banks + codes from IntaSend (bankListCache,
+  // fetched once via getBankList and reused — see 'open-bank-withdraw').
+  var BANK_WITHDRAW_MAX_RECIPIENTS = 5;
+  function bankWithdrawSyncFromDOM(){
+    if(!bankWithdrawRecipients) return;
+    for(var i=0;i<bankWithdrawRecipients.length;i++){
+      var bEl = document.getElementById('bank-withdraw-bank-'+i);
+      var accEl = document.getElementById('bank-withdraw-account-'+i);
+      var nameEl = document.getElementById('bank-withdraw-name-'+i);
+      var amtEl = document.getElementById('bank-withdraw-amount-'+i);
+      var noteEl = document.getElementById('bank-withdraw-note-'+i);
+      bankWithdrawRecipients[i] = {
+        bankCode: bEl ? bEl.value : (bankWithdrawRecipients[i].bankCode||''),
+        accountNumber: accEl ? accEl.value : (bankWithdrawRecipients[i].accountNumber||''),
+        accountName: nameEl ? nameEl.value : (bankWithdrawRecipients[i].accountName||''),
+        amount: amtEl ? amtEl.value : (bankWithdrawRecipients[i].amount||''),
+        note: noteEl ? noteEl.value : (bankWithdrawRecipients[i].note||'')
+      };
+    }
+  }
+  function bankWithdrawFormHtml(){
+    if(!bankWithdrawRecipients || !bankWithdrawRecipients.length) bankWithdrawRecipients = [{bankCode:'',accountNumber:'',accountName:'',amount:'',note:''}];
+    var multi = bankWithdrawRecipients.length > 1;
+    var banks = bankListCache || [];
+    function bankOptionsHtml(selected){
+      return '<option value="">Select a bank…</option>'+banks.map(function(b){
+        var code = String(b.bank_code||'');
+        return '<option value="'+esc(code)+'" '+(code===String(selected||'')?'selected':'')+'>'+esc(b.bank_name||code)+'</option>';
+      }).join('');
+    }
+    var rowsHtml = bankWithdrawRecipients.map(function(r, i){
+      return '<div class="field-grid" style="margin-top:'+(i===0?'0':'14px')+'; align-items:flex-end; gap:8px; padding-bottom:'+(multi?'10px':'0')+'; border-bottom:'+(multi?'1px solid var(--border, #eee)':'none')+'">'+
+        '<div class="field-row"><label>Bank'+(multi?' #'+(i+1):'')+'</label><select class="field" id="bank-withdraw-bank-'+i+'" required'+(i===0?' autofocus':'')+'>'+bankOptionsHtml(r.bankCode)+'</select></div>'+
+        '<div class="field-row"><label>Account number</label><input class="field" type="text" id="bank-withdraw-account-'+i+'" value="'+esc(r.accountNumber||'')+'" required></div>'+
+        '<div class="field-row"><label>Account name</label><input class="field" type="text" id="bank-withdraw-name-'+i+'" maxlength="100" value="'+esc(r.accountName||'')+'" required></div>'+
+        '<div class="field-row"><label>Amount (KES)</label><input class="field" type="number" min="100" step="1" id="bank-withdraw-amount-'+i+'" value="'+esc(r.amount||'')+'" required></div>'+
+        '<div class="field-row"><label>Note (optional)</label><input class="field" type="text" id="bank-withdraw-note-'+i+'" maxlength="100" value="'+esc(r.note||'')+'" placeholder="What this payout is for"></div>'+
+        (multi ? '<button type="button" class="icon-btn" title="Remove this recipient" data-action="bank-withdraw-remove-recipient:'+i+'">'+ICONS.trash+'</button>' : '')+
+      '</div>';
+    }).join('');
+    var addRowHtml = bankWithdrawRecipients.length < BANK_WITHDRAW_MAX_RECIPIENTS
+      ? '<button type="button" class="btn sm" style="margin-top:12px" data-action="bank-withdraw-add-recipient">+ Add another recipient ('+bankWithdrawRecipients.length+'/'+BANK_WITHDRAW_MAX_RECIPIENTS+')</button>'
+      : '<p class="hint" style="margin-top:12px">Up to '+BANK_WITHDRAW_MAX_RECIPIENTS+' recipients per batch.</p>';
+    return '<div class="modal-head"><h3>Send to bank account</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<p class="hint">Sends real money out of the farm\'s account by bank transfer to the account'+(multi?'s':'')+' below — KSh 100 minimum per recipient — and this can\'t be undone once it\'s processed. You\'ll confirm with your Payout PIN on the next screen.</p>'+
+    rowsHtml+
+    addRowHtml+
+    '<div class="modal-foot">'+
+      '<button type="button" class="btn" data-action="close-modal">Cancel</button>'+
+      '<button class="btn danger" type="button" data-action="bank-withdraw-continue">Send</button>'+
     '</div>';
   }
   // M-Pesa's real Account Balance / Transaction Status answers arrive a few
@@ -7276,7 +7343,16 @@
     if(/\b(add|record)\b.*\bincome/.test(q)) return 'Go to Income and tap "Add income" — pick a category, amount, date, and an optional note.';
     if(/\badd\b.*\bcustomer/.test(q)) return 'Go to Customers and tap "Add customer" — their name is enough to start; phone and notes are optional. Sales linked to them (from Flock or Eggs) show up automatically.';
     if(/\bdeposit\b|\badd.*money\b|\bstk\b/.test(q)){ if(!canSeeFinance()) return kemAiRestricted('Finance'); return 'On the Finance page, tap "Add via M-Pesa" and confirm the PIN prompt on your phone — Safaricom handles that step directly, this app never sees your M-Pesa PIN.'; }
-    if(/\bwithdraw\b|\bsend.*money\b|\bpay ?out\b|\bb2c\b/.test(q)){ if(!canSeeFinance()) return kemAiRestricted('Finance'); if(!mpesaPayoutsEnabled) return 'Payouts aren\'t available on this M-Pesa account yet — Safaricom needs to confirm B2C access for our Paybill first. Until then, payments out still have to be sent manually.'; return 'On the Finance page, tap "Send via M-Pesa", enter the phone number and amount — it goes out as a normal M-Pesa payment.'; }
+    if(/\bwithdraw\b|\bsend.*money\b|\bpay ?out\b|\bb2c\b|\bbank transfer\b|\bpesalink\b/.test(q)){
+      if(!canSeeFinance()) return kemAiRestricted('Finance');
+      if(/\bbank\b|\bpesalink\b/.test(q) && !/\bm-?pesa\b/.test(q)){
+        return bankPayoutsEnabled
+          ? 'On the Finance page, tap "Send to bank account", pick the bank, and enter the account number/name and amount — you\'ll confirm with your Payout PIN.'
+          : 'Bank payouts aren\'t set up on this deployment yet.';
+      }
+      if(!mpesaPayoutsEnabled) return 'Payouts aren\'t available on this M-Pesa account yet — Safaricom needs to confirm B2C access for our Paybill first. Until then, payments out still have to be sent manually.';
+      return 'On the Finance page, tap "Send via M-Pesa", enter the phone number and amount — it goes out as a normal M-Pesa payment. There\'s also "Send to bank account" for a direct bank transfer instead.';
+    }
     if(/\bfingerprint\b|\bface unlock\b|\bfinance pin\b/.test(q)) return 'From Settings → Your account: set a personal Finance PIN, then tap "Set up fingerprint / Face unlock" and follow your device\'s own prompt. After that, the Finance portal offers a Fingerprint + PIN tab as a faster alternative to password + code — either one alone still can\'t get in.';
     if(/\bsearch box\b|\bhow.*search\b/.test(q)) return 'The search box above every page searches flock, eggs, feed, health, expenses, income, and customers as you type (plus Finance and Team if your account can see those) — tap a result to jump straight to it.';
     if(/\bvoice\b/.test(q)) return 'Tap the mic in the search box and say something like "open eggs" to jump to a page, or just say what you\'re looking for and it searches for it. Needs Chrome, Edge, or Safari.';
@@ -8045,6 +8121,59 @@
         }
         pendingWithdrawRecipients = validRecipients;
         openModal(payoutPinQuickPinHtml());
+        break;
+      case 'open-bank-withdraw':
+        if(!isAdmin()){ toast('Only the administrator can send money out.'); break; }
+        if(!bankPayoutsEnabled){ toast('Bank payouts aren\'t set up on this deployment yet.'); break; }
+        if(!(financeGuardStatus && financeGuardStatus.payoutPinSet)){
+          toast('Set up your Payout PIN first, in Settings → Your account.'); break;
+        }
+        if(bankListCache){
+          bankWithdrawRecipients = null;
+          openModal(bankWithdrawFormHtml());
+        } else {
+          toast('Loading banks…');
+          firebase.functions().httpsCallable('getBankList')({}).then(function(res){
+            bankListCache = ((res.data && res.data.banks) || []).slice().sort(function(x,y){
+              return String(x.bank_name||'').localeCompare(String(y.bank_name||''));
+            });
+            bankWithdrawRecipients = null;
+            openModal(bankWithdrawFormHtml());
+          }).catch(function(err){ toast((err&&err.message)||'Could not load the bank list.'); });
+        }
+        break;
+      case 'bank-withdraw-add-recipient':
+        bankWithdrawSyncFromDOM();
+        if(bankWithdrawRecipients.length < BANK_WITHDRAW_MAX_RECIPIENTS){
+          bankWithdrawRecipients.push({bankCode:'',accountNumber:'',accountName:'',amount:'',note:''});
+        }
+        openModal(bankWithdrawFormHtml());
+        break;
+      case 'bank-withdraw-remove-recipient':
+        bankWithdrawSyncFromDOM();
+        bankWithdrawRecipients.splice(Number(a1), 1);
+        if(!bankWithdrawRecipients.length) bankWithdrawRecipients.push({bankCode:'',accountNumber:'',accountName:'',amount:'',note:''});
+        openModal(bankWithdrawFormHtml());
+        break;
+      case 'bank-withdraw-continue':
+        bankWithdrawSyncFromDOM();
+        var validBankRecipients = [];
+        for(var bwi=0; bwi<bankWithdrawRecipients.length; bwi++){
+          var bwr = bankWithdrawRecipients[bwi];
+          var bwBankCode = (bwr.bankCode||'').trim();
+          var bwAccount = (bwr.accountNumber||'').trim();
+          var bwName = (bwr.accountName||'').trim();
+          var bwAmount = Number(bwr.amount||0);
+          if(!bwBankCode){ toast('Select a bank for every recipient.'); return; }
+          if(!bwAccount || !bwName){ toast('Enter the account number and name for every recipient.'); return; }
+          if(!bwAmount || bwAmount < 100){ toast('Bank transfers need at least KSh 100 per recipient.'); return; }
+          validBankRecipients.push({ bankCode: bwBankCode, accountNumber: bwAccount, accountName: bwName, amount: bwAmount, note: (bwr.note||'').trim() });
+        }
+        if(!(financeGuardStatus && financeGuardStatus.payoutPinSet)){
+          toast('Set up your Payout PIN first, in Settings → Your account.'); break;
+        }
+        pendingBankWithdrawRecipients = validBankRecipients;
+        openModal(payoutPinQuickPinHtml('bankpayout'));
         break;
       case 'mpesa-check-balance':
         if(!isAdminLevel()){ toast('Only the administrator or co-administrator can check the M-Pesa balance.'); break; }
@@ -9427,6 +9556,12 @@
   // deployed, flip this to true to show the account picker in "Add via
   // M-Pesa" — see HOW-TO-APPLY-DUAL-ACCOUNT.md.
   var mpesaPaybillStkEnabled = false;
+  // Kill-switch for the IntaSend bank-payout rail (PesaLink), same idea as
+  // mpesaPayoutsEnabled above — flip to false if IntaSend access ever needs
+  // to be paused without touching the backend. Confirmed working against
+  // the sandbox (getBankList returning a real bank list) before this was
+  // turned on.
+  var bankPayoutsEnabled = true;
   var financeSyncStarted = false;
   var directorySyncStarted = false;
   var logsSyncStarted = false;
@@ -9500,6 +9635,12 @@
   // Payout PIN is entered.
   var mpesaWithdrawRecipients = null;
   var pendingWithdrawRecipients = null;
+  var bankWithdrawRecipients = null;
+  var pendingBankWithdrawRecipients = null;
+  // Fetched once via getBankList and reused for the lifetime of the page
+  // load — the bank list doesn't change session to session, so there's no
+  // need to hit the server again every time "Send to bank account" opens.
+  var bankListCache = null;
   // Birthday privacy: myDob is this signed-in account's own date of birth
   // (fetched via getMyDob — never stored on users/{uid}, see
   // privateProfiles/{uid} in firestore.rules). birthdaysRevealed/
