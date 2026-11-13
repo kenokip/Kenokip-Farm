@@ -72,6 +72,7 @@
     grower:'<svg viewBox="0 0 48 48"><ellipse cx="23" cy="33" rx="13" ry="10.5" fill="#C9A06B"/><ellipse cx="16" cy="34" rx="5" ry="6.5" fill="#B3875A"/><circle cx="9" cy="34" r="1.1" fill="#fff" opacity=".7"/><circle cx="14" cy="30" r="1.1" fill="#fff" opacity=".7"/><circle cx="19" cy="37" r="1.1" fill="#fff" opacity=".7"/><circle cx="27" cy="19" r="8" fill="#D8B583"/><path d="M27 12 q1.5 -3 3 0 q1.5 -2.6 2.6 .3" fill="#D6273C"/><path d="M34 18 L41 20 L34 22.5 Z" fill="#F2994A"/><circle cx="29.5" cy="17.5" r="1.2" fill="#3A2705"/><path d="M12 42 l0 4 M20 43 l0 4 M28 43 l0 4" stroke="#D98A3D" stroke-width="2.2" stroke-linecap="round"/><path d="M10 30 q-6 2 -4 9 q5 -1 6 -6 Z" fill="#8A6A44"/></svg>',
     hen:'<svg viewBox="0 0 48 48"><path d="M8 40 Q6 24 20 20 Q34 16 38 26 Q41 32 34 36 L34 41 Z" fill="#A6431F"/><ellipse cx="19" cy="33" rx="7" ry="8" fill="#EDD9B8"/><path d="M34 20 Q40 16 44 20 Q41 24 36 25 Z" fill="#1B1B1B"/><path d="M32 18 Q38 12 43 15 Q39 20 34 21 Z" fill="#2E2A26"/><circle cx="21" cy="16" r="6.5" fill="#B5502A"/><path d="M21 9 q1.3 -4 2.6 0 q1.3 -3.4 2.6 .4 q1 -2.6 2 .6" fill="#D6273C"/><path d="M17 17 q-2 1.6 -0.3 3.3" stroke="#D6273C" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M26 15 L33 16.5 L26 19 Z" fill="#F2A93D"/><circle cx="24.5" cy="15" r="1.2" fill="#241a12"/><path d="M14 41 l-1 4 M14 41 l3 3.5 M23 42 l-1 4 M23 42 l3 3.5" stroke="#E8973D" stroke-width="2" stroke-linecap="round"/></svg>',
     cock:'<svg viewBox="0 0 48 48"><path d="M30 22 Q44 8 46 22 Q40 20 36 26 Z" fill="#173226"/><path d="M28 20 Q40 4 44 16 Q37 16 33 23 Z" fill="#2F6B5E"/><path d="M26 20 Q34 2 40 12 Q32 14 30 21 Z" fill="#173226"/><path d="M9 40 Q6 22 21 19 Q36 15 38 27 Q39 33 32 36 L31 41 Z" fill="#C0451B"/><path d="M13 24 Q9 26 12 33 Q17 30 17 26 Z" fill="#E8B93D"/><ellipse cx="20" cy="33" rx="6" ry="7.5" fill="#E8A93D"/><circle cx="22" cy="15.5" r="6.7" fill="#C0451B"/><path d="M22 8 q1.3 -4.4 2.7 0 q1.3 -3.6 2.6 .4 q1 -2.8 2 .6" fill="#D6273C"/><path d="M18 16.5 q-2.2 1.7 -0.3 3.5" stroke="#D6273C" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M27 14.5 L35 16 L27 18.7 Z" fill="#F2A93D"/><circle cx="25" cy="14.6" r="1.2" fill="#241a12"/><path d="M14 41 l-1 4 M14 41 l3 3.5 M24 42 l-1 4 M24 42 l3 3.5" stroke="#4a3a2a" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    guineafowl:'<svg viewBox="0 0 48 48"><ellipse cx="23" cy="31" rx="15" ry="11" fill="#5B6670"/><circle cx="12" cy="24" r="1" fill="#E8E8E8"/><circle cx="18" cy="20" r="1" fill="#E8E8E8"/><circle cx="26" cy="22" r="1" fill="#E8E8E8"/><circle cx="16" cy="29" r="1" fill="#E8E8E8"/><circle cx="24" cy="31" r="1" fill="#E8E8E8"/><circle cx="30" cy="27" r="1" fill="#E8E8E8"/><circle cx="12" cy="34" r="1" fill="#E8E8E8"/><circle cx="20" cy="36" r="1" fill="#E8E8E8"/><circle cx="28" cy="34" r="1" fill="#E8E8E8"/><ellipse cx="33" cy="30" rx="6" ry="7" fill="#3A3F44"/><path d="M33 16 Q31 10 35 10 Q37 14 35 18 Z" fill="#8A3A22"/><circle cx="34" cy="20" r="5" fill="#C9C9C9"/><path d="M39 19 L44 20.5 L39 22.5 Z" fill="#F2A93D"/><path d="M34 24 Q37 26 34 27" stroke="#D6273C" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="35.5" cy="18.5" r="1" fill="#241a12"/><path d="M14 40 l-1 4 M14 40 l3 3.5 M24 41 l-1 4 M24 41 l3 3.5" stroke="#3A3F44" stroke-width="2" stroke-linecap="round"/></svg>',
     brooding:'<svg viewBox="0 0 48 48"><ellipse cx="24" cy="38" rx="18" ry="6" fill="#8B5E34"/><path d="M8 38 Q9 33 14 33 Q13 37 16 39" stroke="#6B4726" stroke-width="1.6" fill="none"/><path d="M40 38 Q39 33 34 33 Q35 37 32 39" stroke="#6B4726" stroke-width="1.6" fill="none"/><ellipse cx="15" cy="37" rx="3.2" ry="2.4" fill="#FBF6EA"/><ellipse cx="33" cy="37" rx="3.2" ry="2.4" fill="#EFD9AE"/><ellipse cx="24" cy="37.5" rx="3.2" ry="2.4" fill="#FBF6EA"/><path d="M10 33 Q8 20 24 18 Q40 16 40 29 Q40 36 30 37 Q18 38 10 33 Z" fill="#A6431F"/><path d="M11 26 Q7 27 9 33" stroke="#8A3618" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M37 24 Q41 25 39 31" stroke="#8A3618" stroke-width="2.2" fill="none" stroke-linecap="round"/><circle cx="18" cy="21" r="5.6" fill="#B5502A"/><path d="M17 15.5 q1.1 -3.4 2.2 0 q1.1 -2.8 2.2 .4" fill="#D6273C"/><path d="M22 20 L28 21.3 L22 23.6 Z" fill="#F2A93D"/><circle cx="20.3" cy="20.2" r="1" fill="#241a12"/></svg>',
     eggs:'<svg viewBox="0 0 48 48"><ellipse cx="24" cy="41" rx="17" ry="3.4" fill="#D9C6A3" opacity=".6"/><path d="M15 40 Q6 40 8 27 Q10 13 17 13 Q24 13 24 27 Q24 40 15 40 Z" fill="#C08347"/><circle cx="12" cy="24" r="1.1" fill="#8A5A2E"/><circle cx="18" cy="20" r="1" fill="#8A5A2E"/><circle cx="14" cy="31" r="1.1" fill="#8A5A2E"/><circle cx="19" cy="28" r="0.9" fill="#8A5A2E"/><path d="M32 40 Q23 40 25 28 Q27 16 33 16 Q39 16 39 28 Q39 40 32 40 Z" fill="#FBF6EA"/><path d="M29 22 Q32 20 35 22" stroke="#EFE4CC" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
     feed:'<svg viewBox="0 0 48 48"><path d="M14 12 h20 l2 8 q2 10 -2 18 q-4 6 -10 6 q-6 0 -10 -6 q-4 -8 -2 -18 Z" fill="#C9A06B"/><path d="M14 12 q10 4 20 0" stroke="#8B5E34" stroke-width="2" fill="none"/><path d="M17 9 q7 4 14 0" stroke="#6B4726" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="20" cy="24" r="2.6" fill="#E8B93D"/><circle cx="27" cy="27" r="2.2" fill="#D6A02E"/><circle cx="22" cy="31" r="2" fill="#E8B93D"/><path d="M31 30 q3 -4 7 -2 q-2 4 -7 2 Z" fill="#5C8F3E"/></svg>',
@@ -182,7 +183,7 @@
       case 'income': return fmtMoney(r.amount)+' — '+r.category+' — '+fmtDate(parseISO(r.date));
       case 'customer': return r.name;
       case 'flock': return r.count+' '+genderLabel(r.gender)+(r.count===1?'':'s')+' — added '+fmtDate(parseISO(r.dateAdded));
-      case 'brooding': return r.eggsGiven+' eggs given for brooding — '+fmtDate(parseISO(r.dateStarted));
+      case 'brooding': return r.eggsGiven+' '+speciesLabel(broodSpecies(r))+' eggs given for brooding — '+fmtDate(parseISO(r.dateStarted));
       default: return 'Deleted record';
     }
   }
@@ -566,15 +567,33 @@
   // above. Purely informational, never folded into income/expenses.
   function flockAssetValueCardHTML(){
     if(!isAdmin()) return '';
+    // Every predicate is scoped to species==='hen' — without that, a
+    // Guinea Fowl bird falling in the same age band would get priced off
+    // this (much lower) Hens table instead of GUINEAFOWL_VALUE_TABLE
+    // below, and this card's total would stop matching
+    // flockAssetValueTotal() (which already prices each bird by its own
+    // species via flockValuePerBird).
     var rows = [
-      ['Mature roosters (21+ wk)', function(b){return b.gender==='male' && ageWeeks(b)>=21;}, FLOCK_VALUE_TABLE.matureCock],
-      ['Hens (21+ wk)', function(b){return b.gender!=='male' && ageWeeks(b)>=21;}, FLOCK_VALUE_TABLE.hen],
-      ['Growers, 12–20 wk', function(b){var w=ageWeeks(b); return w>=12 && w<=20;}, FLOCK_VALUE_TABLE.growerOlder],
-      ['Growers, 9–11 wk', function(b){var w=ageWeeks(b); return w>=9 && w<=11;}, FLOCK_VALUE_TABLE.growerYounger],
-      ['Chicks, 4–8 wk', function(b){var w=ageWeeks(b); return w>=4 && w<=8;}, FLOCK_VALUE_TABLE.chickOlder],
-      ['Chicks, 2–3 wk', function(b){var w=ageWeeks(b); return w>=2 && w<=3;}, FLOCK_VALUE_TABLE.chickMid],
-      ['Chicks, 0–1 wk', function(b){var w=ageWeeks(b); return w<2;}, FLOCK_VALUE_TABLE.chickYoungest]
+      ['Mature roosters (21+ wk)', function(b){return batchSpecies(b)==='hen' && b.gender==='male' && ageWeeks(b)>=21;}, FLOCK_VALUE_TABLE.matureCock],
+      ['Hens (21+ wk)', function(b){return batchSpecies(b)==='hen' && b.gender!=='male' && ageWeeks(b)>=21;}, FLOCK_VALUE_TABLE.hen],
+      ['Growers, 12–20 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='hen' && w>=12 && w<=20;}, FLOCK_VALUE_TABLE.growerOlder],
+      ['Growers, 9–11 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='hen' && w>=9 && w<=11;}, FLOCK_VALUE_TABLE.growerYounger],
+      ['Chicks, 4–8 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='hen' && w>=4 && w<=8;}, FLOCK_VALUE_TABLE.chickOlder],
+      ['Chicks, 2–3 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='hen' && w>=2 && w<=3;}, FLOCK_VALUE_TABLE.chickMid],
+      ['Chicks, 0–1 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='hen' && w<2;}, FLOCK_VALUE_TABLE.chickYoungest]
     ];
+    // Guinea Fowl rows only appear once there's actually a Guinea Fowl
+    // batch to value — same gating as the rest of this feature.
+    if(hasGuineaFowl()){
+      rows.push(
+        ['Guinea Fowl, 21+ wk', function(b){return batchSpecies(b)==='guineafowl' && ageWeeks(b)>=21;}, GUINEAFOWL_VALUE_TABLE.adult],
+        ['Guinea Fowl, 12–20 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=12 && w<=20;}, GUINEAFOWL_VALUE_TABLE.growerOlder],
+        ['Guinea Fowl, 9–11 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=9 && w<=11;}, GUINEAFOWL_VALUE_TABLE.growerYounger],
+        ['Guinea Fowl, 4–8 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=4 && w<=8;}, GUINEAFOWL_VALUE_TABLE.chickOlder],
+        ['Guinea Fowl, 2–3 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w>=2 && w<=3;}, GUINEAFOWL_VALUE_TABLE.chickMid],
+        ['Guinea Fowl, 0–1 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w<2;}, GUINEAFOWL_VALUE_TABLE.chickYoungest]
+      );
+    }
     var grandTotal = 0;
     var body = rows.map(function(rw){
       var label=rw[0], match=rw[1], price=rw[2];
@@ -591,7 +610,7 @@
 
   /* ============================= AGGREGATES ============================= */
   function inRange(iso,s,e){ return iso>=s && iso<=e; }
-  function sumEggs(s,e){ return state.eggs.filter(function(x){return inRange(x.date,s,e);}).reduce(function(a,x){return a+x.total;},0); }
+  function sumEggs(s,e,species){ return state.eggs.filter(function(x){return inRange(x.date,s,e) && (!species || eggSpecies(x)===species);}).reduce(function(a,x){return a+x.total;},0); }
   function sumMoney(list,s,e){ return list.filter(function(x){return inRange(x.date,s,e);}).reduce(function(a,x){return a+x.amount;},0); }
   function breakdownByCategory(list,s,e){
     var map = {};
@@ -603,6 +622,34 @@
   function ageGroupForWeeks(w){ return w<=8 ? 'chick' : (w<=20 ? 'grower' : 'layer'); }
   function ageGroupLabel(k){ return k==='chick'?'Chicks':(k==='grower'?'Growers':'Layers'); }
   function genderLabel(g){ return g==='female'?'hen':(g==='male'?'rooster':'unsexed bird'); }
+  // ---- Guinea Fowl: poultry's second bird type ----------------------
+  // Added alongside Hens, reusing the same Flock/Eggs/Brooding machinery
+  // rather than the generic "Other Livestock" module (guinea fowl lay,
+  // brood and hatch — that's poultry behaviour, not herd behaviour).
+  // Every brooding record, flock batch, egg-log entry and egg sale/loss
+  // entry now carries a `species` field ('hen' or 'guineafowl'); a record
+  // with no species field at all predates this and is treated as 'hen' —
+  // always read it through these helpers rather than `.species` directly,
+  // so existing data never needs a migration pass.
+  var SPECIES_LIST = [['hen','Hens'],['guineafowl','Guinea Fowl']];
+  var SPECIES_LABELS = { hen:'Hens', guineafowl:'Guinea Fowl' };
+  function speciesLabel(sp){ return SPECIES_LABELS[sp] || SPECIES_LABELS.hen; }
+  function broodSpecies(b){ return (b && b.species) || 'hen'; }
+  function batchSpecies(b){ return (b && b.species) || 'hen'; }
+  function eggSpecies(e){ return (e && e.species) || 'hen'; }
+  // Guinea Fowl eggs can't be logged or sold until at least one Guinea
+  // Fowl chick has actually hatched into the flock (see the 'resolve-
+  // brooding' handler, which is the only place a 'guineafowl' flock batch
+  // gets created) — before that there's nothing to log, so the Egg Log
+  // and "Sold, used & lost" forms show it as "Currently not available".
+  function guineaFowlAvailable(){ return state.flock.some(function(b){ return batchSpecies(b)==='guineafowl'; }); }
+  // Whether Guinea Fowl has been introduced to this farm at all yet (a
+  // brooding started, even before it's hatched) — gates whether the Eggs
+  // page shows a "By type" split at all, so a hens-only farm's Eggs page
+  // looks exactly as it always has.
+  function hasGuineaFowl(){
+    return guineaFowlAvailable() || (state.broodings||[]).some(function(b){ return broodSpecies(b)==='guineafowl'; });
+  }
   // ---- Flock asset valuation (admin-only) ---------------------------
   // A fixed, editable-in-code price table the owner gave for what each
   // bird is roughly "worth" right now, by age band and (once mature)
@@ -620,8 +667,28 @@
     chickMid: 150,      // 2-3 weeks
     chickYoungest: 100  // 0-1 weeks
   };
+  // Guinea Fowl's own price table — same age bands as Hens, but Guinea
+  // Fowl are worth noticeably more at every stage in the Kenyan market,
+  // and (confirmed against current listings) aren't priced differently
+  // by sex, so there's no separate "mature male" figure the way Cocks
+  // get one above.
+  var GUINEAFOWL_VALUE_TABLE = {
+    adult: 2200,         // 21+ weeks, either sex
+    growerOlder: 1800,   // 12-20 weeks
+    growerYounger: 1200, // 9-11 weeks
+    chickOlder: 700,     // 4-8 weeks
+    chickMid: 400,       // 2-3 weeks
+    chickYoungest: 200   // 0-1 weeks
+  };
   function flockValuePerBird(b, atDate){
     var w = ageWeeks(b, atDate);
+    if(batchSpecies(b)==='guineafowl'){
+      if(w>=21) return GUINEAFOWL_VALUE_TABLE.adult;
+      if(w>=9) return w>=12 ? GUINEAFOWL_VALUE_TABLE.growerOlder : GUINEAFOWL_VALUE_TABLE.growerYounger;
+      if(w>=4) return GUINEAFOWL_VALUE_TABLE.chickOlder;
+      if(w>=2) return GUINEAFOWL_VALUE_TABLE.chickMid;
+      return GUINEAFOWL_VALUE_TABLE.chickYoungest;
+    }
     if(w>=21) return b.gender==='male' ? FLOCK_VALUE_TABLE.matureCock : FLOCK_VALUE_TABLE.hen;
     if(w>=9) return w>=12 ? FLOCK_VALUE_TABLE.growerOlder : FLOCK_VALUE_TABLE.growerYounger;
     if(w>=4) return FLOCK_VALUE_TABLE.chickOlder;
@@ -644,8 +711,20 @@
   // loss of any kind is logged, since totalEggsLost() already includes
   // every eggLosses reason (sold/breakage/consumed/brooding/other).
   var EGG_UNIT_VALUE_KSH = 15;
-  function eggsAvailableCount(){ return Math.max(0, totalEggsLaid() - totalEggsLost()); }
-  function eggAssetValueTotal(){ return eggsAvailableCount() * EGG_UNIT_VALUE_KSH; }
+  // Guinea Fowl eggs are worth far more than hen eggs in the Kenyan market
+  // (roughly KSh 100 each vs. KSh 15) — confirmed against current market
+  // listings. Used the same way EGG_UNIT_VALUE_KSH is: only for the
+  // standing "what's on hand worth" figure, never fed into income.
+  var EGG_UNIT_VALUE_KSH_GUINEAFOWL = 100;
+  function eggUnitValueFor(species){ return species==='guineafowl' ? EGG_UNIT_VALUE_KSH_GUINEAFOWL : EGG_UNIT_VALUE_KSH; }
+  // species omitted = every egg on hand, across both types — unchanged
+  // behaviour for every existing caller. Pass 'hen' or 'guineafowl' to
+  // scope it to just that type (see eggsByTypeSectionHTML).
+  function eggsAvailableCount(species){ return Math.max(0, totalEggsLaid(species) - totalEggsLost(species)); }
+  function eggAssetValueTotal(species){
+    if(species) return eggsAvailableCount(species) * eggUnitValueFor(species);
+    return SPECIES_LIST.reduce(function(sum,p){ var sp=p[0]; return sum + eggsAvailableCount(sp)*eggUnitValueFor(sp); }, 0);
+  }
   // Celebrates the first time a calendar month turns profitable (real
   // income minus real expenses — separate from the egg-asset coverage
   // figure above) while eggs are actually being collected that month, so
@@ -685,14 +764,22 @@
     (state.eggLosses||[]).forEach(function(x){ map[x.reason]=(map[x.reason]||0)+x.count; });
     return Object.entries(map).sort(function(a,b){return b[1]-a[1];}).map(function(e){ return [eggLossReasonLabel(e[0]), e[1]]; });
   }
-  function totalEggsLost(){ return (state.eggLosses||[]).reduce(function(a,x){return a+x.count;},0); }
+  function totalEggsLost(species){ return (state.eggLosses||[]).reduce(function(a,x){ return a + ((!species || eggSpecies(x)===species) ? x.count : 0); },0); }
   // A broody hen setting on eggs — 21 days is the standard incubation
   // period for chicken eggs (the same figure any keeper would use), so the
   // hatch date is calculated automatically from the date brooding starts.
+  // Guinea Fowl eggs take noticeably longer — 26-28 days is the standard
+  // range quoted for them, so 28 is used here (same "round up, don't
+  // surprise anyone with an early miss" logic as picking a single number
+  // for chickens).
   var EGG_INCUBATION_DAYS = 21;
-  function broodingHatchDateISO(b){ return addDaysISO(b.dateStarted, EGG_INCUBATION_DAYS); }
+  var GUINEAFOWL_INCUBATION_DAYS = 28;
+  function incubationDaysFor(species){ return species==='guineafowl' ? GUINEAFOWL_INCUBATION_DAYS : EGG_INCUBATION_DAYS; }
+  function broodingHatchDateISO(b){ return addDaysISO(b.dateStarted, incubationDaysFor(broodSpecies(b))); }
   function broodingDaysToHatch(b){ return daysBetween(new Date(), parseISO(broodingHatchDateISO(b))); }
-  function totalEggsLaid(){ return state.eggs.reduce(function(a,x){return a+x.total;},0); }
+  // species omitted = every egg ever logged, across both types — unchanged
+  // behaviour for every existing caller.
+  function totalEggsLaid(species){ return state.eggs.reduce(function(a,x){ return a + ((!species || eggSpecies(x)===species) ? x.total : 0); },0); }
   function countBars(entries){
     if(!entries.length) return '<div class="empty">Nothing recorded yet.</div>';
     var max = entries[0][1] || 1;
@@ -700,13 +787,34 @@
       return '<div class="bar-row"><div class="bar-label">'+esc(e[0])+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(4,(e[1]/max)*100)+'%"></div></div><div class="bar-amt num">'+e[1]+'</div></div>';
     }).join('');
   }
+  // Hen-only — a second poultry type (Guinea Fowl) now shares state.flock,
+  // and these chick/grower/layer + gender groupings are the chicken-
+  // specific breakdown shown on the Flock Overview and the dedicated
+  // Chicks/Growers/Hens/Cocks pages, so Guinea Fowl batches are excluded
+  // here (see guineaFowlInventory below for their own simple breakdown).
   function buildInventory(){
     var groups = {chick:{female:0,male:0,unsexed:0},grower:{female:0,male:0,unsexed:0},layer:{female:0,male:0,unsexed:0}};
     state.flock.forEach(function(b){
+      if(batchSpecies(b)!=='hen') return;
       var c = currentCount(b); if(c<=0) return;
       var g = ageGroupForWeeks(ageWeeks(b));
       groups[g][b.gender] = (groups[g][b.gender]||0) + c;
     });
+    return groups;
+  }
+  // Guinea Fowl's own, much simpler breakdown — just by age band, no
+  // gender split (there's no price difference by sex in the market, and
+  // the farm isn't sexing them), reusing the same chick/grower/layer age
+  // bands Hens use.
+  function guineaFowlInventory(){
+    var groups = {chick:0, grower:0, layer:0}, total = 0;
+    state.flock.forEach(function(b){
+      if(batchSpecies(b)!=='guineafowl') return;
+      var c = currentCount(b); if(c<=0) return;
+      groups[ageGroupForWeeks(ageWeeks(b))] += c;
+      total += c;
+    });
+    groups.total = total;
     return groups;
   }
   function birdsAsOf(iso){
@@ -1424,6 +1532,7 @@
       var histCount = (b.removals||[]).filter(function(r){return r.reason!=='resexed';}).length + (b.removals||[]).filter(function(r){return r.reason==='resexed';}).length;
       return '<tr>'+
         '<td>'+fmtDate(parseISO(b.dateAdded))+'</td>'+
+        '<td><span class="pill">'+speciesLabel(batchSpecies(b))+'</span></td>'+
         '<td><span class="pill '+b.gender+'">'+genderLabel(b.gender)+(b.gender!=='unsexed'?'s':'')+'</span></td>'+
         '<td>'+wk+'w · '+ageGroupLabel(ageGroupForWeeks(wk))+'</td>'+
         '<td class="num">'+b.count+'</td>'+
@@ -1445,7 +1554,7 @@
   // Cocks / Brooding Hens pages, switched with a dropdown — see
   // flockViewSwitcherHTML(). SECTIONS.flock.panel points at this
   // dispatcher; flockOverviewPanel() further down is the original body.
-  var FLOCK_VIEWS = [['overview','Overview'],['chicks','Chicks'],['growers','Growers'],['hens','Hens'],['cocks','Cocks'],['brooding','Brooding Hens']];
+  var FLOCK_VIEWS = [['overview','Overview'],['chicks','Chicks'],['growers','Growers'],['hens','Hens'],['cocks','Cocks'],['guineafowl','Guinea Fowl'],['brooding','Brooding Hens']];
   function sectionViewSwitcherHTML(sectionKey, views, currentLabel){
     var cur = currentView(sectionKey);
     return '<div class="card" style="padding:12px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap">'+
@@ -1469,7 +1578,7 @@
       '<div class="card"><div class="card-title"><div class="card-title-lead">'+(icon?'<div class="pic-badge clickable">'+icon+'</div>':'')+'<h3>'+label+'</h3></div><span class="hint">'+sub+'</span></div>'+
         '<div class="table-wrap">'+
         (batches.length ?
-          '<table><thead><tr><th>Added</th><th>Gender</th><th>Age</th><th class="num">Started</th><th class="num">Now</th><th>Source</th><th></th></tr></thead><tbody>'+flockBatchRowsHtml(batchesPage.items)+'</tbody></table>'
+          '<table><thead><tr><th>Added</th><th>Type</th><th>Gender</th><th>Age</th><th class="num">Started</th><th class="num">Now</th><th>Source</th><th></th></tr></thead><tbody>'+flockBatchRowsHtml(batchesPage.items)+'</tbody></table>'
           : '<div class="empty">'+ICONS.empty+'<div>No '+label.toLowerCase()+' recorded yet.</div></div>')+
         '</div>'+pagerHtml('flock-group-'+label, batchesPage.pageCount, batchesPage.page)+'</div>';
   }
@@ -1477,10 +1586,15 @@
   // each dedicated Flock page — see FARM_PHOTOS.icons.
   function flockPhotoIcon(key){ return '<img src="'+FARM_PHOTOS.icons[key]+'" alt="" class="clickable" data-action="view-photo:'+key+'" title="View photo">'; }
   function eggsPhotoIcon(){ return flockPhotoIcon('eggsIcon'); }
-  function flockChicksPageHTML(){ return flockGroupPageHTML('Chicks', flockPhotoIcon('chicksIcon'), '0–8 weeks', function(b){ return ageGroupForWeeks(ageWeeks(b))==='chick'; }, 'chicks'); }
-  function flockGrowersPageHTML(){ return flockGroupPageHTML('Growers', flockPhotoIcon('growersIcon'), '9–20 weeks', function(b){ return ageGroupForWeeks(ageWeeks(b))==='grower'; }, 'growers'); }
-  function flockHensPageHTML(){ return flockGroupPageHTML('Hens', flockPhotoIcon('hensIcon'), '21+ weeks · female', function(b){ return ageGroupForWeeks(ageWeeks(b))==='layer' && b.gender==='female'; }, 'hens'); }
-  function flockCocksPageHTML(){ return flockGroupPageHTML('Cocks', flockPhotoIcon('cocksIcon'), '21+ weeks · male', function(b){ return ageGroupForWeeks(ageWeeks(b))==='layer' && b.gender==='male'; }, 'cocks'); }
+  // All four filtered to species==='hen' — now that Guinea Fowl shares
+  // state.flock, these chicken-labeled pages must not pick up Guinea Fowl
+  // batches that happen to fall in the same age band (see
+  // flockGuineaFowlPageHTML for their own dedicated page).
+  function flockChicksPageHTML(){ return flockGroupPageHTML('Chicks', flockPhotoIcon('chicksIcon'), '0–8 weeks', function(b){ return batchSpecies(b)==='hen' && ageGroupForWeeks(ageWeeks(b))==='chick'; }, 'chicks'); }
+  function flockGrowersPageHTML(){ return flockGroupPageHTML('Growers', flockPhotoIcon('growersIcon'), '9–20 weeks', function(b){ return batchSpecies(b)==='hen' && ageGroupForWeeks(ageWeeks(b))==='grower'; }, 'growers'); }
+  function flockHensPageHTML(){ return flockGroupPageHTML('Hens', flockPhotoIcon('hensIcon'), '21+ weeks · female', function(b){ return batchSpecies(b)==='hen' && ageGroupForWeeks(ageWeeks(b))==='layer' && b.gender==='female'; }, 'hens'); }
+  function flockCocksPageHTML(){ return flockGroupPageHTML('Cocks', flockPhotoIcon('cocksIcon'), '21+ weeks · male', function(b){ return batchSpecies(b)==='hen' && ageGroupForWeeks(ageWeeks(b))==='layer' && b.gender==='male'; }, 'cocks'); }
+  function flockGuineaFowlPageHTML(){ return flockGroupPageHTML('Guinea Fowl', PICS.guineafowl, 'All ages', function(b){ return batchSpecies(b)==='guineafowl'; }, null); }
   function flockPanel(){
     var view = currentView('flock');
     var body;
@@ -1488,9 +1602,28 @@
     else if(view==='growers') body = flockGrowersPageHTML();
     else if(view==='hens') body = flockHensPageHTML();
     else if(view==='cocks') body = flockCocksPageHTML();
+    else if(view==='guineafowl') body = flockGuineaFowlPageHTML();
     else if(view==='brooding') body = broodingPanelHTML(false);
     else body = flockOverviewPanel();
     return flockViewSwitcherHTML() + body;
+  }
+  // Only renders once Guinea Fowl exists on the farm at all (a brooding
+  // started, even before it's hatched) — a hens-only farm's Flock
+  // Overview looks exactly as it always has.
+  function guineaFowlOverviewCardHTML(){
+    if(!hasGuineaFowl()) return '';
+    if(!guineaFowlAvailable()){
+      return '<div class="card"><div class="card-title"><div class="card-title-lead"><div class="pic-badge">'+PICS.guineafowl+'</div><h3>Guinea Fowl</h3></div></div>'+
+        '<div class="empty">'+ICONS.empty+'<div>Currently not available — eggs are brooding under a hen now (see Brooding below). Chicks will show here once they hatch.</div></div></div>';
+    }
+    var inv = guineaFowlInventory();
+    var titleHtml = '<h3 style="cursor:pointer" data-action="view-select:flock:guineafowl" title="Open the Guinea Fowl page">Guinea Fowl</h3>';
+    return '<div class="card"><div class="card-title"><div class="card-title-lead"><div class="pic-badge clickable" data-action="view-select:flock:guineafowl">'+PICS.guineafowl+'</div>'+titleHtml+'</div><span class="hint">'+inv.total+' birds</span></div>'+
+      '<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+
+        genderTile('Chicks',inv.chick)+
+        genderTile('Growers',inv.grower)+
+        genderTile('Adults',inv.layer)+
+      '</div></div>';
   }
   function flockOverviewPanel(){
     var inv = buildInventory();
@@ -1529,10 +1662,11 @@
 
     return '<div class="banner">'+totalNow.toLocaleString()+' birds on the farm today.</div>'+
       '<div class="grid two">'+groupsHTML+'</div>'+
+      guineaFowlOverviewCardHTML()+
       '<div class="card"><div class="card-title"><h3>Batches</h3><span class="hint">'+batches.length+' recorded</span></div>'+
         '<div class="table-wrap">'+
         (batches.length ?
-          '<table><thead><tr><th>Added</th><th>Gender</th><th>Age</th><th class="num">Started</th><th class="num">Now</th><th>Source</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+          '<table><thead><tr><th>Added</th><th>Type</th><th>Gender</th><th>Age</th><th class="num">Started</th><th class="num">Now</th><th>Source</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
           : '<div class="empty">'+ICONS.empty+'<div>No birds recorded yet. Use the '+'+ '+'button above — or on any Chicks / Growers / Layers card — to add your first batch.</div></div>')+
         '</div>'+pagerHtml('flock-batches', batchesPage.pageCount, batchesPage.page)+'</div>'+
       flockActivityPanelHTML()+
@@ -1604,6 +1738,7 @@
           : '<span class="pill pending">Ready to check</span> expected '+fmtDate(parseISO(hatchDate));
       }
       return '<tr><td>'+fmtDate(parseISO(b.dateStarted))+'</td>'+
+        '<td><span class="pill">'+speciesLabel(broodSpecies(b))+'</span></td>'+
         '<td class="num">'+b.eggsGiven+'</td>'+
         '<td>'+fmtDate(parseISO(hatchDate))+'</td>'+
         '<td>'+statusHtml+'</td>'+
@@ -1619,9 +1754,9 @@
       : '<h3>Brooding</h3>';
     return '<div class="card"><div class="card-title"><div class="card-title-lead"><div class="pic-badge">'+PICS.brooding+'</div>'+broodingTitleHtml+'</div><div style="display:flex; align-items:center; gap:8px"><span class="hint">'+list.length+' recorded</span>'+
         '<button class="icon-btn" data-action="open-add-brooding" title="Start brooding" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'</button></div></div>'+
-      '<p class="hint" style="margin-top:-6px">When a hen starts sitting on eggs, log how many she\'s given here — the app works out the expected hatch date on its own (21 days). Once it\'s time, come back and record how many didn\'t hatch; the rest are added to the flock as new chicks automatically.</p>'+
+      '<p class="hint" style="margin-top:-6px">When a hen starts sitting on eggs, log how many she\'s given here and what type they are — the app works out the expected hatch date on its own (21 days for hen eggs, 28 for Guinea Fowl). Once it\'s time, come back and record how many didn\'t hatch; the rest are added to the flock as new chicks automatically.</p>'+
       '<div class="table-wrap">'+
-      (rows ? '<table><thead><tr><th>Started</th><th class="num">Eggs given</th><th>Expected hatch</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+      (rows ? '<table><thead><tr><th>Started</th><th>Type</th><th class="num">Eggs given</th><th>Expected hatch</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty">'+ICONS.empty+'<div>No brooding hens recorded yet.</div></div>')+
       '</div>'+pagerHtml('brooding', broodPage.pageCount, broodPage.page)+'</div>';
   }
@@ -1741,14 +1876,16 @@
   }
   function broodingFormHtml(){
     var ti = todayISO();
+    var speciesOptionsHtml = '<option value="hen" selected>Hen eggs</option><option value="guineafowl">Guinea Fowl eggs</option>';
     return '<div class="modal-head"><h3>Start brooding</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
-    '<p class="hint">These eggs come off your egg count right away (recorded as "Given for brooding"), the same as before — the app just now tracks them through to hatching.</p>'+
+    '<p class="hint" id="brooding-source-hint">These eggs come off your egg count right away (recorded as "Given for brooding") — the app tracks them through to hatching.</p>'+
     '<form data-form="brooding">'+
       '<div class="field-grid">'+
+        '<div class="field-row"><label>Type of egg</label><select class="field" name="species" data-change="brooding-species">'+speciesOptionsHtml+'</select></div>'+
         '<div class="field-row"><label>Eggs given to the hen</label><input class="field" type="number" min="1" name="eggsGiven" required autofocus></div>'+
-        '<div class="field-row"><label>Date started</label><input class="field" type="date" name="dateStarted" value="'+ti+'" max="'+ti+'" required data-change="brooding-date"></div>'+
       '</div>'+
-      '<p class="hint" style="margin-top:8px">Expected to hatch around <strong id="brooding-hatch-preview">'+fmtDate(parseISO(addDaysISO(ti, EGG_INCUBATION_DAYS)))+'</strong> (21 days).</p>'+
+      '<div class="field-row" style="margin-top:12px"><label>Date started</label><input class="field" type="date" name="dateStarted" value="'+ti+'" max="'+ti+'" required data-change="brooding-date"></div>'+
+      '<p class="hint" style="margin-top:8px">Expected to hatch around <strong id="brooding-hatch-preview">'+fmtDate(parseISO(addDaysISO(ti, EGG_INCUBATION_DAYS)))+'</strong> (<span id="brooding-incubation-days">'+EGG_INCUBATION_DAYS+'</span> days).</p>'+
       '<div class="field-row" style="margin-top:12px"><label>Note (optional)</label><input class="field" type="text" name="note" maxlength="80" placeholder="e.g. Brown hen in coop A"></div>'+
       '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Start brooding</button></div>'+
     '</form>';
@@ -1757,7 +1894,7 @@
     var b = (state.broodings||[]).find(function(x){return x.id===id;});
     if(!b) return '<div class="modal-head"><h3>Record hatch</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div><p class="hint">That brooding record is no longer available.</p>';
     return '<div class="modal-head"><h3>Record hatch</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
-    '<p class="hint">'+b.eggsGiven+' egg'+(b.eggsGiven===1?'':'s')+' given on '+fmtDate(parseISO(b.dateStarted))+'. Enter how many did <strong>not</strong> hatch — the rest are added to the flock automatically as new unsexed chicks.</p>'+
+    '<p class="hint">'+b.eggsGiven+' '+speciesLabel(broodSpecies(b))+' egg'+(b.eggsGiven===1?'':'s')+' given on '+fmtDate(parseISO(b.dateStarted))+'. Enter how many did <strong>not</strong> hatch — the rest are added to the flock automatically as new unsexed chicks.</p>'+
     '<form data-form="resolve-brooding">'+
       '<input type="hidden" name="id" value="'+b.id+'">'+
       '<div class="field-grid">'+
@@ -1788,6 +1925,7 @@
         '<p class="hint" style="margin-top:6px">These two must add up to the eggs given. If chicks-hatched goes up or down, the flock batch it added is resized to match.</p>'
       : '';
     return '<div class="modal-head"><h3>Edit brooding</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<p class="hint">Type of egg: <strong>'+speciesLabel(broodSpecies(b))+'</strong> — set when brooding started, can\'t be changed here.</p>'+
     '<form data-form="edit-brooding">'+
       '<input type="hidden" name="id" value="'+b.id+'">'+
       '<div class="field-grid">'+
@@ -1807,6 +1945,28 @@
   // table each moved to their own dedicated page, reachable from the
   // dropdown or the two links at the bottom of Overview.
   var EGGS_VIEWS = [['overview','Overview'],['log','Egg Log'],['losses','Sold, Used & Lost']];
+  // Splits the combined stats above into the two egg types once Guinea
+  // Fowl has actually been introduced to the farm — before that, nothing
+  // here renders, so a hens-only farm's Eggs Overview looks exactly as it
+  // always has.
+  function eggsByTypeSectionHTML(){
+    if(!hasGuineaFowl()) return '';
+    var cards = SPECIES_LIST.map(function(p){
+      var key = p[0], label = p[1];
+      if(key==='guineafowl' && !guineaFowlAvailable()){
+        return '<div class="card"><div class="card-title"><h3>'+label+'</h3></div>'+
+          '<div class="empty">'+ICONS.empty+'<div>Currently not available — eggs will show here once the Guinea Fowl chicks hatch.</div></div></div>';
+      }
+      var laid = totalEggsLaid(key), lost = totalEggsLost(key), avail = Math.max(0, laid-lost);
+      return '<div class="card"><div class="card-title"><h3>'+label+'</h3><span class="hint">KSh '+eggUnitValueFor(key)+' / egg</span></div>'+
+        '<div class="kv-row"><span>Laid, all time</span><span class="num">'+laid.toLocaleString()+'</span></div>'+
+        '<div class="kv-row"><span>Lost, all time</span><span class="num">'+lost.toLocaleString()+'</span></div>'+
+        '<div class="kv-row"><span>Available now</span><span class="num">'+avail.toLocaleString()+'</span></div>'+
+      '</div>';
+    }).join('');
+    return '<div class="card-title" style="margin:16px 0 8px"><h3>By type</h3><span class="hint">Hens and Guinea Fowl are tracked separately</span></div>'+
+      '<div class="grid two">'+cards+'</div>';
+  }
   function eggsOverviewPanel(){
     var entries = state.eggs.slice();
     var last30 = [];
@@ -1836,6 +1996,7 @@
       statTile('Eggs available', Math.max(0,availableAll).toLocaleString()+' eggs', '<span class="hint">Laid minus lost</span>')+
     '</div>'+
     cratesHtml+
+    eggsByTypeSectionHTML()+
     '<div class="grid two">'+
       '<div class="card"><div class="card-title"><h3>Last 30 days</h3><span class="hint">'+last30.reduce(function(a,b){return a+b;},0)+' eggs</span></div>'+sparklineSVG(last30)+'</div>'+
       '<div class="card"><div class="card-title"><h3>By week</h3></div>'+
@@ -1865,13 +2026,16 @@
   // (see eggsAvailableCount above), which already falls on its own the
   // moment a loss of any kind — sold, eaten, broken, given for brooding —
   // gets logged, since it's laid-minus-lost rather than a period total.
-  function eggAssetCardHTML(){
+  function eggAssetCardHTML(species){
     if(!isAdmin()) return '';
-    var eggsOnHand = eggsAvailableCount();
-    var value = eggAssetValueTotal();
-    return '<div class="card"><div class="card-title"><h3>Egg assets</h3><span class="hint">Only visible to you</span></div>'+
+    var eggsOnHand = eggsAvailableCount(species);
+    var value = eggAssetValueTotal(species);
+    var unitLine = species
+      ? ' × KSh '+eggUnitValueFor(species)+' each'
+      : ' × KSh '+EGG_UNIT_VALUE_KSH+' each';
+    return '<div class="card"><div class="card-title"><h3>'+(species?speciesLabel(species)+' egg assets':'Egg assets')+'</h3><span class="hint">Only visible to you</span></div>'+
       '<div class="stat-value num" style="font-size:28px">'+fmtMoney(value)+'</div>'+
-      '<div class="hint" style="margin-top:6px">'+eggsOnHand.toLocaleString()+' eggs on hand right now (laid minus sold, eaten, broken, or given for brooding) × KSh '+EGG_UNIT_VALUE_KSH+' each. Never counted as income.</div>'+
+      '<div class="hint" style="margin-top:6px">'+eggsOnHand.toLocaleString()+' eggs on hand right now (laid minus sold, eaten, broken, or given for brooding)'+unitLine+'. Never counted as income.</div>'+
     '</div>';
   }
   function eggsLogPageHTML(){
@@ -1879,7 +2043,7 @@
     var eggsPage = paginate('eggs-log', entries);
     var rows = eggsPage.items.map(function(e){
       var sizeStr = eggSizeSummary(e.sizes);
-      return '<tr><td>'+fmtDate(parseISO(e.date))+'</td><td class="num">'+e.total+'</td><td>'+(sizeStr||'<span class="hint">—</span>')+'</td><td>'+esc(e.note||'—')+'</td>'+
+      return '<tr><td>'+fmtDate(parseISO(e.date))+'</td><td><span class="pill">'+speciesLabel(eggSpecies(e))+'</span></td><td class="num">'+e.total+'</td><td>'+(sizeStr||'<span class="hint">—</span>')+'</td><td>'+esc(e.note||'—')+'</td>'+
       '<td><div class="row-actions">'+
         '<button class="icon-btn" data-action="edit-egg:'+e.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'</button>'+
         '<button class="icon-btn" data-action="delete-egg:'+e.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.trash+'</button>'+
@@ -1887,7 +2051,7 @@
     }).join('');
     return '<div class="card"><div class="card-title"><h3>Daily log</h3><span class="hint">'+entries.length+' entries</span></div>'+
       '<div class="table-wrap">'+
-      (entries.length ? '<table><thead><tr><th>Date</th><th class="num">Eggs</th><th>By size</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+      (entries.length ? '<table><thead><tr><th>Date</th><th>Type</th><th class="num">Eggs</th><th>By size</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty">'+ICONS.empty+'<div>No eggs logged yet.</div></div>')+
       '</div>'+pagerHtml('eggs-log', eggsPage.pageCount, eggsPage.page)+'</div>';
   }
@@ -1895,7 +2059,7 @@
     var lossEntries = state.eggLosses.slice().sort(function(a,b){ return a.date<b.date?1:-1; });
     var lossPage = paginate('egg-losses', lossEntries);
     var lossRows = lossPage.items.map(function(x){
-      return '<tr><td>'+fmtDate(parseISO(x.date))+'</td><td class="num">'+x.count+'</td><td>'+eggLossReasonLabel(x.reason)+'</td><td>'+esc(x.note||'—')+'</td>'+
+      return '<tr><td>'+fmtDate(parseISO(x.date))+'</td><td><span class="pill">'+speciesLabel(eggSpecies(x))+'</span></td><td class="num">'+x.count+'</td><td>'+eggLossReasonLabel(x.reason)+'</td><td>'+esc(x.note||'—')+'</td>'+
       '<td><div class="row-actions">'+
         (x.reason==='sold' ? '<button class="icon-btn" data-action="view-egg-receipt:'+x.id+'" title="View receipt">'+ICONS.receipt+'</button>' : '')+
         '<button class="icon-btn" data-action="edit-eggloss:'+x.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'</button>'+
@@ -1906,7 +2070,7 @@
       '<button class="icon-btn" data-action="open-add-eggloss" title="Log a sale or a loss" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'</button></div></div>'+
       countBars(eggLossesByReason())+
       '<div class="table-wrap" style="margin-top:14px">'+
-      (lossEntries.length ? '<table><thead><tr><th>Date</th><th class="num">Eggs</th><th>Reason</th><th>Note</th><th></th></tr></thead><tbody>'+lossRows+'</tbody></table>'
+      (lossEntries.length ? '<table><thead><tr><th>Date</th><th>Type</th><th class="num">Eggs</th><th>Reason</th><th>Note</th><th></th></tr></thead><tbody>'+lossRows+'</tbody></table>'
         : '<div class="empty">No egg losses recorded yet.</div>')+
       '</div>'+pagerHtml('egg-losses', lossPage.pageCount, lossPage.page)+'</div>';
   }
@@ -1935,11 +2099,21 @@
   function eggFormHtml(id){
     var e = id ? state.eggs.find(function(x){return x.id===id;}) : null;
     var hasSizes = !!(e && e.sizes && EGG_SIZES.some(function(p){ return (e.sizes[p[0]]||0)>0; }));
+    var curSpecies = e ? eggSpecies(e) : 'hen';
+    var gfOk = guineaFowlAvailable();
+    var speciesOptionsHtml = SPECIES_LIST.map(function(p){
+      var key=p[0], label=p[1];
+      var disabled = key==='guineafowl' && !gfOk;
+      return '<option value="'+key+'" '+(curSpecies===key?'selected':'')+(disabled?' disabled':'')+'>'+label+(disabled?' (currently not available)':'')+'</option>';
+    }).join('');
     return '<div class="modal-head"><h3>'+(e?'Edit entry':'Log eggs')+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
     '<form data-form="egg">'+
       '<input type="hidden" name="id" value="'+(e?e.id:'')+'">'+
       '<div class="field-grid">'+
+        '<div class="field-row"><label>Type</label><select class="field" name="species">'+speciesOptionsHtml+'</select></div>'+
         '<div class="field-row"><label>Date</label><input class="field" type="date" name="date" value="'+(e?e.date:todayISO())+'" max="'+todayISO()+'" required></div>'+
+      '</div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
         '<div class="field-row"><label>Eggs laid'+(hasSizes?' (total)':'')+'</label><input class="field" type="number" min="0" id="egg-total-input" name="eggs" value="'+(e?e.total:'')+'" '+(hasSizes?'readonly':'')+' autofocus required></div>'+
       '</div>'+
       '<label class="field-row" style="margin-top:10px; flex-direction:row; align-items:center; gap:8px">'+
@@ -1959,10 +2133,20 @@
     var x = id ? state.eggLosses.find(function(i){return i.id===id;}) : null;
     var isSold = !x || x.reason==='sold';
     var curCost = x && x.saleAmount ? (x.saleAmount * rateOf(state.settings.displayCurrency)).toFixed(2) : '';
+    var lossSpecies = x ? eggSpecies(x) : 'hen';
+    var lossGfOk = guineaFowlAvailable();
+    var lossSpeciesOptionsHtml = SPECIES_LIST.map(function(p){
+      var key=p[0], label=p[1];
+      var disabled = key==='guineafowl' && !lossGfOk;
+      return '<option value="'+key+'" '+(lossSpecies===key?'selected':'')+(disabled?' disabled':'')+'>'+label+(disabled?' (currently not available)':'')+'</option>';
+    }).join('');
     return '<div class="modal-head"><h3>'+(x?'Edit entry':'Log a sale or a loss')+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
     '<form data-form="eggloss">'+
       '<input type="hidden" name="id" value="'+(x?x.id:'')+'">'+
       '<div class="field-grid">'+
+        '<div class="field-row"><label>Type</label><select class="field" name="species">'+lossSpeciesOptionsHtml+'</select></div>'+
+      '</div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
         '<div class="field-row"><label>Reason</label><select class="field" name="reason" data-change="eggloss-reason">'+
           '<option value="sold" '+(!x||isSold?'selected':'')+'>Sold</option>'+
           '<option value="breakage" '+(x&&x.reason==='breakage'?'selected':'')+'>Breakage</option>'+
@@ -4061,8 +4245,11 @@
       var netText = net<=0 ? 'Covered, '+fmtMoney(Math.abs(net))+' to spare' : fmtMoney(net)+' short';
       return '<tr><td>'+pd[1]+'</td><td class="num">'+fmtMoney(expenseTotal)+'</td><td class="num" style="color:'+netColor+'">'+netText+'</td></tr>';
     }).join('');
+    var valueLine = hasGuineaFowl()
+      ? eggsOnHand.toLocaleString()+' eggs on hand right now (hen eggs at KSh '+EGG_UNIT_VALUE_KSH+', Guinea Fowl at KSh '+EGG_UNIT_VALUE_KSH_GUINEAFOWL+') = <strong style="color:var(--ink)">'+fmtMoney(eggValue)+'</strong> in egg assets. Weighed against expenses below — never counted as income.'
+      : eggsOnHand.toLocaleString()+' eggs on hand right now × KSh '+EGG_UNIT_VALUE_KSH+' = <strong style="color:var(--ink)">'+fmtMoney(eggValue)+'</strong> in egg assets. Weighed against expenses below — never counted as income.';
     return '<div class="card"><div class="card-title"><h3>Egg assets vs. spend</h3><span class="hint">Only visible to you</span></div>'+
-      '<div class="hint" style="margin-bottom:10px">'+eggsOnHand.toLocaleString()+' eggs on hand right now × KSh '+EGG_UNIT_VALUE_KSH+' = <strong style="color:var(--ink)">'+fmtMoney(eggValue)+'</strong> in egg assets. Weighed against expenses below — never counted as income.</div>'+
+      '<div class="hint" style="margin-bottom:10px">'+valueLine+'</div>'+
       '<div class="table-wrap"><table><thead><tr><th>Period</th><th class="num">Expenses</th><th class="num">Net after egg value</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '</div>';
   }
@@ -8145,9 +8332,20 @@
     if(name==='display-currency'){ mutate(function(s){ s.settings.displayCurrency = el.value; }); return; }
     if(name==='import-file'){ importBackupFile(el.files[0]); el.value=''; return; }
     if(name==='profile-photo-file'){ uploadProfilePhoto(el.files[0]); el.value=''; return; }
-    if(name==='brooding-date'){
+    if(name==='brooding-date' || name==='brooding-species'){
+      var bForm = el.closest('form');
+      var bDateEl = bForm ? bForm.querySelector('[name="dateStarted"]') : null;
+      var bSpEl = bForm ? bForm.querySelector('[name="species"]') : null;
+      var bSp = bSpEl ? bSpEl.value : 'hen';
+      var bDays = incubationDaysFor(bSp);
+      var daysSpan = document.getElementById('brooding-incubation-days');
+      if(daysSpan) daysSpan.textContent = bDays;
       var preview = document.getElementById('brooding-hatch-preview');
-      if(preview && el.value) preview.textContent = fmtDate(parseISO(addDaysISO(el.value, EGG_INCUBATION_DAYS)));
+      if(preview && bDateEl && bDateEl.value) preview.textContent = fmtDate(parseISO(addDaysISO(bDateEl.value, bDays)));
+      var srcHint = document.getElementById('brooding-source-hint');
+      if(srcHint) srcHint.textContent = bSp==='guineafowl'
+        ? 'Since these are bought-in eggs, they will not be deducted from your Egg Log — just tracked here until they hatch.'
+        : 'These eggs come off your egg count right away (recorded as "Given for brooding") — the app tracks them through to hatching.';
       return;
     }
     if(name==='eggloss-reason'){
@@ -8191,16 +8389,20 @@
       }
       var total = graded ? EGG_SIZES.reduce(function(a,p){ return a+(sizes[p[0]]||0); },0) : Math.max(0, Number(val('eggs')||0));
       var date = val('date'), note = val('note') || '';
+      var eggSp = val('species') || 'hen';
       mutate(function(s){
-        if(id){ var e = s.eggs.find(function(x){return x.id===id;}); if(e){ e.date=date; e.total=total; e.note=note; e.sizes=sizes; } }
+        if(id){ var e = s.eggs.find(function(x){return x.id===id;}); if(e){ e.date=date; e.total=total; e.note=note; e.sizes=sizes; e.species=eggSp; } }
         else {
-          var existing = s.eggs.find(function(x){return x.date===date;});
+          // Matched by date AND species, not just date — otherwise logging
+          // a Guinea Fowl entry on a day that already has a Hens entry
+          // would overwrite the Hens one instead of adding a second row.
+          var existing = s.eggs.find(function(x){return x.date===date && eggSpecies(x)===eggSp;});
           if(existing){ existing.total=total; existing.note=note; existing.sizes=sizes; }
-          else s.eggs.push({id:uid('egg'), date:date, total:total, note:note, sizes:sizes});
+          else s.eggs.push({id:uid('egg'), date:date, total:total, note:note, sizes:sizes, species:eggSp});
         }
       });
       closeModal(); toast('Egg log saved.');
-      notifyEggActivity('logged', total+' egg(s) for '+fmtDate(parseISO(date))+(note?' — '+note:''));
+      notifyEggActivity('logged', total+' '+(eggSp==='guineafowl'?'Guinea Fowl ':'')+'egg(s) for '+fmtDate(parseISO(date))+(note?' — '+note:''));
       checkMonthlyEggProfitCelebration();
       return;
     }
@@ -8210,6 +8412,7 @@
       var elDate = val('date'), elNote = val('note') || '';
       var elSaleAmount = Number(val('saleAmount')||0), elSaleCurrency = val('saleCurrency');
       var elBuyer = (val('buyer')||'').trim();
+      var elSpecies = val('species') || 'hen';
       var newElId = null;
       mutate(function(s){
         if(!Array.isArray(s.eggLosses)) s.eggLosses = [];
@@ -8219,14 +8422,14 @@
         // recreates it if this is still (or newly) a sale with an amount —
         // simplest way to keep the two in sync without drifting.
         if(x.linkedIncomeId){ s.incomes = s.incomes.filter(function(i){return i.id!==x.linkedIncomeId;}); x.linkedIncomeId = null; }
-        x.date = elDate; x.reason = elReason; x.count = elCount; x.note = elNote;
+        x.date = elDate; x.reason = elReason; x.count = elCount; x.note = elNote; x.species = elSpecies;
         if(elReason==='sold'){
           x.buyer = elBuyer;
           x.customerId = resolveOrCreateCustomer(s, elBuyer);
           x.saleAmount = elSaleAmount>0 ? fromCurrency(elSaleAmount, elSaleCurrency) : 0;
           x.recordedByRole = x.recordedByRole || roleLabel(currentUser);
           if(elSaleAmount>0){
-            var incRec = {id:uid('inc'), date:elDate, category:'Egg Sales', amount: x.saleAmount, note: elNote || ('Sale of '+elCount+' egg(s)'), recordedByRole: roleLabel(currentUser)};
+            var incRec = {id:uid('inc'), date:elDate, category:'Egg Sales', amount: x.saleAmount, note: elNote || ('Sale of '+elCount+' '+(elSpecies==='guineafowl'?'Guinea Fowl ':'')+'egg(s)'), recordedByRole: roleLabel(currentUser)};
             s.incomes.push(incRec);
             x.linkedIncomeId = incRec.id;
           }
@@ -8238,7 +8441,7 @@
       closeModal();
       if(elReason==='sold'){ viewReceipt(eggReceiptOpts(newElId)); }
       else { toast(elId?'Saved.':'Egg loss logged.'); }
-      notifyEggActivity('lost', elCount+' egg(s) — '+elReason+(elNote?' — '+elNote:''));
+      notifyEggActivity('lost', elCount+' '+(elSpecies==='guineafowl'?'Guinea Fowl ':'')+'egg(s) — '+elReason+(elNote?' — '+elNote:''));
       return;
     }
     if(name==='flock'){
@@ -8486,14 +8689,24 @@
     if(name==='brooding'){
       var bgEggs = Math.max(1, Number(val('eggsGiven')||0));
       var bgDate = val('dateStarted'), bgNote = val('note') || '';
+      var bgSpecies = val('species') || 'hen';
       mutate(function(s){
         if(!Array.isArray(s.broodings)) s.broodings = [];
-        var lossRec = {id:uid('eggloss'), date:bgDate, reason:'brooding', count:bgEggs, note:bgNote};
-        s.eggLosses = s.eggLosses || [];
-        s.eggLosses.push(lossRec);
-        s.broodings.push({id:uid('brood'), dateStarted:bgDate, eggsGiven:bgEggs, note:bgNote, status:'pending', eggLossId:lossRec.id});
+        var lossRecId = null;
+        // Hen eggs given for brooding come off the farm's own Egg Log, so
+        // a matching "given for brooding" loss is recorded there, as
+        // before. Guinea Fowl eggs in this scenario are bought in from
+        // outside (there's no Guinea Fowl production on this farm yet) —
+        // they were never counted as laid, so nothing is deducted.
+        if(bgSpecies!=='guineafowl'){
+          var lossRec = {id:uid('eggloss'), date:bgDate, reason:'brooding', count:bgEggs, note:bgNote, species:bgSpecies};
+          s.eggLosses = s.eggLosses || [];
+          s.eggLosses.push(lossRec);
+          lossRecId = lossRec.id;
+        }
+        s.broodings.push({id:uid('brood'), dateStarted:bgDate, eggsGiven:bgEggs, note:bgNote, status:'pending', eggLossId:lossRecId, species:bgSpecies});
       });
-      closeModal(); toast('Brooding started — expected to hatch in '+EGG_INCUBATION_DAYS+' days.');
+      closeModal(); toast('Brooding started — expected to hatch in '+incubationDaysFor(bgSpecies)+' days.');
       return;
     }
     if(name==='resolve-brooding'){
@@ -8511,16 +8724,17 @@
         brood.resolvedDate = rbDate;
         if(chicks>0){
           var chickBatchId = uid('batch');
-          s.flock.push({id:chickBatchId, gender:'unsexed', count:chicks, dateAdded:rbDate, birthDate:rbDate, source:'Hatched from brooding', removals:[]});
+          s.flock.push({id:chickBatchId, gender:'unsexed', count:chicks, dateAdded:rbDate, birthDate:rbDate, source:'Hatched from brooding', removals:[], species:broodSpecies(brood)});
           brood.chickBatchId = chickBatchId;
         }
       });
       if(rbError){ toast(rbError); return; }
-      closeModal(); toast(rbChicks>0 ? rbChicks+' chick'+(rbChicks===1?'':'s')+' added to the flock.' : 'Recorded — none of the eggs hatched.');
+      var rbBroodAfter = (state.broodings||[]).find(function(x){return x.id===rbId2;});
+      var rbSpLabel = rbBroodAfter && broodSpecies(rbBroodAfter)==='guineafowl' ? 'Guinea Fowl chick' : 'chick';
+      closeModal(); toast(rbChicks>0 ? rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' added to the flock.' : 'Recorded — none of the eggs hatched.');
       if(rbChicks>0){
-        var rbBrood = (state.broodings||[]).find(function(x){return x.id===rbId2;});
-        notifyHatch(rbChicks+' chick'+(rbChicks===1?'':'s')+' hatched from the brooding started '+fmtDate(parseISO(rbBrood?rbBrood.dateStarted:rbDate))+'.');
-        celebrate({ title:rbChicks+' chick'+(rbChicks===1?'':'s')+' hatched!', subtitle:'Added to the flock as a new batch.' });
+        notifyHatch(rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' hatched from the brooding started '+fmtDate(parseISO(rbBroodAfter?rbBroodAfter.dateStarted:rbDate))+'.');
+        celebrate({ title:rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' hatched!', subtitle:'Added to the flock as a new batch.' });
       }
       return;
     }
@@ -8545,12 +8759,12 @@
               batch.count = ebChicks;
             } else if(ebChicks>0){
               var newBatchId = uid('batch');
-              s.flock.push({id:newBatchId, gender:'unsexed', count:ebChicks, dateAdded:b.resolvedDate||ebDate, birthDate:b.resolvedDate||ebDate, source:'Hatched from brooding', removals:[]});
+              s.flock.push({id:newBatchId, gender:'unsexed', count:ebChicks, dateAdded:b.resolvedDate||ebDate, birthDate:b.resolvedDate||ebDate, source:'Hatched from brooding', removals:[], species:broodSpecies(b)});
               b.chickBatchId = newBatchId;
             }
           } else if(ebChicks>0){
             var newBatchId2 = uid('batch');
-            s.flock.push({id:newBatchId2, gender:'unsexed', count:ebChicks, dateAdded:b.resolvedDate||ebDate, birthDate:b.resolvedDate||ebDate, source:'Hatched from brooding', removals:[]});
+            s.flock.push({id:newBatchId2, gender:'unsexed', count:ebChicks, dateAdded:b.resolvedDate||ebDate, birthDate:b.resolvedDate||ebDate, source:'Hatched from brooding', removals:[], species:broodSpecies(b)});
             b.chickBatchId = newBatchId2;
           }
           b.chicksAdded = ebChicks;
