@@ -21,6 +21,7 @@ const { defineSecret } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const { stkPush, buildSecurityCredential, b2cSend, accountBalanceQuery, transactionStatusQuery, dynamicQR } = require('./daraja');
+const { initiateSendMoney, getBankCodes } = require('./intasend');
 const { timingSafeStringEqual } = require('./cryptoHelpers');
 
 admin.initializeApp();
@@ -124,6 +125,24 @@ const MPESA_PAYOUT_SHORTCODE = defineSecret('MPESA_PAYOUT_SHORTCODE'); // Kenoki
 // shortcode/app, same as everything else here. Not needed at all for B2C/
 // Balance/Status — those don't use a passkey.
 const MPESA_PAYOUT_PASSKEY = defineSecret('MPESA_PAYOUT_PASSKEY');
+
+// IntaSend — a second payout rail alongside the M-Pesa B2C secrets above,
+// for sending to a recipient's actual bank account (PesaLink) rather than
+// their phone. See functions/intasend.js and SETUP-INTASEND.md (once
+// written) for the full picture.
+// INTASEND_API_SECRET is IntaSend's own "Secret key" from their dashboard
+// (Settings -> API Keys) — ISSecretKey_test_... in sandbox, ISSecretKey_
+// live_... once the business is verified for real payouts. Same handling
+// as every other secret here: never in this file or the repo, only Secret
+// Manager.
+const INTASEND_API_SECRET = defineSecret('INTASEND_API_SECRET');
+// Our own shared secret, same pattern as MPESA_WEBHOOK_SECRET — embedded
+// as ?key=... in the callback URL we give IntaSend, so a stranger who finds
+// this function's public URL can't feed it a fake "payout confirmed" and
+// pollute Finance. Unrelated to anything IntaSend itself issues; set it
+// yourself the same way (firebase functions:secrets:set INTASEND_WEBHOOK_SECRET).
+const INTASEND_WEBHOOK_SECRET = defineSecret('INTASEND_WEBHOOK_SECRET');
+const INTASEND_SECRETS = [INTASEND_API_SECRET, INTASEND_WEBHOOK_SECRET, MPESA_CALLBACK_BASE_URL];
 
 const ALL_SECRETS = [MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE, MPESA_PASSKEY, MPESA_ENV, MPESA_CALLBACK_BASE_URL, MPESA_ACCOUNT_TYPE, MPESA_WEBHOOK_SECRET, MPESA_STORE_NUMBER];
 const B2C_SECRETS = ALL_SECRETS.concat([MPESA_INITIATOR_NAME, MPESA_INITIATOR_PASSWORD, MPESA_B2C_CERT, MPESA_SECURITY_CREDENTIAL, MPESA_PAYOUT_CONSUMER_KEY, MPESA_PAYOUT_CONSUMER_SECRET, MPESA_PAYOUT_SHORTCODE]);
@@ -895,6 +914,191 @@ exports.initiateWithdrawal = onCall({ secrets: B2C_SECRETS, region: 'us-central1
       ? `All ${sentCount} payouts sent to Safaricom — they'll show up here once confirmed.`
       : `${sentCount} of ${results.length} payouts sent; ${failedCount} failed — check the numbers for the one${failedCount === 1 ? '' : 's'} that didn't go through.`);
   return { ok: true, message, results };
+});
+
+// Bank-account payouts via IntaSend's PesaLink — a second payout rail
+// alongside M-Pesa B2C above, for sending to a recipient's actual bank
+// account rather than their phone. Confirmed with the exact same Payout
+// PIN (verifyPayoutPin) — from the administrator's point of view it's the
+// same "send money out" action, just a different destination, so one PIN
+// covers both rather than a third thing to set up and remember. See
+// functions/intasend.js for the actual IntaSend API calls.
+//
+// NOTE: the exact field names IntaSend's "bank payout" transaction expects
+// (name/account/bank_code/amount/narrative below) come from their written
+// docs, not a confirmed live test yet — the first sandbox send should be
+// watched closely (Firebase logs + the IntaSend sandbox dashboard) in case
+// a field needs adjusting.
+const MAX_BANK_PAYOUT_BATCH = 5;
+exports.initiateBankPayout = onCall({ secrets: INTASEND_SECRETS, region: 'us-central1' }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in first.');
+  }
+  if (request.auth.token.role !== 'administrator') {
+    throw new HttpsError('permission-denied', 'Only the administrator can send money out.');
+  }
+  await financeGuard.helpers.assertNotLocked();
+
+  const pin = request.data && request.data.pin != null ? String(request.data.pin) : null;
+  if (!pin) throw new HttpsError('invalid-argument', 'Enter your Payout PIN.');
+
+  let recipientsInput = Array.isArray(request.data && request.data.recipients) ? request.data.recipients : null;
+  if (!recipientsInput) {
+    recipientsInput = [{
+      bankCode: request.data && request.data.bankCode,
+      accountNumber: request.data && request.data.accountNumber,
+      accountName: request.data && request.data.accountName,
+      amount: request.data && request.data.amount,
+      note: request.data && request.data.note,
+    }];
+  }
+  if (!recipientsInput.length) throw new HttpsError('invalid-argument', 'Add at least one recipient.');
+  if (recipientsInput.length > MAX_BANK_PAYOUT_BATCH) {
+    throw new HttpsError('invalid-argument', `Send to at most ${MAX_BANK_PAYOUT_BATCH} recipients at a time.`);
+  }
+  const recipients = recipientsInput.map((r) => ({
+    bankCode: String((r && r.bankCode) || '').trim(),
+    accountNumber: String((r && r.accountNumber) || '').trim(),
+    accountName: String((r && r.accountName) || '').trim().slice(0, 100),
+    amount: Number(r && r.amount),
+    note: String((r && r.note) || '').slice(0, 100),
+  }));
+  for (const r of recipients) {
+    if (!r.bankCode) throw new HttpsError('invalid-argument', 'Select a bank for every recipient.');
+    if (!r.accountNumber) throw new HttpsError('invalid-argument', 'Enter the account number for every recipient.');
+    if (!r.accountName) throw new HttpsError('invalid-argument', 'Enter the account name for every recipient.');
+    // PESALINK's documented minimum is KES 100, not KES 10 like M-Pesa B2C.
+    if (!r.amount || r.amount < 100) throw new HttpsError('invalid-argument', 'Bank transfers need at least KES 100 per recipient.');
+  }
+
+  try {
+    await financeGuard.helpers.verifyPayoutPin(request.auth.uid, pin);
+  } catch (err) {
+    await financeGuard.helpers.onFail(request, 'payout-pin', (err && err.message) || 'unknown');
+    throw err;
+  }
+  await financeGuard.helpers.onSuccess(request, 'payout-pin');
+
+  const secretKey = sval(INTASEND_API_SECRET);
+  if (!secretKey) {
+    throw new HttpsError('failed-precondition', "Bank payouts aren't set up on this deployment yet — add your IntaSend API secret key first.");
+  }
+  const callbackBase = sval(MPESA_CALLBACK_BASE_URL);
+  const webhookKey = sval(INTASEND_WEBHOOK_SECRET);
+  const webhookQs = webhookKey ? `?key=${encodeURIComponent(webhookKey)}` : '';
+
+  const transactions = recipients.map((r) => ({
+    name: r.accountName,
+    account: r.accountNumber,
+    bank_code: r.bankCode,
+    amount: String(r.amount),
+    narrative: r.note || 'Kenokip Farm payout',
+  }));
+
+  try {
+    const result = await initiateSendMoney({
+      secretKey,
+      provider: 'PESALINK',
+      currency: 'KES',
+      country: 'KE',
+      transactions,
+      requiresApproval: false,
+      batchReference: 'kenokip-' + Date.now(),
+      callbackUrl: callbackBase ? `${callbackBase}/intasendSendMoneyWebhook${webhookQs}` : undefined,
+    });
+    return {
+      ok: true,
+      message: recipients.length === 1
+        ? 'Bank payout sent to IntaSend — it will show up here once confirmed.'
+        : `${recipients.length} bank payouts sent to IntaSend — they'll show up here once confirmed.`,
+      trackingId: result.tracking_id,
+      status: result.status,
+    };
+  } catch (err) {
+    logger.error('IntaSend send-money failed', err);
+    // Pass IntaSend's own reason through when it gave one (insufficient
+    // balance, a rejected account number, …) — this function is
+    // administrator-only, and "check your setup" tells them nothing about
+    // a problem they can actually fix. Authentication failures stay
+    // generic: that's a deployment problem, not something to show in-app.
+    if (err && err.intasendDetail && err.intasendCode !== 'authentication_failed') {
+      throw new HttpsError('failed-precondition', 'IntaSend: ' + err.intasendDetail);
+    }
+    throw new HttpsError('internal', 'Could not send that bank payout. Check your IntaSend setup and try again.');
+  }
+});
+
+// Lets the "Send to bank account" form offer a dropdown of real bank names
+// instead of asking the administrator to know a numeric bank_code. Kept
+// server-side (rather than calling IntaSend directly from the browser) so
+// the secret key never has to reach the client at all.
+exports.getBankList = onCall({ secrets: [INTASEND_API_SECRET], region: 'us-central1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  if (request.auth.token.role !== 'administrator') {
+    throw new HttpsError('permission-denied', 'Only the administrator can do this.');
+  }
+  // The bank-codes lookup itself needs no IntaSend credentials at all (per
+  // their own docs) — this check is just a feature flag, so the bank list
+  // doesn't show up as "available" before bank payouts are actually set up.
+  const secretKey = sval(INTASEND_API_SECRET);
+  if (!secretKey) {
+    throw new HttpsError('failed-precondition', "Bank payouts aren't set up on this deployment yet — add your IntaSend API secret key first.");
+  }
+  try {
+    const data = await getBankCodes({ countryCode: 'ke' });
+    return { ok: true, banks: data };
+  } catch (err) {
+    logger.error('IntaSend bank-codes lookup failed', err);
+    throw new HttpsError('internal', 'Could not load the bank list — try again.');
+  }
+});
+
+// IntaSend calls this once a send-money batch finishes — success, partial,
+// or failure (see callback_url on the initiate call above). Same shared-
+// secret-in-the-URL pattern as the M-Pesa webhooks (checkWebhookSecret),
+// just checked against INTASEND_WEBHOOK_SECRET instead of
+// MPESA_WEBHOOK_SECRET, since these are two unrelated secrets for two
+// unrelated providers.
+//
+// NOTE: the exact payload shape below (a `transactions` array with
+// status/amount/account/provider_reference fields) is inferred from
+// IntaSend's status-endpoint docs, not a confirmed real webhook delivery
+// yet. The raw body is logged unconditionally on every call specifically
+// so the first real sandbox payout's actual payload can be read from
+// Firebase logs and this parsing adjusted if it doesn't match.
+exports.intasendSendMoneyWebhook = onRequest({ secrets: [INTASEND_WEBHOOK_SECRET] }, async (req, res) => {
+  const configured = sval(INTASEND_WEBHOOK_SECRET);
+  const provided = String((req.query && req.query.key) || '');
+  if (configured && !timingSafeStringEqual(provided, configured)) {
+    logger.warn('IntaSend webhook called with a missing/incorrect key');
+    res.status(403).send('forbidden');
+    return;
+  }
+  logger.info('intasendSendMoneyWebhook payload', req.body);
+  try {
+    const body = req.body || {};
+    const txns = Array.isArray(body.transactions) ? body.transactions : [];
+    for (const t of txns) {
+      const state = String((t && (t.status || t.state)) || '').toUpperCase();
+      if (state !== 'COMPLETE' && state !== 'SUCCESS' && state !== 'SUCCESSFUL') continue;
+      const amount = Number((t && t.amount) || 0);
+      const ref = (t && (t.provider_reference || t.reference || t.transaction_id)) || (body.tracking_id || Date.now());
+      await addTransactionIfNew({
+        id: 'intasend_' + ref,
+        date: new Date().toISOString().slice(0, 10),
+        type: 'withdrawal',
+        amount,
+        note: 'Sent via kenokipfarm (bank transfer' + (t && t.account ? ', to ' + t.account : '') + ')',
+        source: 'intasend-bank',
+        status: 'approved',
+        reviewedBy: 'intasend-bank',
+        reviewedAt: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    logger.error('intasendSendMoneyWebhook error', err);
+  }
+  res.status(200).send('ok');
 });
 
 // Safaricom calls this once a B2C payout finishes processing, successfully

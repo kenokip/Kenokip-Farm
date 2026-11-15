@@ -55,7 +55,19 @@ async function initiateSendMoney({ secretKey, provider, currency, country, trans
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(`IntaSend send-money initiate failed: ${res.status} ${JSON.stringify(data)}`);
+    const err = new Error(`IntaSend send-money initiate failed: ${res.status} ${JSON.stringify(data)}`);
+    // IntaSend's own plain-language reason (e.g. "You have insufficient
+    // balance to send KES 500.00…"), pulled out so the caller can show it
+    // to the administrator instead of a generic "could not send". Only
+    // set for 4xx responses — those are about this request, and are safe
+    // and useful to show; a 5xx is IntaSend's own problem and stays
+    // generic.
+    const first = data && Array.isArray(data.errors) ? data.errors[0] : null;
+    if (res.status >= 400 && res.status < 500 && first && first.detail) {
+      err.intasendDetail = String(first.detail).slice(0, 300);
+      err.intasendCode = String(first.code || '');
+    }
+    throw err;
   }
   return data;
 }
