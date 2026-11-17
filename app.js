@@ -16,6 +16,7 @@
     settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg>',
     plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
     refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><polyline points="21 3 21 9 15 9"/></svg>',
+    download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><polyline points="7 10 12 15 17 10"/><path d="M5 20h14"/></svg>',
     chevronLeft:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 9 12 15 19"/></svg>',
     chevronRight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 15 12 9 19"/></svg>',
     home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5h12V10"/><path d="M10 19.5V14h4v5.5"/></svg>',
@@ -1250,7 +1251,13 @@
     var sceneEl = document.getElementById('page-scene');
     if(sceneEl) sceneEl.innerHTML = pageSceneHTML(ui.section);
     document.getElementById('topbar').innerHTML = navControlsHTML() + sec.topbar();
+    // A playing farm video (About page) would restart every time a sync
+    // re-renders the panel — keep the same <video> element instead. Swapping
+    // it back in within the same task means the browser never pauses it.
+    var keepVideo = document.getElementById('farm-video');
     document.getElementById('panel').innerHTML = '<div id="global-banner">'+bannerHTML()+'</div>' + sec.panel();
+    var freshVideo = document.getElementById('farm-video');
+    if(keepVideo && freshVideo && keepVideo !== freshVideo) freshVideo.replaceWith(keepVideo);
   }
   // One small themed illustration set per page, drawn from the app's own
   // existing PICS icon art (see var PICS above) rather than new assets —
@@ -1506,9 +1513,33 @@
       '<div class="farm-gallery">'+items+'</div>'+
     '</div>';
   }
+  // The farm's story video, at the top of About — visible to guests too
+  // ("Continue as Guest"), so it doubles as the public introduction to the
+  // farm. The files are plain static files in /videos (served by Netlify
+  // like /images), which is what makes Download and the WhatsApp link work
+  // without signing in. sw.js deliberately doesn't cache /videos/ — see the
+  // comment there. render() keeps a playing #farm-video alive across
+  // re-renders, so a Firestore update arriving mid-video doesn't restart it.
+  var FARM_VIDEO = { main:'videos/kenokip-farm.mp4', short:'videos/kenokip-farm-short.mp4', poster:'videos/kenokip-farm-poster.jpg' };
+  function farmVideoCardHTML(){
+    var absUrl = FARM_VIDEO.main;
+    try{ absUrl = new URL(FARM_VIDEO.main, location.href).href; }catch(e){}
+    var shareText = 'Watch the story of Kenokip Farm, Marumbasi village, Kericho County: '+absUrl;
+    var linkStyle = ' style="text-decoration:none"';
+    return '<div class="card"><div class="card-title"><h3>The Kenokip Farm story</h3><span class="hint">Video · 2 min 23 s</span></div>'+
+      '<video id="farm-video" src="'+FARM_VIDEO.main+'" poster="'+FARM_VIDEO.poster+'" controls playsinline preload="none" style="width:100%; aspect-ratio:16/9; border-radius:12px; background:#000; display:block"></video>'+
+      '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">'+
+        '<a class="btn primary" href="'+FARM_VIDEO.main+'" download="Kenokip-Farm-Story.mp4"'+linkStyle+'><span class="inline-ico">'+ICONS.download+'</span>Download video</a>'+
+        '<a class="btn" href="https://wa.me/?text='+encodeURIComponent(shareText)+'" target="_blank" rel="noopener"'+linkStyle+'>Share on WhatsApp</a>'+
+        '<a class="btn" href="'+FARM_VIDEO.short+'" download="Kenokip-Farm-Short.mp4"'+linkStyle+'>Download short version (52 s)</a>'+
+      '</div>'+
+      '<p class="hint" style="margin-top:8px">The short version is sized for WhatsApp Status, TikTok and Facebook Reels.</p>'+
+    '</div>';
+  }
   function aboutPanel(){
     var a = state.settings.about || {};
-    return '<div class="card">'+
+    return farmVideoCardHTML()+
+      '<div class="card">'+
         '<div class="card-title"><h3>About Enock (Kenokip)</h3></div>'+
         '<p style="white-space:pre-wrap; margin:0">'+esc(a.bio||'')+'</p>'+
       '</div>'+

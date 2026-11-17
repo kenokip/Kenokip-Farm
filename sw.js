@@ -2,7 +2,7 @@
 // Minimal cache-first app shell so Chrome will treat this as an installable,
 // offline-capable PWA. Bump CACHE_NAME whenever you replace these files on
 // the server so returning visitors pick up the update instead of a stale copy.
-var CACHE_NAME = 'kenokip-farm-v72';
+var CACHE_NAME = 'kenokip-farm-v73';
 var APP_SHELL = [
   './',
   './index.html',
@@ -99,6 +99,11 @@ self.addEventListener('notificationclick', function(event){
 
 self.addEventListener('fetch', function(event){
   if(event.request.method !== 'GET') return;
+  // Leave video entirely to the browser + network. Players fetch video in
+  // byte ranges (206 responses), which the Cache API can't store, and a
+  // cached whole file answered to a range request breaks playback on
+  // iPhones. It would also pin a 16 MB file in every visitor's cache.
+  if(event.request.url.indexOf('/videos/') !== -1 || event.request.headers.has('range')) return;
   event.respondWith(
     caches.match(event.request).then(function(cached){
       if(cached) return cached;
