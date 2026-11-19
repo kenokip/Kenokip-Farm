@@ -762,7 +762,7 @@
     var profit = sumMoney(state.incomes, r.startISO, r.endISO) - sumMoney(state.expenses, r.startISO, r.endISO);
     if(profit>0){
       celebratedProfitMonths[monthKey] = true;
-      celebrate({ title:'Profit this month!', subtitle:r.label+' — '+eggsThisMonth.toLocaleString()+' eggs collected, '+fmtMoney(profit)+' ahead so far.' });
+      celebrate({ title:'🎉 Profit this month!', subtitle:r.label+' — '+eggsThisMonth.toLocaleString()+' eggs collected, '+fmtMoney(profit)+' ahead so far.' });
     }
   }
   function removalReasonLabel(r){ return {sold:'Sold', died:'Died', predator:'Taken by predators', consumed:'Consumed at home', culled:'Culled', other:'Other'}[r] || 'Other'; }
@@ -799,6 +799,49 @@
   // species omitted = every egg ever logged, across both types — unchanged
   // behaviour for every existing caller.
   function totalEggsLaid(species){ return state.eggs.reduce(function(a,x){ return a + ((!species || eggSpecies(x)===species) ? x.total : 0); },0); }
+  // ---- Laying rate ---------------------------------------------------
+  // Eggs per hen per day, the standard way farmers and breed guides
+  // quote it: eggs collected ÷ (hens × days). "Hens" here means every
+  // non-male chicken (female or still-unsexed) aged 21+ weeks — the same
+  // rule the Flock asset table uses for its "Hens (21+ wk)" row — counted
+  // as of each day, so birds added, sold or lost part-way through the
+  // window are only counted for the days they were actually there. Only
+  // days with a hen-egg entry in the log count, so a few unlogged days
+  // don't drag the rate down as if those days had zero eggs.
+  function hensInLayAsOf(iso){
+    var d = parseISO(iso);
+    return state.flock.reduce(function(sum,b){
+      if(batchSpecies(b)!=='hen' || b.gender==='male' || b.dateAdded>iso) return sum;
+      if(ageWeeks(b, d) < 21) return sum;
+      var c = b.count;
+      (b.removals||[]).forEach(function(r){ if(r.date<=iso) c -= r.count; });
+      return sum + Math.max(0, c);
+    }, 0);
+  }
+  function layingRateStats(days){
+    days = days || 30;
+    var byDate = {};
+    state.eggs.forEach(function(e){ if(eggSpecies(e)==='hen'){ byDate[e.date] = (byDate[e.date]||0) + (e.total||0); } });
+    var logged = 0, eggs = 0, henDays = 0;
+    for(var i=0; i<days; i++){
+      var iso = toISO(addDays(new Date(), -i));
+      if(!(iso in byDate)) continue;
+      var h = hensInLayAsOf(iso);
+      if(h<=0) continue;
+      logged++; eggs += byDate[iso]; henDays += h;
+    }
+    return { days:days, loggedDays:logged, eggs:eggs, rate: henDays>0 ? eggs/henDays : null,
+             eggsPerDay: logged ? eggs/logged : 0, avgHens: logged ? henDays/logged : 0, hensNow: hensInLayAsOf(todayISO()) };
+  }
+  function layingRateTileHTML(){
+    var lr = layingRateStats(30);
+    if(lr.rate==null){
+      return statTile('Laying rate, last 30 days', '—', '<span class="hint">'+(lr.hensNow ? 'Log eggs daily to see this' : 'Needs hens aged 21+ weeks in Flock')+'</span>');
+    }
+    return statTile('Laying rate, last 30 days', Math.round(lr.rate*100)+'%',
+      '<span class="hint">≈ '+lr.eggsPerDay.toFixed(1)+' eggs a day from '+Math.round(lr.avgHens)+' hens on average'+
+        (Math.round(lr.avgHens)!==lr.hensNow ? ' ('+lr.hensNow+' now)' : '')+' · '+lr.loggedDays+' day'+(lr.loggedDays===1?'':'s')+' logged</span>');
+  }
   function countBars(entries){
     if(!entries.length) return '<div class="empty">Nothing recorded yet.</div>';
     var max = entries[0][1] || 1;
@@ -892,8 +935,12 @@
       return '<div class="bar-row"><div class="bar-label">'+esc(cat)+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(4,(amt/max)*100)+'%"></div></div><div class="bar-amt num">'+fmtMoney(amt)+'</div></div>';
     }).join('');
   }
-  function statTile(label,value,sub){
-    return '<div class="stat-tile"><div class="stat-label">'+label+'</div><div class="stat-value num">'+value+'</div>'+(sub||'')+'</div>';
+  // tone (optional): 'green' | 'blue' | 'orange' | 'purple' | 'teal' | 'pink'
+  // — a fixed colour for tiles whose meaning has a natural colour (money
+  // in = green, money out = orange…). Tiles without one still get a
+  // colour, cycled by position (see .grid.stats in styles.css).
+  function statTile(label,value,sub,tone){
+    return '<div class="stat-tile'+(tone?' tone-'+tone:'')+'"><div class="stat-label">'+label+'</div><div class="stat-value num">'+value+'</div>'+(sub||'')+'</div>';
   }
   function deltaBadge(cur,prev,invert){
     if(prev===0 && cur===0) return '<span class="stat-delta flat">No change</span>';
@@ -1521,13 +1568,31 @@
   // comment there. render() keeps a playing #farm-video alive across
   // re-renders, so a Firestore update arriving mid-video doesn't restart it.
   var FARM_VIDEO = { main:'videos/kenokip-farm.mp4', short:'videos/kenokip-farm-short.mp4', poster:'videos/kenokip-farm-poster.jpg' };
+  // Starts small (a thumbnail-sized player) and grows to about half the
+  // screen once it starts playing or "Make bigger" is tapped; full screen
+  // stays one tap away on the player's own controls. The size lives in
+  // farmVideoExpanded so a re-render keeps it, and setFarmVideoExpanded
+  // updates the live element directly so playback is never interrupted.
+  var farmVideoExpanded = false;
+  function setFarmVideoExpanded(on){
+    farmVideoExpanded = !!on;
+    var v = document.getElementById('farm-video');
+    if(v) v.classList.toggle('expanded', farmVideoExpanded);
+    var b = document.getElementById('farm-video-size');
+    if(b) b.textContent = farmVideoExpanded ? '⤡ Make smaller' : '⤢ Make bigger';
+  }
+  // 'play' doesn't bubble, so it's caught on the way down (capture phase).
+  document.addEventListener('play', function(e){
+    if(e.target && e.target.id==='farm-video' && !farmVideoExpanded) setFarmVideoExpanded(true);
+  }, true);
   function farmVideoCardHTML(){
     var absUrl = FARM_VIDEO.main;
     try{ absUrl = new URL(FARM_VIDEO.main, location.href).href; }catch(e){}
     var shareText = 'Watch the story of Kenokip Farm, Marumbasi village, Kericho County: '+absUrl;
     var linkStyle = ' style="text-decoration:none"';
     return '<div class="card"><div class="card-title"><h3>The Kenokip Farm story</h3><span class="hint">Video · 2 min 23 s</span></div>'+
-      '<video id="farm-video" src="'+FARM_VIDEO.main+'" poster="'+FARM_VIDEO.poster+'" controls playsinline preload="none" style="width:100%; aspect-ratio:16/9; border-radius:12px; background:#000; display:block"></video>'+
+      '<video id="farm-video" class="farm-video'+(farmVideoExpanded?' expanded':'')+'" src="'+FARM_VIDEO.main+'" poster="'+FARM_VIDEO.poster+'" controls playsinline preload="none"></video>'+
+      '<div style="margin-top:8px"><button type="button" class="linklike" id="farm-video-size" data-action="farm-video-size">'+(farmVideoExpanded?'⤡ Make smaller':'⤢ Make bigger')+'</button> <span class="hint">· tap the ⛶ button on the video for full screen</span></div>'+
       '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px">'+
         '<a class="btn primary" href="'+FARM_VIDEO.main+'" download="Kenokip-Farm-Story.mp4"'+linkStyle+'><span class="inline-ico">'+ICONS.download+'</span>Download video</a>'+
         '<a class="btn" href="https://wa.me/?text='+encodeURIComponent(shareText)+'" target="_blank" rel="noopener"'+linkStyle+'>Share on WhatsApp</a>'+
@@ -2043,6 +2108,7 @@
       statTile('Eggs laid, all time', laidAll.toLocaleString()+' eggs', '')+
       statTile('Eggs lost, all time', lostAll.toLocaleString()+' eggs', '')+
       statTile('Eggs available', Math.max(0,availableAll).toLocaleString()+' eggs', '<span class="hint">Laid minus lost</span>')+
+      layingRateTileHTML()+
     '</div>'+
     cratesHtml+
     eggsByTypeSectionHTML()+
@@ -5338,7 +5404,7 @@
         '<td>'+(SECURITY_OUTCOME_PILLS[ev.outcome]||esc(ev.outcome||'—'))+'</td>'+
         '<td>'+esc(SECURITY_EVENT_LABELS[ev.method]||ev.method||'—')+'</td>'+
         '<td>'+esc(ev.device||'—')+'</td>'+
-        '<td>'+ICONS.pin+' '+esc(describeEventGeo(ev))+'</td>'+
+        '<td><span class="inline-ico">'+ICONS.pin+'</span> '+esc(describeEventGeo(ev))+'</td>'+
         '<td>'+esc(ev.email||'—')+'</td></tr>';
     }).join('');
     var pagerHtml = securityEvents.length ? '<div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:10px">'+
@@ -5421,7 +5487,7 @@
       if(l.place){ loc = l.place; }
       else if(typeof l.lat==='number' && typeof l.lng==='number'){ loc = l.lat.toFixed(4)+', '+l.lng.toFixed(4); }
       else { loc = LOCATION_STATUS_LABELS[l.locationStatus] || 'Unknown'; }
-      return '<tr><td>'+esc(l.email||'—')+'</td><td>'+esc(roleLabel({role:l.role, jobTitle:l.jobTitle}))+'</td><td>'+when+'</td><td>'+ICONS.pin+' '+esc(loc)+'</td><td>'+esc(l.device||'—')+'</td></tr>';
+      return '<tr><td>'+esc(l.email||'—')+'</td><td>'+esc(roleLabel({role:l.role, jobTitle:l.jobTitle}))+'</td><td>'+when+'</td><td><span class="inline-ico">'+ICONS.pin+'</span> '+esc(loc)+'</td><td>'+esc(l.device||'—')+'</td></tr>';
     }).join('');
     var logPagerHtml = accessLogs.length ? '<div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:10px">'+
         '<button class="btn sm" data-action="access-log-page:prev" '+(accessLogPage<=0?'disabled':'')+'>Prev</button>'+
@@ -5435,7 +5501,8 @@
     // rejected row almost always means the C2B URLs need re-registering
     // with the current webhook key — see SETUP-SECURITY.md / SETUP-MPESA.md).
     var KEY_SOURCE_LABELS = { query: 'In URL (?key=)', path: 'In URL (path)', none: 'Not received at all' };
-    var c2bRows = c2bLog.map(function(l){
+    var c2bPage = paginate('c2b-log', c2bLog);
+    var c2bRows = c2bPage.items.map(function(l){
       var when = (l.at && l.at.toDate) ? fmtDate(l.at.toDate(),{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
       var statusPill = l.accepted ? '<span class="pill" style="background:var(--good-tint); color:var(--good)">Accepted</span>' : '<span class="pill" style="background:var(--bad-tint); color:var(--bad)">Rejected</span>';
       var who = l.payer || l.msisdn || '—';
@@ -5485,6 +5552,7 @@
       '<div class="card"><div class="card-title"><h3>Till payment webhook activity</h3><span class="hint">Last '+c2bLog.length+' Safaricom call'+(c2bLog.length===1?'':'s')+' — visible only to you</span></div>'+
         '<p class="hint" style="margin-top:-6px">Every time Safaricom calls our Till (C2B) webhook — whether we accepted it or not — shows up here. If a real till payment never appears in Finance/Income, check here first. Nothing at all means Safaricom isn\'t reaching us at all (the C2B URLs likely need re-registering). A "Rejected" row with Key = "Not received at all" means the call arrived but carried no key whatsoever — that\'s a URL/registration problem, not a wrong-value problem. A "Rejected" row with Key = "In URL (…)" means a key DID arrive but doesn\'t match MPESA_WEBHOOK_SECRET.</p>'+
         '<div class="table-wrap">'+(c2bRows ? '<table><thead><tr><th>When</th><th>Endpoint</th><th>Status</th><th>Key</th><th class="num">Amount</th><th>From</th></tr></thead><tbody>'+c2bRows+'</tbody></table>' : '<div class="empty">'+ICONS.empty+'<div>No Till webhook calls recorded yet.</div></div>')+'</div>'+
+        pagerHtml('c2b-log', c2bPage.pageCount, c2bPage.page)+
       '</div>';
   }
 
@@ -5890,6 +5958,29 @@
     if(!currentUser) return 0;
     return messages.filter(function(m){ return isMessageForMe(m) && (m.readBy||[]).indexOf(currentUser.uid)===-1; }).length;
   }
+  // Marks the given messages read: updated on screen straight away (so the
+  // badge and highlight clear instantly), then saved through the existing
+  // markMessageRead function one message at a time. Anything that fails to
+  // save is put back to unread, so the screen never claims something that
+  // didn't happen.
+  function markMessagesRead(ids){
+    if(!currentUser || !ids.length) return;
+    var uid = currentUser.uid;
+    var changed = messages.filter(function(m){ return ids.indexOf(m.id)!==-1 && (m.readBy||[]).indexOf(uid)===-1; });
+    changed.forEach(function(m){ m.readBy = (m.readBy||[]).concat([uid]); });
+    render();
+    var call = firebase.functions().httpsCallable('markMessageRead');
+    Promise.all(changed.map(function(m){
+      return call({id:m.id}).then(function(){ return true; }).catch(function(){
+        m.readBy = (m.readBy||[]).filter(function(x){ return x!==uid; });
+        return false;
+      });
+    })).then(function(results){
+      var failed = results.filter(function(ok){ return !ok; }).length;
+      if(failed){ render(); toast(failed===1 ? 'One message couldn\'t be marked as read — try again.' : failed+' messages couldn\'t be marked as read — try again.'); }
+      else if(changed.length>1){ toast('✅ All '+changed.length+' messages marked as read.'); }
+    });
+  }
   function initOwnProfileSync(){
     if(!db || !currentUser) return;
     db.collection('users').doc(currentUser.uid).onSnapshot(function(snap){
@@ -5996,20 +6087,20 @@
     var unread = isMessageForMe(m) && (m.readBy||[]).indexOf(currentUser.uid)===-1;
     var when = (m.createdAt && m.createdAt.toDate) ? fmtDate(m.createdAt.toDate(),{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Sending…';
     var toLabel = m.toUid==='all' ? 'Everyone' : (m.toLabel || 'a team member');
-    var attr = unread ? ' data-action="mark-message-read:'+m.id+'"' : '';
     var quoteBlock = m.replyToSnippet ? '<div class="hint" style="margin:6px 0; padding:6px 8px; border-left:3px solid var(--border, #ccc)">↩ '+esc(m.replyToFromLabel||'a message')+': "'+esc(m.replyToSnippet)+'"</div>' : '';
     var canReply = currentUser && m.fromUid && m.fromUid!==currentUser.uid && m.fromUid!=='system';
     var sender = teamUsers.find(function(u){ return u.uid===m.fromUid; });
-    return '<div class="message-row'+(unread?' unread':'')+'"'+attr+'>'+
+    return '<div class="message-row'+(unread?' unread':'')+'">'+
       avatarHTML(sender || {name:m.fromLabel}, 38)+
       '<div style="flex:1; min-width:0">'+
         '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap">'+(unread?'<strong>':'')+esc(m.fromLabel||'Unknown')+(unread?'</strong>':'')+' <span class="hint">→ '+esc(toLabel)+'</span>'+messageKindPillHtml(m)+'</div>'+
         quoteBlock+
         '<div style="margin-top:3px">'+esc(m.body||'')+'</div>'+
-        '<div class="message-meta">'+when+(unread?' · tap to mark read':'')+'</div>'+
-        (canReply || m.pendingSignoffId ? '<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap">'+
+        '<div class="message-meta">'+when+(unread?' · <span class="unread-dot"></span> Unread':'')+'</div>'+
+        (canReply || m.pendingSignoffId || unread ? '<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap">'+
           (m.pendingSignoffId ? '<button class="btn sm primary" data-action="open-pending-signoff:'+esc(m.pendingSignoffId)+'">Open document</button>' : '')+
           (canReply ? '<button class="btn sm" data-action="reply-message:'+esc(m.id)+'">Reply</button>' : '')+
+          (unread ? '<button class="btn sm" data-action="mark-message-read:'+esc(m.id)+'">'+ICONS.check+'Mark as read</button>' : '')+
         '</div>' : '')+
       '</div>'+
     '</div>';
@@ -6032,6 +6123,7 @@
     }).join('');
     return '<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px">'+
         '<button class="btn primary" data-action="open-compose-message">'+ICONS.plus+'New message</button>'+
+        (unreadMessageCount() ? '<button class="btn" data-action="mark-all-messages-read">'+ICONS.check+'Mark all as read ('+unreadMessageCount()+')</button>' : '')+
         (isAdminLevel() ? '<button class="btn" data-action="open-kudos:all">🎉 Congratulate the team</button>' : '')+
         (isAdminLevel() ? '<button class="btn" data-action="toggle-messages-view">'+(showAll?'Show my messages':'Show all team messages')+'</button>' : '')+
       '</div>'+
@@ -6132,9 +6224,201 @@
       '</select>'+
     '</div>';
   }
+  // ---- Real Paybill balance -------------------------------------------
+  // Newest Account Balance result that actually came back with a number
+  // (a pending or failed check is skipped, so the tile keeps showing the
+  // last good figure while a fresh check is on its way).
+  function latestPaybillBalance(){
+    for(var i=0;i<mpesaQueries.length;i++){
+      var q = mpesaQueries[i];
+      if(q.type!=='balance' || q.status==='pending' || q.status==='failed') continue;
+      if(q.workingAccountBalance==null || isNaN(Number(q.workingAccountBalance))) continue;
+      return q;
+    }
+    return null;
+  }
+  // Opening Finance asks Safaricom for a fresh balance at most every 30
+  // minutes per session — often enough that the figure is current, rarely
+  // enough not to flood Safaricom (or the mpesaQueries log) with requests
+  // every time the page re-renders. Deferred with setTimeout so a render
+  // never kicks off a network call in the middle of building its HTML.
+  var lastAutoBalanceCheckAt = 0;
+  var AUTO_BALANCE_CHECK_MS = 30*60*1000;
+  function maybeAutoCheckPaybillBalance(){
+    if(!isAdminLevel() || !mpesaEnabled || !db || !mpesaQueriesSyncStarted) return;
+    if(Date.now() - lastAutoBalanceCheckAt < AUTO_BALANCE_CHECK_MS) return;
+    var last = latestMpesaQuery('balance');
+    if(last && last.status==='pending') return;
+    var good = latestPaybillBalance();
+    if(good && good.completedAt && (Date.now() - new Date(good.completedAt).getTime()) < AUTO_BALANCE_CHECK_MS) return;
+    lastAutoBalanceCheckAt = Date.now();
+    setTimeout(function(){
+      firebase.functions().httpsCallable('checkAccountBalance')().catch(function(){});
+    }, 0);
+  }
+
+  // ---- Statements (Finance → View statements) -------------------------
+  var STATEMENT_PERIODS = [['week','This week'],['month','This month'],['3m','Last 3 months'],['6m','Last 6 months'],['year','This year'],['all','Full statement'],['custom','Custom dates']];
+  var statementPeriod = 'month';
+  var statementCustom = { from:null, to:null };
+  function monthsAgoISO(n){ var d = new Date(); d.setMonth(d.getMonth()-n); d.setDate(d.getDate()+1); return toISO(d); }
+  function statementRange(){
+    var today = todayISO(), r;
+    var approved = financeState().transactions.filter(function(t){ return (t.status||'approved')==='approved'; });
+    var earliest = approved.reduce(function(min,t){ return (!min || t.date<min) ? t.date : min; }, financeState().openingDate || null) || today;
+    switch(statementPeriod){
+      case 'week': r = getRange('week'); return { start:r.startISO, end:today, label:'This week ('+fmtDate(parseISO(r.startISO))+' – '+fmtDate(parseISO(today))+')' };
+      case 'month': r = getRange('month'); return { start:r.startISO, end:today, label:r.label };
+      case '3m': return { start:monthsAgoISO(3), end:today, label:'Last 3 months' };
+      case '6m': return { start:monthsAgoISO(6), end:today, label:'Last 6 months' };
+      case 'year': r = getRange('year'); return { start:r.startISO, end:today, label:'This year ('+r.label+')' };
+      case 'custom':
+        var from = statementCustom.from || getRange('month').startISO, to = statementCustom.to || today;
+        if(from>to){ var tmp = from; from = to; to = tmp; }
+        return { start:from, end:to, label:fmtDate(parseISO(from))+' – '+fmtDate(parseISO(to)) };
+      default: return { start:earliest, end:today, label:'Full statement' };
+    }
+  }
+  var FINANCE_SOURCE_LABELS = {
+    'mpesa-c2b':'M-Pesa — paid to the Till', 'mpesa-c2b-paybill':'M-Pesa — paid to the Paybill',
+    'mpesa-stk':'M-Pesa — prompt sent from the app', 'mpesa-stk-paybill':'M-Pesa — prompt sent from the app (Paybill)',
+    'mpesa-b2c':'M-Pesa — sent from the app'
+  };
+  // Every approved transaction in the period, oldest first, with a running
+  // balance. The opening balance is worked out exactly the way the Finance
+  // page's own total is (financeBalance: opening balance + every approved
+  // deposit − every approved withdrawal), so a "Full statement" always
+  // closes on the same figure the Finance page shows as "Recorded in the
+  // app". Pending and rejected entries never count, same as everywhere else.
+  function buildStatement(){
+    var f = financeState();
+    var range = statementRange();
+    var approved = f.transactions.filter(function(t){ return (t.status||'approved')==='approved'; })
+      .slice().sort(function(a,b){ return a.date<b.date ? -1 : (a.date>b.date ? 1 : 0); });
+    var opening = (f.openingBalance||0);
+    approved.forEach(function(t){ if(t.date < range.start) opening += (t.type==='deposit' ? t.amount : -t.amount); });
+    var bal = opening, moneyIn = 0, moneyOut = 0, nIn = 0, nOut = 0;
+    var rows = approved.filter(function(t){ return t.date>=range.start && t.date<=range.end; }).map(function(t){
+      var isIn = t.type==='deposit';
+      bal += isIn ? t.amount : -t.amount;
+      if(isIn){ moneyIn += t.amount; nIn++; } else { moneyOut += t.amount; nOut++; }
+      var how = FINANCE_SOURCE_LABELS[t.source] || (t.source ? String(t.source) : 'Recorded manually');
+      return { date:t.date, details:(t.note || (isIn?'Deposit':'Withdrawal')), how:how, moneyIn:isIn?t.amount:0, moneyOut:isIn?0:t.amount, balance:bal };
+    });
+    return { range:range, opening:opening, closing:bal, moneyIn:moneyIn, moneyOut:moneyOut, nIn:nIn, nOut:nOut, rows:rows };
+  }
+  function financeStatementPageHTML(){
+    var st = buildStatement();
+    var revealed = financeRevealed;
+    var m = function(n){ return revealed ? fmtMoney(n) : maskMoneyDisplay(n); };
+    var chips = STATEMENT_PERIODS.map(function(p){
+      return '<button type="button" class="chip'+(statementPeriod===p[0]?' active':'')+'" data-action="statement-period:'+p[0]+'">'+p[1]+'</button>';
+    }).join('');
+    var customHtml = statementPeriod==='custom' ?
+      '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:12px">'+
+        '<div class="field-row" style="max-width:180px"><label>From</label><input class="field" type="date" id="statement-from" value="'+esc(st.range.start)+'" max="'+todayISO()+'"></div>'+
+        '<div class="field-row" style="max-width:180px"><label>To</label><input class="field" type="date" id="statement-to" value="'+esc(st.range.end)+'" max="'+todayISO()+'"></div>'+
+        '<button type="button" class="btn" data-action="statement-apply-custom">Show</button>'+
+      '</div>' : '';
+    var rowsHtml = st.rows.map(function(r){
+      return '<tr><td>'+fmtDate(parseISO(r.date))+'</td>'+
+        '<td>'+(revealed ? esc(r.details) : esc(maskString(r.details)))+'<div class="hint">'+esc(r.how)+'</div></td>'+
+        '<td class="num money-in">'+(r.moneyIn ? m(r.moneyIn) : '')+'</td>'+
+        '<td class="num money-out">'+(r.moneyOut ? m(r.moneyOut) : '')+'</td>'+
+        '<td class="num">'+m(r.balance)+'</td></tr>';
+    }).join('');
+    var paybill = (isAdminLevel() && mpesaEnabled) ? latestPaybillBalance() : null;
+    var reconcile = '';
+    if(paybill && st.range.end===todayISO()){
+      var real = Number(paybill.workingAccountBalance), diff = real - st.closing;
+      reconcile = '<div class="banner" style="margin-top:12px">'+
+        'The M-Pesa Paybill itself held <strong>'+m(real)+'</strong> when last checked'+(paybill.completedAt?' ('+fmtDate(new Date(paybill.completedAt),{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+')':'')+'. '+
+        (Math.abs(diff) < 1 ? 'That matches this statement exactly. 🎉'
+          : 'That\'s '+m(Math.abs(diff))+' '+(diff<0?'less':'more')+' than this statement — usually money moved in the M-Pesa portal or Safaricom charges that were never recorded here.')+
+      '</div>';
+    }
+    var dlDisabled = revealed ? '' : ' disabled title="Show amounts first (the eye button) to download"';
+    return '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px">'+
+        '<button type="button" class="btn" data-action="view-select:finance:overview">← Back to Finance</button>'+
+        (revealed ? '' : '<button type="button" class="btn" data-action="finance-reveal-prompt">'+'<span class="inline-ico">'+ICONS.eye+'</span>Show amounts</button>')+
+      '</div>'+
+      '<div class="card"><div class="card-title"><h3>📄 Statement</h3><span class="hint">'+esc(st.range.label)+'</span></div>'+
+        '<div class="chip-row">'+chips+'</div>'+customHtml+
+      '</div>'+
+      '<div class="grid stats">'+
+        statTile('Opening balance', m(st.opening), '<span class="hint">on '+fmtDate(parseISO(st.range.start))+'</span>', 'purple')+
+        statTile('📥 Money in', m(st.moneyIn), '<span class="hint">'+st.nIn+' payment'+(st.nIn===1?'':'s')+'</span>', 'green')+
+        statTile('📤 Money out', m(st.moneyOut), '<span class="hint">'+st.nOut+' payment'+(st.nOut===1?'':'s')+'</span>', 'orange')+
+        statTile('Closing balance', m(st.closing), '<span class="hint">on '+fmtDate(parseISO(st.range.end))+'</span>', 'blue')+
+      '</div>'+
+      '<div class="card"><div class="card-title"><h3>Transactions</h3><div style="display:flex; gap:8px; flex-wrap:wrap">'+
+          '<button type="button" class="btn sm primary" data-action="statement-download:pdf"'+dlDisabled+'><span class="inline-ico">'+ICONS.download+'</span>Download PDF</button>'+
+          '<button type="button" class="btn sm" data-action="statement-download:csv"'+dlDisabled+'><span class="inline-ico">'+ICONS.download+'</span>Download Excel (CSV)</button>'+
+        '</div></div>'+
+        '<div class="table-wrap">'+
+        (st.rows.length ? '<table><thead><tr><th>Date</th><th>Details</th><th class="num">Money in</th><th class="num">Money out</th><th class="num">Balance</th></tr></thead><tbody>'+rowsHtml+'</tbody></table>'
+          : '<div class="empty">'+ICONS.empty+'<div>No money in or out in this period.</div></div>')+
+        '</div>'+
+        reconcile+
+        '<p class="hint" style="margin-top:12px">This statement lists every approved transaction recorded in this app. Safaricom\'s own official statement for the Paybill is in the M-Pesa Org Portal.</p>'+
+      '</div>';
+  }
+  function statementFileStem(st){ return 'Kenokip-Farm-statement-'+st.range.start+'-to-'+st.range.end; }
+  function downloadTextFile(filename, text, mime){
+    try{
+      var blob = new Blob([text], {type: mime || 'text/plain'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+      return true;
+    }catch(e){ return false; }
+  }
+  function downloadStatementCSV(){
+    var st = buildStatement();
+    var q = function(v){ v = String(v==null?'':v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+    var lines = [
+      ['Kenokip Farm — Statement'], ['Period', st.range.label], ['From', st.range.start], ['To', st.range.end], [],
+      ['Date','Details','How','Money in (KES)','Money out (KES)','Balance (KES)'],
+      ['', 'Opening balance', '', '', '', st.opening.toFixed(2)]
+    ];
+    st.rows.forEach(function(r){ lines.push([r.date, r.details, r.how, r.moneyIn?r.moneyIn.toFixed(2):'', r.moneyOut?r.moneyOut.toFixed(2):'', r.balance.toFixed(2)]); });
+    lines.push([], ['', 'Total money in', '', st.moneyIn.toFixed(2)], ['', 'Total money out', '', '', st.moneyOut.toFixed(2)], ['', 'Closing balance', '', '', '', st.closing.toFixed(2)]);
+    // A UTF-8 BOM so Excel shows "—" and "KSh" correctly instead of garbling them.
+    var ok = downloadTextFile(statementFileStem(st)+'.csv', '﻿'+lines.map(function(l){ return l.map(q).join(','); }).join('\r\n'), 'text/csv;charset=utf-8');
+    toast(ok ? '📄 Statement downloaded — open it in Excel or Google Sheets.' : 'Could not download the statement.');
+  }
+  // PDF = the browser's own Print → "Save as PDF", reusing the receipt
+  // print area and its branded head, same as every receipt in the app.
+  function printStatementPDF(){
+    var st = buildStatement();
+    var body = st.rows.map(function(r){
+      return '<tr><td>'+fmtDate(parseISO(r.date))+'</td><td>'+esc(r.details)+'<div class="hint">'+esc(r.how)+'</div></td>'+
+        '<td class="num">'+(r.moneyIn?fmtMoney(r.moneyIn):'')+'</td><td class="num">'+(r.moneyOut?fmtMoney(r.moneyOut):'')+'</td><td class="num">'+fmtMoney(r.balance)+'</td></tr>';
+    }).join('');
+    var tiles = [['Opening balance', st.opening], ['Money in', st.moneyIn], ['Money out', st.moneyOut], ['Closing balance', st.closing]].map(function(x){
+      return '<div class="statement-summary-tile"><div class="lbl">'+x[0]+'</div><div class="val">'+fmtMoney(x[1])+'</div></div>';
+    }).join('');
+    var html = '<div class="receipt">'+
+      receiptHeadHtml(receiptNoFrom('STMT'+st.range.start.replace(/-/g,'')+st.range.end.replace(/-/g,'')), st.range.label, 'Period')+
+      '<div class="receipt-title">ACCOUNT STATEMENT</div>'+
+      '<div class="statement-summary">'+tiles+'</div>'+
+      '<div class="statement-section"><h4>Transactions, '+esc(fmtDate(parseISO(st.range.start)))+' – '+esc(fmtDate(parseISO(st.range.end)))+'</h4>'+
+        (st.rows.length ? '<table class="statement-table"><thead><tr><th>Date</th><th>Details</th><th class="num">Money in</th><th class="num">Money out</th><th class="num">Balance</th></tr></thead><tbody>'+body+'</tbody></table>'
+          : '<div class="statement-empty">No money in or out in this period.</div>')+
+      '</div>'+
+      '<div class="receipt-foot">Kenokip Farm — Poultry Keeping &middot; Transactions recorded in the Kenokip Farm app &middot; Generated '+fmtDate(new Date())+'</div>'+
+    '</div>';
+    toast('Choose "Save as PDF" in the print window to download it.');
+    printReceiptNow(html);
+  }
   function financePanel(){
     if(!canSeeFinance()) return '<div class="empty">'+ICONS.empty+'<div>Finance isn\'t available for your account.</div></div>';
     if(!financePortalUnlocked) return financePortalGateHTML();
+    if(currentView('finance')==='statement') return moneyCrossNavHTML('finance') + financeStatementPageHTML();
+    maybeAutoCheckPaybillBalance();
     return moneyCrossNavHTML('finance') + financePanelInner();
   }
   function financePanelInner(){
@@ -6175,12 +6459,37 @@
         '</div></td></tr>';
     }).join('');
 
+    // The balance tile shows what's really in the M-Pesa Paybill (Utility
+    // Account) whenever a balance check has come back — the app's own
+    // ledger total (deposits minus withdrawals recorded here) misses any
+    // money moved outside the app, so it's kept only as a small reference
+    // line underneath. Without a check yet (or for roles that can't run
+    // one), the ledger total is shown as before, clearly labelled.
+    var paybill = (isAdminLevel() && mpesaEnabled) ? latestPaybillBalance() : null;
+    var balCheck = (isAdminLevel() && mpesaEnabled) ? latestMpesaQuery('balance') : null;
+    var balChecking = !!(balCheck && balCheck.status==='pending');
+    var refreshBtn = (isAdminLevel() && mpesaEnabled) ? '<button class="icon-btn" style="margin-left:2px" data-action="mpesa-check-balance" title="Check the balance again"'+(balChecking?' disabled':'')+'>'+ICONS.refresh+'</button>' : '';
+    var balanceTile;
+    if(paybill){
+      var realBal = Number(paybill.workingAccountBalance);
+      var checkedWhen = paybill.completedAt ? fmtDate(new Date(paybill.completedAt),{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      balanceTile = statTile('💰 M-Pesa Paybill balance', (revealed?fmtMoney(realBal):maskMoneyDisplay(realBal)),
+        '<div class="hint">'+esc(paybill.workingAccountName||'Utility Account')+(checkedWhen?' · checked '+checkedWhen:'')+(balChecking?' · checking now…':'')+'</div>'+
+        '<div class="hint">Recorded in the app: '+(revealed?fmtMoney(balance):maskMoneyDisplay(balance))+'</div>'+
+        '<div style="margin-top:4px">'+eyeBtn+refreshBtn+'</div>', 'green');
+    } else {
+      balanceTile = statTile('💰 Balance recorded in the app', (revealed?fmtMoney(balance):maskMoneyDisplay(balance)),
+        '<div class="hint">'+(balChecking ? 'Checking the real Paybill balance with Safaricom…' : (isAdminLevel() && mpesaEnabled ? 'Tap ⟳ to check the real Paybill balance' : 'Deposits minus withdrawals recorded here'))+'</div>'+
+        '<div style="margin-top:4px">'+eyeBtn+refreshBtn+'</div>', 'green');
+    }
     return lockNote+privacyNote+
     '<div class="grid stats">'+
-      statTile('Bank balance', (revealed?fmtMoney(balance):maskMoneyDisplay(balance)), '<span class="hint">Poultry-only account</span>'+eyeBtn)+
-      statTile('In this month', (revealed?fmtMoney(inThisMonth):maskMoneyDisplay(inThisMonth)), '')+
-      statTile('Out this month', (revealed?fmtMoney(outThisMonth):maskMoneyDisplay(outThisMonth)), '')+
+      balanceTile+
+      statTile('📥 In this month', (revealed?fmtMoney(inThisMonth):maskMoneyDisplay(inThisMonth)), '<span class="hint">'+esc(r.label)+'</span>', 'blue')+
+      statTile('📤 Out this month', (revealed?fmtMoney(outThisMonth):maskMoneyDisplay(outThisMonth)), '<span class="hint">'+esc(r.label)+'</span>', 'orange')+
     '</div>'+
+    '<div class="card statement-cta"><div><h3 style="margin:0">📄 Statements</h3><div class="hint">See money in and out for a week, a month, 3 months, a year, or everything — and download it as a PDF or Excel file.</div></div>'+
+      '<button class="btn primary" data-action="view-select:finance:statement">View statements →</button></div>'+
     mpesaToolsCardHTML()+
     '<div class="card"><div class="card-title"><h3>Transactions</h3><span class="hint">'+txns.length+' recorded'+(f.openingDate?' · opening balance set '+fmtDate(parseISO(f.openingDate)):'')+'</span></div>'+
       '<div class="table-wrap">'+
@@ -6601,14 +6910,14 @@
       call = firebase.functions().httpsCallable('initiateWithdrawal')({ pin: pinVal, recipients: recipients }).then(function(res){
         pendingWithdrawRecipients = null;
         mpesaWithdrawRecipients = null;
-        toast((res.data && res.data.message) || 'Payout sent — it will show up here once Safaricom confirms it.');
+        toast('✅ '+((res.data && res.data.message) || 'Payout sent — it will show up here once Safaricom confirms it.'));
       });
     } else if(revealPinMode==='bankpayout'){
       var bankRecipients = pendingBankWithdrawRecipients || [];
       call = firebase.functions().httpsCallable('initiateBankPayout')({ pin: pinVal, recipients: bankRecipients }).then(function(res){
         pendingBankWithdrawRecipients = null;
         bankWithdrawRecipients = null;
-        toast((res.data && res.data.message) || 'Bank payout sent — it will show up here once confirmed.');
+        toast('✅ '+((res.data && res.data.message) || 'Bank payout sent — it will show up here once confirmed.'));
       });
     } else {
       call = firebase.functions().httpsCallable('verifyFinancePinReveal')({ pin: pinVal }).then(function(){
@@ -8420,8 +8729,26 @@
         messagesViewAll = !messagesViewAll;
         render();
         break;
+      case 'farm-video-size': setFarmVideoExpanded(!farmVideoExpanded); break;
+      case 'statement-period':
+        statementPeriod = a1 || 'month';
+        render();
+        break;
+      case 'statement-apply-custom': {
+        var sf = document.getElementById('statement-from'), stt = document.getElementById('statement-to');
+        statementCustom = { from: sf && sf.value ? sf.value : null, to: stt && stt.value ? stt.value : null };
+        render();
+        break;
+      }
+      case 'statement-download':
+        if(!financeRevealed){ toast('Show the amounts first (the eye button), then download.'); break; }
+        if(a1==='csv') downloadStatementCSV(); else printStatementPDF();
+        break;
       case 'mark-message-read':
-        firebase.functions().httpsCallable('markMessageRead')({id:a1}).catch(function(){});
+        markMessagesRead([a1]);
+        break;
+      case 'mark-all-messages-read':
+        markMessagesRead(messages.filter(function(m){ return isMessageForMe(m) && (m.readBy||[]).indexOf(currentUser.uid)===-1; }).map(function(m){ return m.id; }));
         break;
       case 'reply-message': {
         if(!currentUser){ toast('Sign in first.'); break; }
@@ -8579,7 +8906,7 @@
           else s.eggs.push({id:uid('egg'), date:date, total:total, note:note, sizes:sizes, species:eggSp});
         }
       });
-      closeModal(); toast('Egg log saved.');
+      closeModal(); toast('🥚 Egg log saved.');
       notifyEggActivity('logged', total+' '+(eggSp==='guineafowl'?'Guinea Fowl ':'')+'egg(s) for '+fmtDate(parseISO(date))+(note?' — '+note:''));
       checkMonthlyEggProfitCelebration();
       return;
@@ -8654,7 +8981,7 @@
           b.linkedAcqExpenseId = null;
         }
       });
-      closeModal(); toast(fid?'Batch updated.':'Batch added.');
+      closeModal(); toast(fid?'Batch updated.':'🐥 Batch added.');
       return;
     }
     if(name==='removal'){
@@ -8858,7 +9185,7 @@
         b.removals = b.removals || [];
         var newBatchId = uid('batch');
         b.removals.push({id:uid('rem'), date:sdate, count:scount, reason:'resexed', note:'', linkedBatchId:newBatchId});
-        s.flock.push({id:newBatchId, gender:targetGender, count:scount, dateAdded:sdate, birthDate:b.birthDate, source:'Sexed from earlier batch', removals:[], resex:true});
+        s.flock.push({id:newBatchId, gender:targetGender, count:scount, dateAdded:sdate, birthDate:b.birthDate, source:'Sexed from earlier batch', removals:[], resex:true, species:batchSpecies(b)});
       });
       if(serror){ toast(serror); return; }
       closeModal(); toast('Batch updated.');
@@ -8884,7 +9211,7 @@
         }
         s.broodings.push({id:uid('brood'), dateStarted:bgDate, eggsGiven:bgEggs, note:bgNote, status:'pending', eggLossId:lossRecId, species:bgSpecies});
       });
-      closeModal(); toast('Brooding started — expected to hatch in '+incubationDaysFor(bgSpecies)+' days.');
+      closeModal(); toast('🐔 Brooding started — expected to hatch in '+incubationDaysFor(bgSpecies)+' days.');
       return;
     }
     if(name==='resolve-brooding'){
@@ -8909,10 +9236,10 @@
       if(rbError){ toast(rbError); return; }
       var rbBroodAfter = (state.broodings||[]).find(function(x){return x.id===rbId2;});
       var rbSpLabel = rbBroodAfter && broodSpecies(rbBroodAfter)==='guineafowl' ? 'Guinea Fowl chick' : 'chick';
-      closeModal(); toast(rbChicks>0 ? rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' added to the flock.' : 'Recorded — none of the eggs hatched.');
+      closeModal(); toast(rbChicks>0 ? '🐣 '+rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' added to the flock.' : 'Recorded — none of the eggs hatched.');
       if(rbChicks>0){
         notifyHatch(rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' hatched from the brooding started '+fmtDate(parseISO(rbBroodAfter?rbBroodAfter.dateStarted:rbDate))+'.');
-        celebrate({ title:rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' hatched!', subtitle:'Added to the flock as a new batch.' });
+        celebrate({ title:'🐣 '+rbChicks+' '+rbSpLabel+(rbChicks===1?'':'s')+' hatched! 🎉', subtitle:'Added to the flock as a new batch.' });
       }
       return;
     }

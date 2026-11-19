@@ -901,3 +901,103 @@
     .sector-band-content{ padding:18px 20px; min-height:128px; }
     .sector-band{ min-height:128px; }
   }
+
+  /* ==================================================================
+     Colour & life (Nov 2026) — a brighter palette layered on top of the
+     per-section accents above. Everything here is additive: it only
+     recolours, it doesn't move anything, so every page keeps its layout.
+     ================================================================== */
+  :root{
+    --c-green:hsl(145, 58%, 36%);  --c-blue:hsl(212, 78%, 46%);  --c-orange:hsl(22, 86%, 50%);
+    --c-purple:hsl(268, 56%, 52%); --c-teal:hsl(178, 70%, 31%);  --c-pink:hsl(332, 68%, 50%);
+    --glow-a:rgba(46,160,90,.10);  --glow-b:rgba(40,110,220,.09); --glow-c:rgba(240,150,40,.08);
+    --on-accent:#ffffff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --c-green:hsl(145, 58%, 58%);  --c-blue:hsl(212, 90%, 70%);  --c-orange:hsl(26, 92%, 64%);
+      --c-purple:hsl(268, 75%, 76%); --c-teal:hsl(176, 62%, 55%);  --c-pink:hsl(332, 80%, 74%);
+      --glow-a:rgba(70,200,120,.10); --glow-b:rgba(70,140,255,.10); --glow-c:rgba(255,170,60,.07);
+      --on-accent:#10140e;
+    }
+  }
+  :root[data-theme="dark"]{
+    --c-green:hsl(145, 58%, 58%);  --c-blue:hsl(212, 90%, 70%);  --c-orange:hsl(26, 92%, 64%);
+    --c-purple:hsl(268, 75%, 76%); --c-teal:hsl(176, 62%, 55%);  --c-pink:hsl(332, 80%, 74%);
+    --glow-a:rgba(70,200,120,.10); --glow-b:rgba(70,140,255,.10); --glow-c:rgba(255,170,60,.07);
+    --on-accent:#10140e;
+  }
+
+  /* Soft coloured light behind the whole app instead of a flat page. */
+  body{
+    background:
+      radial-gradient(900px 520px at 0% 0%, var(--glow-a), transparent 65%),
+      radial-gradient(800px 560px at 100% 100%, var(--glow-b), transparent 65%),
+      radial-gradient(700px 420px at 100% 0%, var(--glow-c), transparent 60%),
+      var(--bg);
+    background-attachment:fixed;
+  }
+
+  /* Page header picks up its section's colour. */
+  .topbar{ background:linear-gradient(115deg, color-mix(in srgb, var(--accent) 20%, transparent), transparent 62%); }
+
+  /* Cards: a thin coloured line along the top, in the page's colour. */
+  .card{
+    background-image:linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 35%, var(--c-blue)));
+    background-size:100% 3px; background-repeat:no-repeat; background-position:top;
+  }
+  .card-title h3{ color:color-mix(in srgb, var(--accent) 45%, var(--ink)); }
+
+  /* Stat tiles: each one gets its own colour — a fixed one when it means
+     something (money in = green…), otherwise cycled by position. */
+  .stat-tile{ --tone:var(--c-green); position:relative; overflow:hidden;
+    background:linear-gradient(140deg, color-mix(in srgb, var(--tone) 17%, var(--surface)) 0%, var(--surface) 72%);
+    border-color:color-mix(in srgb, var(--tone) 38%, var(--border-soft)); }
+  .stat-tile::before{ content:""; position:absolute; left:0; top:0; right:0; height:4px;
+    background:linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 40%, transparent)); }
+  .stat-tile .stat-value{ color:color-mix(in srgb, var(--tone) 70%, var(--ink)); }
+  .stat-tile .stat-label{ color:color-mix(in srgb, var(--tone) 55%, var(--ink-3)); }
+  .grid > .stat-tile:nth-child(6n+1){ --tone:var(--c-green); }
+  .grid > .stat-tile:nth-child(6n+2){ --tone:var(--c-blue); }
+  .grid > .stat-tile:nth-child(6n+3){ --tone:var(--c-orange); }
+  .grid > .stat-tile:nth-child(6n+4){ --tone:var(--c-purple); }
+  .grid > .stat-tile:nth-child(6n+5){ --tone:var(--c-teal); }
+  .grid > .stat-tile:nth-child(6n+6){ --tone:var(--c-pink); }
+  .grid > .stat-tile.tone-green, .stat-tile.tone-green{ --tone:var(--c-green); }
+  .grid > .stat-tile.tone-blue, .stat-tile.tone-blue{ --tone:var(--c-blue); }
+  .grid > .stat-tile.tone-orange, .stat-tile.tone-orange{ --tone:var(--c-orange); }
+  .grid > .stat-tile.tone-purple, .stat-tile.tone-purple{ --tone:var(--c-purple); }
+  .grid > .stat-tile.tone-teal, .stat-tile.tone-teal{ --tone:var(--c-teal); }
+  .grid > .stat-tile.tone-pink, .stat-tile.tone-pink{ --tone:var(--c-pink); }
+
+  /* Buttons: primary ones get a lively gradient; icons inside any button
+     are sized properly (a bare icon used to stretch the button). */
+  .btn svg{ width:16px; height:16px; flex:none; }
+  .btn .inline-ico{ width:15px; height:15px; vertical-align:0; }
+  .btn.primary{ color:var(--on-accent); background:linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--c-blue))); border-color:transparent; box-shadow:0 4px 14px -6px color-mix(in srgb, var(--accent) 70%, transparent); }
+  .btn.primary:hover{ filter:brightness(1.07); background:linear-gradient(135deg, var(--accent-strong), color-mix(in srgb, var(--accent-strong) 55%, var(--c-blue))); }
+  .btn:not(.primary):not(.danger):hover{ background:color-mix(in srgb, var(--accent) 14%, var(--surface)); border-color:color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .linklike{ background:none; border:none; padding:0; color:var(--accent); font:inherit; font-weight:600; cursor:pointer; }
+  .linklike:hover{ text-decoration:underline; }
+
+  /* Tables: headers in the page colour, a gentle row highlight. */
+  th{ color:color-mix(in srgb, var(--accent) 55%, var(--ink-3)); }
+  tbody tr:hover td{ background:color-mix(in srgb, var(--accent) 6%, transparent); }
+
+  /* Finance: statements call-to-action, period chips, coloured money. */
+  .statement-cta{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    background-color:color-mix(in srgb, var(--c-blue) 9%, var(--surface)); }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ border:1px solid var(--border); background:var(--surface); color:var(--ink-2); border-radius:999px; padding:7px 13px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .chip:hover{ border-color:var(--accent); color:var(--ink); }
+  .chip.active{ background:linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--c-blue))); color:var(--on-accent); border-color:transparent; }
+  td.money-in{ color:var(--c-green); font-weight:600; }
+  td.money-out{ color:var(--c-orange); font-weight:600; }
+
+  /* Messages: a clear unread marker. */
+  .unread-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--c-blue); vertical-align:1px; }
+
+  /* About: the story video starts small and grows when played. */
+  .farm-video{ display:block; width:100%; max-width:320px; aspect-ratio:16/9; border-radius:12px; background:#000; transition:max-width .35s ease; }
+  .farm-video.expanded{ max-width:100%; }
+  @media (min-width:900px){ .farm-video.expanded{ max-width:50vw; } }
