@@ -7114,18 +7114,9 @@
     var showBalanceStatus = isAdminLevel();
     var showQR = canProposeFinance();
     if(!showBalanceStatus && !showQR) return '';
+    // The Paybill balance lives only in the Finance balance tile at the top,
+    // which stays hidden until the eye is tapped — so it isn't repeated here.
     var balanceHTML = '';
-    if(showBalanceStatus){
-      var bq = latestMpesaQuery('balance');
-      var body = '<div class="hint">Not checked yet.</div>';
-      if(bq){
-        if(bq.status==='pending') body = '<div class="hint">Checking with Safaricom…</div>';
-        else if(bq.status==='failed') body = '<div class="hint">Could not get the balance — '+esc(bq.resultDesc||'try again')+'.</div>';
-        else body = '<div style="font-size:1.1em;font-weight:600">'+esc(bq.workingAccountCurrency||'KES')+' '+esc(bq.workingAccountBalance||'—')+'</div>'+
-          '<div class="hint">'+esc(bq.workingAccountName||'Working Account')+(bq.completedAt?' · checked '+fmtDate(new Date(bq.completedAt)):'')+'</div>';
-      }
-      balanceHTML = '<div style="margin-bottom:14px"><div class="row-actions" style="justify-content:space-between;margin-bottom:6px"><strong>M-Pesa account balance</strong><button class="btn" data-action="mpesa-check-balance">Check now</button></div>'+body+'</div>';
-    }
     var statusHTML = '';
     if(showBalanceStatus){
       var checks = mpesaQueries.filter(function(q){ return q.type==='txnstatus'; }).slice(0,5);
