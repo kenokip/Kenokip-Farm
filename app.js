@@ -729,9 +729,9 @@
   // affects the Overview profit figure. Falls automatically whenever a
   // loss of any kind is logged, since totalEggsLost() already includes
   // every eggLosses reason (sold/breakage/consumed/brooding/other).
-  var EGG_UNIT_VALUE_KSH = 15;
+  var EGG_UNIT_VALUE_KSH = 20;
   // Guinea Fowl eggs are worth far more than hen eggs in the Kenyan market
-  // (roughly KSh 100 each vs. KSh 15) — confirmed against current market
+  // (roughly KSh 100 each vs. KSh 20) — confirmed against current market
   // listings. Used the same way EGG_UNIT_VALUE_KSH is: only for the
   // standing "what's on hand worth" figure, never fed into income.
   var EGG_UNIT_VALUE_KSH_GUINEAFOWL = 100;

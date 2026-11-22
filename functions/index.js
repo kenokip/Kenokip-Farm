@@ -411,7 +411,7 @@ const MPESA_QUERIES_REF = () => db.collection('mpesaQueries');
 // — kept as its own constant here rather than shared code because this
 // backend and the static app are deployed completely separately. If you
 // ever change the app's price per egg, change this to match.
-const EGG_UNIT_VALUE_KSH = 15;
+const EGG_UNIT_VALUE_KSH = 20;
 
 // Safaricom's async webhook can — and in production, does — reach us before
 // this function's own "mark this pending" write finishes (confirmed: Check
