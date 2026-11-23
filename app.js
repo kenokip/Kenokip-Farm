@@ -1267,8 +1267,43 @@
     if(appEl) appEl.classList.toggle('gate-active', !!hidden);
     kemAiSetVisible(!hidden && !!currentUser);
   }
+  // ---- Green & gold colour zones -------------------------------------------
+  // The whole app is green and gold, with each part of the farm getting its
+  // own blend (see "GREEN & GOLD ZONES" at the end of styles.css): poultry is
+  // leaf green with egg-yolk gold, cattle deep pasture green with honey,
+  // crops fresh green with wheat, money emerald with bright gold, the team
+  // pages sage with bronze, and home (overview, about, settings, sign-in)
+  // the plain green-gold. Overview follows whichever sector is open.
+  var ZONE_OF_SECTION = { flock:'poultry', eggs:'poultry', feed:'poultry', health:'poultry',
+    livestock:'cattle', crops:'crops',
+    income:'money', expenses:'money', finance:'money', reports:'money', customers:'money',
+    team:'team', directory:'team', messages:'team', signoffs:'team' };
+  var ZONE_STATUS_BAR = { // phone status-bar colour per zone: [light, dark]
+    home:['#2F5A2E','#13241A'], poultry:['#3E6A1F','#16260F'], cattle:['#1E5A3C','#0F2419'],
+    crops:['#4D7A1C','#1A2A0E'], money:['#14583F','#0C2219'], team:['#4E5A2C','#1C2112'] };
+  function currentThemeZone(sectionKey){
+    var z = ZONE_OF_SECTION[sectionKey];
+    if(z) return z;
+    if(sectionKey==='overview' && ui && ui.sector){
+      if(ui.sector==='poultry') return 'poultry';
+      if(ui.sector==='crops') return 'crops';
+      if(ui.sector.indexOf('livestock-')===0) return 'cattle';
+    }
+    return 'home';
+  }
+  function applyThemeZone(zone){
+    var root = document.documentElement;
+    if(root.getAttribute('data-zone')!==zone) root.setAttribute('data-zone', zone);
+    try{
+      var dark = root.getAttribute('data-theme')==='dark' || (root.getAttribute('data-theme')!=='light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      var col = (ZONE_STATUS_BAR[zone]||ZONE_STATUS_BAR.home)[dark?1:0];
+      if(meta && meta.getAttribute('content')!==col) meta.setAttribute('content', col);
+    }catch(e){}
+  }
   function render(){
     updateAuthGate();
+    applyThemeZone('home');
     if(farmSetupPending()){
       setAppChromeHidden(true);
       var mainElSetup = document.getElementById('main-content');
@@ -1300,6 +1335,7 @@
     // attribute is all it takes to recolor the whole page.
     var mainEl = document.getElementById('main-content');
     if(mainEl) mainEl.setAttribute('data-section', ui.section);
+    applyThemeZone(currentThemeZone(ui.section));
     var sceneEl = document.getElementById('page-scene');
     if(sceneEl) sceneEl.innerHTML = pageSceneHTML(ui.section);
     document.getElementById('topbar').innerHTML = navControlsHTML() + sec.topbar();

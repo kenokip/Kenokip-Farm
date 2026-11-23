@@ -1040,3 +1040,295 @@
   .cattle-tl-item:last-of-type{ border-bottom:none; }
   .cattle-tl-ico{ width:34px; height:34px; flex-shrink:0; border-radius:50%; display:grid; place-items:center; font-size:18px;
     background:color-mix(in srgb, var(--c-blue) 10%, transparent); }
+
+  /* ==================================================================
+     GREEN & GOLD ZONES (Nov 2026) — the whole app in green and gold, each
+     part of the farm with its own blend instead of a different colour per
+     page. app.js sets <html data-zone="…"> on every render (see
+     applyThemeZone): home · poultry · cattle · crops · money · team. Each
+     zone sets the page background, cards, borders and the accent; the
+     sidebar icons take their own zone's colours. The extra tile colours
+     (--c-*) stay inside the same family: jade, forest, olive and bronze.
+     Comes last in the file so it overrides the older per-page colours.
+     ================================================================== */
+  :root{
+    --c-blue:hsl(172,48%,30%); --c-teal:hsl(150,40%,28%); --c-purple:hsl(75,38%,32%); --c-pink:hsl(26,60%,42%);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --c-blue:hsl(170,50%,55%); --c-teal:hsl(150,45%,55%); --c-purple:hsl(75,45%,58%); --c-pink:hsl(28,70%,65%); }
+  }
+  :root[data-theme="dark"]{ --c-blue:hsl(170,50%,55%); --c-teal:hsl(150,45%,55%); --c-purple:hsl(75,45%,58%); --c-pink:hsl(28,70%,65%); }
+
+  :root[data-zone="home"], :root:not([data-zone]){
+    --z-green:hsl(140,40%,30%); --z-gold:hsl(42,80%,40%);
+    --bg:hsl(91,45%,91%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(140,40%,45%,.16), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(42,80%,50%,.20), transparent 65%), linear-gradient(165deg, hsl(140,40%,91%) 0%, hsl(91,45%,92%) 50%, hsl(42,65%,89%) 100%);
+    --surface:hsl(42,60%,98.5%); --surface-2:hsl(42,42%,92%);
+    --border:hsl(140,20%,78%); --border-soft:hsl(140,24%,87%);
+    --accent:hsl(140,40%,30%); --accent-strong:hsl(140,40%,23%); --accent-tint:hsl(42,72%,88%); --accent-ink:hsl(140,50%,17%);
+    --btn-from:hsl(140,40%,30%); --btn-to:hsl(42,80%,37%); --btn-ink:#ffffff;
+    --c-green:hsl(140,40%,32%); --c-orange:hsl(42,80%,40%);
+    --glow-a:hsla(140,40%,45%,.12); --glow-b:hsla(42,80%,50%,.14); --glow-c:hsla(42,80%,55%,.08);
+    --focus:hsl(140,40%,28%);
+  }
+  :root[data-zone="poultry"]{
+    --z-green:hsl(100,42%,30%); --z-gold:hsl(46,88%,40%);
+    --bg:hsl(73,45%,91%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(100,42%,45%,.16), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(46,88%,50%,.20), transparent 65%), linear-gradient(165deg, hsl(100,40%,91%) 0%, hsl(73,45%,92%) 50%, hsl(46,65%,89%) 100%);
+    --surface:hsl(46,60%,98.5%); --surface-2:hsl(46,42%,92%);
+    --border:hsl(100,20%,78%); --border-soft:hsl(100,24%,87%);
+    --accent:hsl(100,42%,30%); --accent-strong:hsl(100,42%,23%); --accent-tint:hsl(46,72%,88%); --accent-ink:hsl(100,50%,17%);
+    --btn-from:hsl(100,42%,30%); --btn-to:hsl(46,88%,37%); --btn-ink:#ffffff;
+    --c-green:hsl(100,42%,32%); --c-orange:hsl(46,88%,40%);
+    --glow-a:hsla(100,42%,45%,.12); --glow-b:hsla(46,88%,50%,.14); --glow-c:hsla(46,88%,55%,.08);
+    --focus:hsl(100,42%,28%);
+  }
+  :root[data-zone="cattle"]{
+    --z-green:hsl(152,48%,30%); --z-gold:hsl(38,70%,40%);
+    --bg:hsl(95,45%,91%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(152,48%,45%,.16), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(38,70%,50%,.20), transparent 65%), linear-gradient(165deg, hsl(152,40%,91%) 0%, hsl(95,45%,92%) 50%, hsl(38,65%,89%) 100%);
+    --surface:hsl(38,60%,98.5%); --surface-2:hsl(38,42%,92%);
+    --border:hsl(152,20%,78%); --border-soft:hsl(152,24%,87%);
+    --accent:hsl(152,48%,30%); --accent-strong:hsl(152,48%,23%); --accent-tint:hsl(38,72%,88%); --accent-ink:hsl(152,50%,17%);
+    --btn-from:hsl(152,48%,30%); --btn-to:hsl(38,70%,37%); --btn-ink:#ffffff;
+    --c-green:hsl(152,48%,32%); --c-orange:hsl(38,70%,40%);
+    --glow-a:hsla(152,48%,45%,.12); --glow-b:hsla(38,70%,50%,.14); --glow-c:hsla(38,70%,55%,.08);
+    --focus:hsl(152,48%,28%);
+  }
+  :root[data-zone="crops"]{
+    --z-green:hsl(85,50%,30%); --z-gold:hsl(50,78%,40%);
+    --bg:hsl(67,45%,91%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(85,50%,45%,.16), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(50,78%,50%,.20), transparent 65%), linear-gradient(165deg, hsl(85,40%,91%) 0%, hsl(67,45%,92%) 50%, hsl(50,65%,89%) 100%);
+    --surface:hsl(50,60%,98.5%); --surface-2:hsl(50,42%,92%);
+    --border:hsl(85,20%,78%); --border-soft:hsl(85,24%,87%);
+    --accent:hsl(85,50%,30%); --accent-strong:hsl(85,50%,23%); --accent-tint:hsl(50,72%,88%); --accent-ink:hsl(85,50%,17%);
+    --btn-from:hsl(85,50%,30%); --btn-to:hsl(50,78%,37%); --btn-ink:#ffffff;
+    --c-green:hsl(85,50%,32%); --c-orange:hsl(50,78%,40%);
+    --glow-a:hsla(85,50%,45%,.12); --glow-b:hsla(50,78%,50%,.14); --glow-c:hsla(50,78%,55%,.08);
+    --focus:hsl(85,50%,28%);
+  }
+  :root[data-zone="money"]{
+    --z-green:hsl(158,55%,30%); --z-gold:hsl(44,90%,40%);
+    --bg:hsl(101,45%,91%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(158,55%,45%,.16), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(44,90%,50%,.20), transparent 65%), linear-gradient(165deg, hsl(158,40%,91%) 0%, hsl(101,45%,92%) 50%, hsl(44,65%,89%) 100%);
+    --surface:hsl(44,60%,98.5%); --surface-2:hsl(44,42%,92%);
+    --border:hsl(158,20%,78%); --border-soft:hsl(158,24%,87%);
+    --accent:hsl(158,55%,30%); --accent-strong:hsl(158,55%,23%); --accent-tint:hsl(44,72%,88%); --accent-ink:hsl(158,50%,17%);
+    --btn-from:hsl(158,55%,30%); --btn-to:hsl(44,90%,37%); --btn-ink:#ffffff;
+    --c-green:hsl(158,55%,32%); --c-orange:hsl(44,90%,40%);
+    --glow-a:hsla(158,55%,45%,.12); --glow-b:hsla(44,90%,50%,.14); --glow-c:hsla(44,90%,55%,.08);
+    --focus:hsl(158,55%,28%);
+  }
+  :root[data-zone="team"]{
+    --z-green:hsl(72,28%,30%); --z-gold:hsl(32,60%,40%);
+    --bg:hsl(52,45%,91%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(72,28%,45%,.16), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(32,60%,50%,.20), transparent 65%), linear-gradient(165deg, hsl(72,28%,91%) 0%, hsl(52,45%,92%) 50%, hsl(32,60%,89%) 100%);
+    --surface:hsl(32,60%,98.5%); --surface-2:hsl(32,42%,92%);
+    --border:hsl(72,20%,78%); --border-soft:hsl(72,24%,87%);
+    --accent:hsl(72,28%,30%); --accent-strong:hsl(72,28%,23%); --accent-tint:hsl(32,72%,88%); --accent-ink:hsl(72,50%,17%);
+    --btn-from:hsl(72,28%,30%); --btn-to:hsl(32,60%,37%); --btn-ink:#ffffff;
+    --c-green:hsl(72,28%,32%); --c-orange:hsl(32,60%,40%);
+    --glow-a:hsla(72,28%,45%,.12); --glow-b:hsla(32,60%,50%,.14); --glow-c:hsla(32,60%,55%,.08);
+    --focus:hsl(72,28%,28%);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"])[data-zone="home"], :root:not([data-theme="light"]):not([data-zone]){
+    --z-green:hsl(140,40%,52%); --z-gold:hsl(42,75%,60%);
+    --bg:hsl(140,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(140,40%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(42,80%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(140,35%,9%) 0%, hsl(140,28%,7%) 50%, hsl(42,40%,9%) 100%);
+    --surface:hsl(140,24%,12.5%); --surface-2:hsl(140,22%,16%);
+    --border:hsl(140,18%,24%); --border-soft:hsl(140,20%,18%);
+    --ink-2:hsl(91,14%,74%); --ink-3:hsl(91,10%,52%);
+    --accent:hsl(42,75%,62%); --accent-strong:hsl(42,80%,70%); --accent-tint:hsl(42,45%,17%); --accent-ink:hsl(42,80%,86%);
+    --btn-from:hsl(42,78%,58%); --btn-to:hsl(140,40%,55%); --btn-ink:#10140e;
+    --c-green:hsl(140,40%,58%); --c-orange:hsl(42,80%,64%);
+    --glow-a:hsla(140,40%,40%,.14); --glow-b:hsla(42,80%,45%,.10); --glow-c:hsla(42,80%,50%,.06);
+    --focus:hsl(42,75%,62%);
+    }
+    :root:not([data-theme="light"])[data-zone="poultry"]{
+    --z-green:hsl(100,42%,52%); --z-gold:hsl(46,75%,60%);
+    --bg:hsl(100,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(100,42%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(46,88%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(100,35%,9%) 0%, hsl(100,28%,7%) 50%, hsl(46,40%,9%) 100%);
+    --surface:hsl(100,24%,12.5%); --surface-2:hsl(100,22%,16%);
+    --border:hsl(100,18%,24%); --border-soft:hsl(100,20%,18%);
+    --ink-2:hsl(73,14%,74%); --ink-3:hsl(73,10%,52%);
+    --accent:hsl(46,75%,62%); --accent-strong:hsl(46,80%,70%); --accent-tint:hsl(46,45%,17%); --accent-ink:hsl(46,80%,86%);
+    --btn-from:hsl(46,78%,58%); --btn-to:hsl(100,42%,55%); --btn-ink:#10140e;
+    --c-green:hsl(100,42%,58%); --c-orange:hsl(46,80%,64%);
+    --glow-a:hsla(100,42%,40%,.14); --glow-b:hsla(46,88%,45%,.10); --glow-c:hsla(46,88%,50%,.06);
+    --focus:hsl(46,75%,62%);
+    }
+    :root:not([data-theme="light"])[data-zone="cattle"]{
+    --z-green:hsl(152,48%,52%); --z-gold:hsl(38,75%,60%);
+    --bg:hsl(152,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(152,48%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(38,70%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(152,35%,9%) 0%, hsl(152,28%,7%) 50%, hsl(38,40%,9%) 100%);
+    --surface:hsl(152,24%,12.5%); --surface-2:hsl(152,22%,16%);
+    --border:hsl(152,18%,24%); --border-soft:hsl(152,20%,18%);
+    --ink-2:hsl(95,14%,74%); --ink-3:hsl(95,10%,52%);
+    --accent:hsl(38,75%,62%); --accent-strong:hsl(38,80%,70%); --accent-tint:hsl(38,45%,17%); --accent-ink:hsl(38,80%,86%);
+    --btn-from:hsl(38,78%,58%); --btn-to:hsl(152,48%,55%); --btn-ink:#10140e;
+    --c-green:hsl(152,48%,58%); --c-orange:hsl(38,80%,64%);
+    --glow-a:hsla(152,48%,40%,.14); --glow-b:hsla(38,70%,45%,.10); --glow-c:hsla(38,70%,50%,.06);
+    --focus:hsl(38,75%,62%);
+    }
+    :root:not([data-theme="light"])[data-zone="crops"]{
+    --z-green:hsl(85,50%,52%); --z-gold:hsl(50,75%,60%);
+    --bg:hsl(85,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(85,50%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(50,78%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(85,35%,9%) 0%, hsl(85,28%,7%) 50%, hsl(50,40%,9%) 100%);
+    --surface:hsl(85,24%,12.5%); --surface-2:hsl(85,22%,16%);
+    --border:hsl(85,18%,24%); --border-soft:hsl(85,20%,18%);
+    --ink-2:hsl(67,14%,74%); --ink-3:hsl(67,10%,52%);
+    --accent:hsl(50,75%,62%); --accent-strong:hsl(50,80%,70%); --accent-tint:hsl(50,45%,17%); --accent-ink:hsl(50,80%,86%);
+    --btn-from:hsl(50,78%,58%); --btn-to:hsl(85,50%,55%); --btn-ink:#10140e;
+    --c-green:hsl(85,50%,58%); --c-orange:hsl(50,80%,64%);
+    --glow-a:hsla(85,50%,40%,.14); --glow-b:hsla(50,78%,45%,.10); --glow-c:hsla(50,78%,50%,.06);
+    --focus:hsl(50,75%,62%);
+    }
+    :root:not([data-theme="light"])[data-zone="money"]{
+    --z-green:hsl(158,55%,52%); --z-gold:hsl(44,75%,60%);
+    --bg:hsl(158,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(158,55%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(44,90%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(158,35%,9%) 0%, hsl(158,28%,7%) 50%, hsl(44,40%,9%) 100%);
+    --surface:hsl(158,24%,12.5%); --surface-2:hsl(158,22%,16%);
+    --border:hsl(158,18%,24%); --border-soft:hsl(158,20%,18%);
+    --ink-2:hsl(101,14%,74%); --ink-3:hsl(101,10%,52%);
+    --accent:hsl(44,75%,62%); --accent-strong:hsl(44,80%,70%); --accent-tint:hsl(44,45%,17%); --accent-ink:hsl(44,80%,86%);
+    --btn-from:hsl(44,78%,58%); --btn-to:hsl(158,55%,55%); --btn-ink:#10140e;
+    --c-green:hsl(158,55%,58%); --c-orange:hsl(44,80%,64%);
+    --glow-a:hsla(158,55%,40%,.14); --glow-b:hsla(44,90%,45%,.10); --glow-c:hsla(44,90%,50%,.06);
+    --focus:hsl(44,75%,62%);
+    }
+    :root:not([data-theme="light"])[data-zone="team"]{
+    --z-green:hsl(72,28%,52%); --z-gold:hsl(32,75%,60%);
+    --bg:hsl(72,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(72,28%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(32,60%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(72,35%,9%) 0%, hsl(72,28%,7%) 50%, hsl(32,40%,9%) 100%);
+    --surface:hsl(72,24%,12.5%); --surface-2:hsl(72,22%,16%);
+    --border:hsl(72,18%,24%); --border-soft:hsl(72,20%,18%);
+    --ink-2:hsl(52,14%,74%); --ink-3:hsl(52,10%,52%);
+    --accent:hsl(32,75%,62%); --accent-strong:hsl(32,80%,70%); --accent-tint:hsl(32,45%,17%); --accent-ink:hsl(32,80%,86%);
+    --btn-from:hsl(32,78%,58%); --btn-to:hsl(72,28%,55%); --btn-ink:#10140e;
+    --c-green:hsl(72,28%,58%); --c-orange:hsl(32,80%,64%);
+    --glow-a:hsla(72,28%,40%,.14); --glow-b:hsla(32,60%,45%,.10); --glow-c:hsla(32,60%,50%,.06);
+    --focus:hsl(32,75%,62%);
+    }
+  }
+  :root[data-theme="dark"][data-zone="home"]{
+    --z-green:hsl(140,40%,52%); --z-gold:hsl(42,75%,60%);
+    --bg:hsl(140,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(140,40%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(42,80%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(140,35%,9%) 0%, hsl(140,28%,7%) 50%, hsl(42,40%,9%) 100%);
+    --surface:hsl(140,24%,12.5%); --surface-2:hsl(140,22%,16%);
+    --border:hsl(140,18%,24%); --border-soft:hsl(140,20%,18%);
+    --ink-2:hsl(91,14%,74%); --ink-3:hsl(91,10%,52%);
+    --accent:hsl(42,75%,62%); --accent-strong:hsl(42,80%,70%); --accent-tint:hsl(42,45%,17%); --accent-ink:hsl(42,80%,86%);
+    --btn-from:hsl(42,78%,58%); --btn-to:hsl(140,40%,55%); --btn-ink:#10140e;
+    --c-green:hsl(140,40%,58%); --c-orange:hsl(42,80%,64%);
+    --glow-a:hsla(140,40%,40%,.14); --glow-b:hsla(42,80%,45%,.10); --glow-c:hsla(42,80%,50%,.06);
+    --focus:hsl(42,75%,62%);
+  }
+  :root[data-theme="dark"][data-zone="poultry"]{
+    --z-green:hsl(100,42%,52%); --z-gold:hsl(46,75%,60%);
+    --bg:hsl(100,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(100,42%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(46,88%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(100,35%,9%) 0%, hsl(100,28%,7%) 50%, hsl(46,40%,9%) 100%);
+    --surface:hsl(100,24%,12.5%); --surface-2:hsl(100,22%,16%);
+    --border:hsl(100,18%,24%); --border-soft:hsl(100,20%,18%);
+    --ink-2:hsl(73,14%,74%); --ink-3:hsl(73,10%,52%);
+    --accent:hsl(46,75%,62%); --accent-strong:hsl(46,80%,70%); --accent-tint:hsl(46,45%,17%); --accent-ink:hsl(46,80%,86%);
+    --btn-from:hsl(46,78%,58%); --btn-to:hsl(100,42%,55%); --btn-ink:#10140e;
+    --c-green:hsl(100,42%,58%); --c-orange:hsl(46,80%,64%);
+    --glow-a:hsla(100,42%,40%,.14); --glow-b:hsla(46,88%,45%,.10); --glow-c:hsla(46,88%,50%,.06);
+    --focus:hsl(46,75%,62%);
+  }
+  :root[data-theme="dark"][data-zone="cattle"]{
+    --z-green:hsl(152,48%,52%); --z-gold:hsl(38,75%,60%);
+    --bg:hsl(152,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(152,48%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(38,70%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(152,35%,9%) 0%, hsl(152,28%,7%) 50%, hsl(38,40%,9%) 100%);
+    --surface:hsl(152,24%,12.5%); --surface-2:hsl(152,22%,16%);
+    --border:hsl(152,18%,24%); --border-soft:hsl(152,20%,18%);
+    --ink-2:hsl(95,14%,74%); --ink-3:hsl(95,10%,52%);
+    --accent:hsl(38,75%,62%); --accent-strong:hsl(38,80%,70%); --accent-tint:hsl(38,45%,17%); --accent-ink:hsl(38,80%,86%);
+    --btn-from:hsl(38,78%,58%); --btn-to:hsl(152,48%,55%); --btn-ink:#10140e;
+    --c-green:hsl(152,48%,58%); --c-orange:hsl(38,80%,64%);
+    --glow-a:hsla(152,48%,40%,.14); --glow-b:hsla(38,70%,45%,.10); --glow-c:hsla(38,70%,50%,.06);
+    --focus:hsl(38,75%,62%);
+  }
+  :root[data-theme="dark"][data-zone="crops"]{
+    --z-green:hsl(85,50%,52%); --z-gold:hsl(50,75%,60%);
+    --bg:hsl(85,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(85,50%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(50,78%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(85,35%,9%) 0%, hsl(85,28%,7%) 50%, hsl(50,40%,9%) 100%);
+    --surface:hsl(85,24%,12.5%); --surface-2:hsl(85,22%,16%);
+    --border:hsl(85,18%,24%); --border-soft:hsl(85,20%,18%);
+    --ink-2:hsl(67,14%,74%); --ink-3:hsl(67,10%,52%);
+    --accent:hsl(50,75%,62%); --accent-strong:hsl(50,80%,70%); --accent-tint:hsl(50,45%,17%); --accent-ink:hsl(50,80%,86%);
+    --btn-from:hsl(50,78%,58%); --btn-to:hsl(85,50%,55%); --btn-ink:#10140e;
+    --c-green:hsl(85,50%,58%); --c-orange:hsl(50,80%,64%);
+    --glow-a:hsla(85,50%,40%,.14); --glow-b:hsla(50,78%,45%,.10); --glow-c:hsla(50,78%,50%,.06);
+    --focus:hsl(50,75%,62%);
+  }
+  :root[data-theme="dark"][data-zone="money"]{
+    --z-green:hsl(158,55%,52%); --z-gold:hsl(44,75%,60%);
+    --bg:hsl(158,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(158,55%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(44,90%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(158,35%,9%) 0%, hsl(158,28%,7%) 50%, hsl(44,40%,9%) 100%);
+    --surface:hsl(158,24%,12.5%); --surface-2:hsl(158,22%,16%);
+    --border:hsl(158,18%,24%); --border-soft:hsl(158,20%,18%);
+    --ink-2:hsl(101,14%,74%); --ink-3:hsl(101,10%,52%);
+    --accent:hsl(44,75%,62%); --accent-strong:hsl(44,80%,70%); --accent-tint:hsl(44,45%,17%); --accent-ink:hsl(44,80%,86%);
+    --btn-from:hsl(44,78%,58%); --btn-to:hsl(158,55%,55%); --btn-ink:#10140e;
+    --c-green:hsl(158,55%,58%); --c-orange:hsl(44,80%,64%);
+    --glow-a:hsla(158,55%,40%,.14); --glow-b:hsla(44,90%,45%,.10); --glow-c:hsla(44,90%,50%,.06);
+    --focus:hsl(44,75%,62%);
+  }
+  :root[data-theme="dark"][data-zone="team"]{
+    --z-green:hsl(72,28%,52%); --z-gold:hsl(32,75%,60%);
+    --bg:hsl(72,30%,8%);
+    --app-bg:radial-gradient(1000px 600px at 0% 0%, hsla(72,28%,40%,.20), transparent 65%), radial-gradient(900px 620px at 100% 100%, hsla(32,60%,45%,.16), transparent 65%), linear-gradient(165deg, hsl(72,35%,9%) 0%, hsl(72,28%,7%) 50%, hsl(32,40%,9%) 100%);
+    --surface:hsl(72,24%,12.5%); --surface-2:hsl(72,22%,16%);
+    --border:hsl(72,18%,24%); --border-soft:hsl(72,20%,18%);
+    --ink-2:hsl(52,14%,74%); --ink-3:hsl(52,10%,52%);
+    --accent:hsl(32,75%,62%); --accent-strong:hsl(32,80%,70%); --accent-tint:hsl(32,45%,17%); --accent-ink:hsl(32,80%,86%);
+    --btn-from:hsl(32,78%,58%); --btn-to:hsl(72,28%,55%); --btn-ink:#10140e;
+    --c-green:hsl(72,28%,58%); --c-orange:hsl(32,80%,64%);
+    --glow-a:hsla(72,28%,40%,.14); --glow-b:hsla(32,60%,45%,.10); --glow-c:hsla(32,60%,50%,.06);
+    --focus:hsl(32,75%,62%);
+  }
+
+  /* Every page uses its zone's accent (the old one-colour-per-page rules above are switched off). */
+  :root .main[data-section], :root[data-zone] .main[data-section]{
+    --accent:inherit; --accent-strong:inherit; --accent-tint:inherit; --accent-ink:inherit;
+    background:linear-gradient(180deg, color-mix(in srgb, var(--z-gold) 9%, transparent) 0%, transparent 380px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"])[data-zone] .main[data-section], :root:not([data-theme="light"]) .main[data-section]{ --accent:inherit; --accent-strong:inherit; --accent-tint:inherit; --accent-ink:inherit; }
+  }
+  :root[data-theme="dark"] .main[data-section]{ --accent:inherit; --accent-strong:inherit; --accent-tint:inherit; --accent-ink:inherit; }
+  :root .nav-item[data-nav-section="flock"], :root .nav-item[data-nav-section="eggs"], :root .nav-item[data-nav-section="feed"], :root .nav-item[data-nav-section="health"]{ --accent:hsl(100,42%,30%); --accent-strong:hsl(100,42%,23%); --accent-tint:hsl(46,72%,88%); --accent-ink:hsl(100,50%,17%); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .nav-item[data-nav-section="flock"], :root:not([data-theme="light"]) .nav-item[data-nav-section="eggs"], :root:not([data-theme="light"]) .nav-item[data-nav-section="feed"], :root:not([data-theme="light"]) .nav-item[data-nav-section="health"]{ --accent:hsl(46,75%,62%); --accent-strong:hsl(46,80%,70%); --accent-tint:hsl(46,45%,17%); --accent-ink:hsl(46,80%,86%); } }
+  :root[data-theme="dark"] .nav-item[data-nav-section="flock"], :root[data-theme="dark"] .nav-item[data-nav-section="eggs"], :root[data-theme="dark"] .nav-item[data-nav-section="feed"], :root[data-theme="dark"] .nav-item[data-nav-section="health"]{ --accent:hsl(46,75%,62%); --accent-strong:hsl(46,80%,70%); --accent-tint:hsl(46,45%,17%); --accent-ink:hsl(46,80%,86%); }
+  :root .nav-item[data-nav-section="livestock"]{ --accent:hsl(152,48%,30%); --accent-strong:hsl(152,48%,23%); --accent-tint:hsl(38,72%,88%); --accent-ink:hsl(152,50%,17%); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .nav-item[data-nav-section="livestock"]{ --accent:hsl(38,75%,62%); --accent-strong:hsl(38,80%,70%); --accent-tint:hsl(38,45%,17%); --accent-ink:hsl(38,80%,86%); } }
+  :root[data-theme="dark"] .nav-item[data-nav-section="livestock"]{ --accent:hsl(38,75%,62%); --accent-strong:hsl(38,80%,70%); --accent-tint:hsl(38,45%,17%); --accent-ink:hsl(38,80%,86%); }
+  :root .nav-item[data-nav-section="crops"]{ --accent:hsl(85,50%,30%); --accent-strong:hsl(85,50%,23%); --accent-tint:hsl(50,72%,88%); --accent-ink:hsl(85,50%,17%); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .nav-item[data-nav-section="crops"]{ --accent:hsl(50,75%,62%); --accent-strong:hsl(50,80%,70%); --accent-tint:hsl(50,45%,17%); --accent-ink:hsl(50,80%,86%); } }
+  :root[data-theme="dark"] .nav-item[data-nav-section="crops"]{ --accent:hsl(50,75%,62%); --accent-strong:hsl(50,80%,70%); --accent-tint:hsl(50,45%,17%); --accent-ink:hsl(50,80%,86%); }
+  :root .nav-item[data-nav-section="income"], :root .nav-item[data-nav-section="expenses"], :root .nav-item[data-nav-section="finance"], :root .nav-item[data-nav-section="reports"], :root .nav-item[data-nav-section="customers"]{ --accent:hsl(158,55%,30%); --accent-strong:hsl(158,55%,23%); --accent-tint:hsl(44,72%,88%); --accent-ink:hsl(158,50%,17%); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .nav-item[data-nav-section="income"], :root:not([data-theme="light"]) .nav-item[data-nav-section="expenses"], :root:not([data-theme="light"]) .nav-item[data-nav-section="finance"], :root:not([data-theme="light"]) .nav-item[data-nav-section="reports"], :root:not([data-theme="light"]) .nav-item[data-nav-section="customers"]{ --accent:hsl(44,75%,62%); --accent-strong:hsl(44,80%,70%); --accent-tint:hsl(44,45%,17%); --accent-ink:hsl(44,80%,86%); } }
+  :root[data-theme="dark"] .nav-item[data-nav-section="income"], :root[data-theme="dark"] .nav-item[data-nav-section="expenses"], :root[data-theme="dark"] .nav-item[data-nav-section="finance"], :root[data-theme="dark"] .nav-item[data-nav-section="reports"], :root[data-theme="dark"] .nav-item[data-nav-section="customers"]{ --accent:hsl(44,75%,62%); --accent-strong:hsl(44,80%,70%); --accent-tint:hsl(44,45%,17%); --accent-ink:hsl(44,80%,86%); }
+  :root .nav-item[data-nav-section="team"], :root .nav-item[data-nav-section="directory"], :root .nav-item[data-nav-section="messages"], :root .nav-item[data-nav-section="signoffs"]{ --accent:hsl(72,28%,30%); --accent-strong:hsl(72,28%,23%); --accent-tint:hsl(32,72%,88%); --accent-ink:hsl(72,50%,17%); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .nav-item[data-nav-section="team"], :root:not([data-theme="light"]) .nav-item[data-nav-section="directory"], :root:not([data-theme="light"]) .nav-item[data-nav-section="messages"], :root:not([data-theme="light"]) .nav-item[data-nav-section="signoffs"]{ --accent:hsl(32,75%,62%); --accent-strong:hsl(32,80%,70%); --accent-tint:hsl(32,45%,17%); --accent-ink:hsl(32,80%,86%); } }
+  :root[data-theme="dark"] .nav-item[data-nav-section="team"], :root[data-theme="dark"] .nav-item[data-nav-section="directory"], :root[data-theme="dark"] .nav-item[data-nav-section="messages"], :root[data-theme="dark"] .nav-item[data-nav-section="signoffs"]{ --accent:hsl(32,75%,62%); --accent-strong:hsl(32,80%,70%); --accent-tint:hsl(32,45%,17%); --accent-ink:hsl(32,80%,86%); }
+  :root .nav-item[data-nav-section="overview"], :root .nav-item[data-nav-section="about"], :root .nav-item[data-nav-section="settings"], :root .nav-item[data-nav-section="trash"]{ --accent:hsl(140,40%,30%); --accent-strong:hsl(140,40%,23%); --accent-tint:hsl(42,72%,88%); --accent-ink:hsl(140,50%,17%); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .nav-item[data-nav-section="overview"], :root:not([data-theme="light"]) .nav-item[data-nav-section="about"], :root:not([data-theme="light"]) .nav-item[data-nav-section="settings"], :root:not([data-theme="light"]) .nav-item[data-nav-section="trash"]{ --accent:hsl(42,75%,62%); --accent-strong:hsl(42,80%,70%); --accent-tint:hsl(42,45%,17%); --accent-ink:hsl(42,80%,86%); } }
+  :root[data-theme="dark"] .nav-item[data-nav-section="overview"], :root[data-theme="dark"] .nav-item[data-nav-section="about"], :root[data-theme="dark"] .nav-item[data-nav-section="settings"], :root[data-theme="dark"] .nav-item[data-nav-section="trash"]{ --accent:hsl(42,75%,62%); --accent-strong:hsl(42,80%,70%); --accent-tint:hsl(42,45%,17%); --accent-ink:hsl(42,80%,86%); }
+
+  /* Backgrounds: the green-gold wash behind everything, including the
+     sign-in, session-timeout and sector screens. */
+  body{ background:var(--app-bg, var(--bg)); background-attachment:fixed; }
+  .auth-gate, .session-timeout-backdrop{ background:var(--app-bg, var(--bg)); }
+  .rail{ background:linear-gradient(180deg, color-mix(in srgb, var(--z-green) 12%, var(--surface)) 0%, var(--surface) 55%, color-mix(in srgb, var(--z-gold) 8%, var(--surface)) 100%); }
+  .mobile-tabbar{ background:color-mix(in srgb, var(--z-green) 7%, var(--surface)); }
+  .topbar{ background:linear-gradient(115deg, color-mix(in srgb, var(--z-green) 22%, transparent) 0%, color-mix(in srgb, var(--z-gold) 14%, transparent) 55%, transparent 85%); }
+  .card{ background-image:linear-gradient(90deg, var(--z-green), var(--z-gold)); }
+  .card-title h3{ color:color-mix(in srgb, var(--z-green) 55%, var(--ink)); }
+  .btn.primary, .chip.active{ color:var(--btn-ink); background:linear-gradient(135deg, var(--btn-from), var(--btn-to)); border-color:transparent; }
+  .btn.primary:hover{ filter:brightness(1.08); background:linear-gradient(135deg, var(--btn-from), var(--btn-to)); }
+  .btn.primary{ box-shadow:0 4px 14px -6px color-mix(in srgb, var(--btn-from) 70%, transparent); }
+  .linklike{ color:color-mix(in srgb, var(--z-gold) 55%, var(--accent)); }
+
