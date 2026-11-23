@@ -3258,7 +3258,11 @@
   function cattleCalvingFormHtml(damId, serviceId){
     var dam = cattleAnimal(damId);
     if(!dam) return '';
-    var s = serviceId ? cattleData().services.find(function(x){ return x.id===serviceId; }) : cattleOpenService(damId);
+    // serviceId 'past' = a calving from before (no service, no milk plan,
+    // and the calf may no longer be on the farm).
+    var past = serviceId==='past';
+    if(past) serviceId = null;
+    var s = past ? null : (serviceId ? cattleData().services.find(function(x){ return x.id===serviceId; }) : cattleOpenService(damId));
     var calfBlock = function(n){
       return '<div class="cattle-calf-box" id="cattle-calf-'+n+'"'+(n===2?' style="display:none"':'')+'>'+
         '<div style="font-weight:600; margin-bottom:8px">'+(n===1?'Calf':'Second calf')+'</div>'+
@@ -3266,28 +3270,31 @@
           '<div class="field-row"><label>Sex</label><select class="field" name="sex'+n+'"><option value="female">Heifer calf (female)</option><option value="male">Bull calf (male)</option></select></div>'+
           '<div class="field-row"><label>Name / tag</label><input class="field" type="text" name="name'+n+'" placeholder="Optional"></div>'+
         '</div>'+
-        '<label class="check-row" style="margin-top:8px"><input type="checkbox" name="dead'+n+'"> Born dead / died at birth</label>'+
+        (past ? '<div class="field-row" style="margin-top:10px"><label>Where is this calf now?</label><select class="field" name="fate'+n+'">'+
+            '<option value="sold">Sold</option><option value="died">Died</option><option value="other">Don\'t know / given away</option><option value="active">Still on the farm (adds it to the register)</option></select></div>'
+          : '<label class="check-row" style="margin-top:8px"><input type="checkbox" name="dead'+n+'"> Born dead / died at birth</label>')+
       '</div>';
     };
-    return '<div class="modal-head"><h3>🐄 '+esc(cattleName(dam))+' calved</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    return '<div class="modal-head"><h3>'+(past ? '📜 Past calving — '+esc(cattleName(dam)) : '🐄 '+esc(cattleName(dam))+' calved')+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
     '<form data-form="cattle-calving">'+
+      (past ? '<input type="hidden" name="past" value="1"><p class="hint" style="margin-top:0">For a calving from before you used the app. If the calf is in your register already, use "Link a calf already on the farm" instead.</p>' : '')+
       '<input type="hidden" name="damId" value="'+dam.id+'">'+
       '<input type="hidden" name="serviceId" value="'+(s?s.id:'')+'">'+
       (s ? '<div class="hint" style="margin-bottom:10px">Served '+dLong(s.date)+' · expected '+dLong(cattleServiceDates(s.date).due)+'</div>' : '')+
       '<div class="field-grid">'+
-        '<div class="field-row"><label>Calving date</label><input class="field" type="date" name="date" value="'+todayISO()+'" max="'+todayISO()+'" required></div>'+
+        '<div class="field-row"><label>Calving date</label><input class="field" type="date" name="date" value="'+(past?'':todayISO())+'" max="'+todayISO()+'" required></div>'+
         '<div class="field-row"><label>Calves</label><select class="field" name="count" data-change="cattle-calving-count"><option value="1">One</option><option value="2">Twins</option></select></div>'+
       '</div>'+
       calfBlock(1)+calfBlock(2)+
-      '<div class="cattle-calf-box">'+
-        '<label class="check-row"><input type="checkbox" name="bottleFed" checked> 🍼 Bottle-feed the calf — give me a milk plan</label>'+
+      '<div class="cattle-calf-box"'+(past?' style="display:none"':'')+'>'+
+        '<label class="check-row"><input type="checkbox" name="bottleFed" '+(past?'':'checked')+'> 🍼 Bottle-feed the calf — give me a milk plan</label>'+
         '<div class="field-grid" style="margin-top:10px">'+
           '<div class="field-row"><label>Full ration (litres a day)</label><input class="field" type="number" min="1" max="10" step="0.5" name="fullLitres" value="4"></div>'+
           '<div class="field-row"><label>Wean at</label><select class="field" name="weanWeeks"><option value="12">12 weeks (standard)</option><option value="10">10 weeks</option><option value="8">8 weeks (early weaning)</option></select></div>'+
         '</div>'+
       '</div>'+
       '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" placeholder="Optional — easy birth, vet called, etc."></div>'+
-      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save calving</button></div>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(past?'Add to her history':'Save calving')+'</button></div>'+
     '</form>';
   }
 
@@ -3316,7 +3323,7 @@
   }
   function cattleReceiptOpts(id){
     var a = cattleAnimal(id);
-    if(!a || a.status!=='sold' || !a.exit) return null;
+    if(!a || a.status!=='sold' || !a.exit || !a.exit.date) return null;
     var ex = a.exit;
     var rows = [
       {label:'Item', value: cattleCategoryLabel(a)+' — '+cattleName(a)},
@@ -3389,8 +3396,7 @@
     var today = todayISO();
     var calvings = cattleCalvingsOf(a.id).slice().reverse();               // oldest first
     var services = cattleServicesOf(a.id).slice().reverse();
-    var calfIds = []; calvings.forEach(function(c){ calfIds = calfIds.concat(c.calfIds||[]); });
-    var calves = calfIds.map(cattleAnimal).filter(Boolean);
+    var calves = cattleOffspringOf(a.id);
     var st = {
       calvings: calvings, services: services, calves: calves,
       parity: calvings.length,
@@ -3510,7 +3516,7 @@
       ['Tag', esc(a.tag||'—')],
       ['Breed', esc(a.breed||'—')],
       ['Born', a.dob ? dLong(a.dob)+' · '+cattleAgeText(a) : '—'],
-      ['Mother', dam ? cattleLink(dam) : '—'],
+      ['Mother', dam ? cattleLink(dam) : (readOnly ? '—' : '<button type="button" class="linklike" data-action="open-cattle-link-mother:'+a.id+'">🔗 Link '+(a.sex==='male'?'his':'her')+' mother</button>')],
       ['Father / AI bull', esc(a.sire||'—')],
       ['Came', ({born:'Born on the farm', bought:'Bought', gift:'Gift / other'})[a.source]||'—'],
       ['Added', a.dateAdded ? dLong(a.dateAdded) : '—']
@@ -3577,7 +3583,8 @@
     var calfRows = st.calves.map(function(k){
       var kc = cattleCategory(k);
       return '<tr><td>'+cattleLink(k)+'</td><td>'+CATTLE_CAT_EMOJI[kc]+' '+cattleCategoryLabel(k)+'</td><td>'+(k.dob?dLong(k.dob):'—')+'</td><td>'+cattleAgeText(k)+'</td>'+
-        '<td>'+((k.status||'active')==='active' ? cattlePill('green','On the farm') : cattlePill('red', ({sold:'Sold', died:'Died', culled:'Culled', other:'Gone'})[k.status]))+'</td></tr>';
+        '<td>'+((k.status||'active')==='active' ? cattlePill('green','On the farm') : cattlePill('red', ({sold:'Sold', died:'Died', culled:'Culled', other:'Gone / unknown'})[k.status]))+'</td>'+
+        '<td><button class="icon-btn" data-action="cattle-unlink-calf:'+k.id+'" '+(readOnly?'disabled':'')+' title="Not her calf — unlink">✕</button></td></tr>';
     }).join('');
     // ---- records tables
     function recActions(r){
@@ -3610,7 +3617,13 @@
       (female ? card('💞 Breeding &amp; calving', st.services.length || st.calvings.length
           ? '<div class="table-wrap"><table><thead><tr><th>Served</th><th>How</th><th>Result</th><th>Calved</th><th>Calves</th></tr></thead><tbody>'+breedRows+'</tbody></table></div>'
           : '<div class="hint">No services or calvings recorded yet.</div>') : '')+
-      (st.calves.length ? card('🍼 Her calves ('+st.calves.length+')', '<div class="table-wrap"><table><thead><tr><th>Calf</th><th>Now</th><th>Born</th><th>Age</th><th>Status</th></tr></thead><tbody>'+calfRows+'</tbody></table></div>') : '')+
+      (female && cat!=='calf' ? card('🍼 Her calves ('+st.calves.length+')',
+          (st.calves.length ? '<div class="table-wrap"><table><thead><tr><th>Calf</th><th>Now</th><th>Born</th><th>Age</th><th>Status</th><th></th></tr></thead><tbody>'+calfRows+'</tbody></table></div>'
+            : '<div class="hint">No calves linked to her yet. If some of her calves are already in the register, link them here; for calves that left the farm before you started using the app, add a past calving.</div>')+
+          (readOnly ? '' : '<div class="row-actions" style="flex-wrap:wrap; gap:8px; margin-top:12px; justify-content:flex-start">'+
+            '<button class="btn sm primary" data-action="open-cattle-link:'+a.id+'">🔗 Link a calf already on the farm</button>'+
+            '<button class="btn sm" data-action="open-cattle-calving:'+a.id+':past">'+ICONS.plus+'Add a past calving</button></div>'))
+        : (st.calves.length ? card('🍼 Calves ('+st.calves.length+')', '<div class="table-wrap"><table><thead><tr><th>Calf</th><th>Now</th><th>Born</th><th>Age</th><th>Status</th><th></th></tr></thead><tbody>'+calfRows+'</tbody></table></div>') : ''))+
       (female && (st.parity || st.milk.length) ? card('🥛 Milk', (st.milk.length ? (st.milk[0].date>addDaysISO(todayISO(),-30) ? cattleMilkChartSVG(a) : '<div class="hint">No milk recorded in the last 30 days.</div>')+'<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>Date</th><th class="num">Morning</th><th class="num">Evening</th><th class="num">Total (L)</th><th></th></tr></thead><tbody>'+milkRows+'</tbody></table></div>'+pagerHtml('cattle-milk-'+a.id, milkPage.pageCount, milkPage.page)
           : '<div class="hint">No milk recorded for her yet. Record her morning and evening litres to see her daily yield, this lactation\'s total and her peak.</div>'), addBtn('milk','Record milk')) : '')+
       card('🩺 Health &amp; treatments', st.health.length ? '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Details</th><th class="num">Cost</th><th></th></tr></thead><tbody>'+healthRows+'</tbody></table></div>'+pagerHtml('cattle-health-'+a.id, healthPage.pageCount, healthPage.page)
@@ -3618,6 +3631,111 @@
       card('⚖️ Weight, dry-off &amp; notes', otherRecs.length ? '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Record</th><th>Note</th><th></th></tr></thead><tbody>'+otherRows+'</tbody></table></div>'
           : '<div class="hint">Nothing yet.</div>', addBtn('weight','Add weight'))+
       card('📜 Full history', tl.length ? tlHtml+pagerHtml('cattle-timeline-'+a.id, tlPage.pageCount, tlPage.page) : '<div class="hint">Nothing recorded yet.</div>', '<span class="hint">'+tl.length+' events</span>');
+  }
+
+
+  // ---- Linking animals that are already on the farm ------------------------
+  // Calves (or grown cows) entered on their own can be tied to their
+  // mother afterwards. Linking sets the animal's damId and files it under
+  // a calving in the mother's history: the calving already recorded within
+  // a week of its birth date (so twins share one), or a new calving on
+  // that date — matched to her service if one was due around then.
+  // Calvings created this way carry linked:true, so unlinking the only
+  // calf in one removes it again cleanly.
+  function cattleOffspringOf(id){
+    var ids = {}, order = [];
+    function add(x){ if(x && !ids[x]){ ids[x] = 1; order.push(x); } }
+    cattleCalvingsOf(id).slice().reverse().forEach(function(c){ (c.calfIds||[]).forEach(add); });
+    cattleData().animals.forEach(function(a){ if(a.damId===id) add(a.id); });
+    return order.map(cattleAnimal).filter(Boolean);
+  }
+  function cattleAncestorIds(id){
+    var out = {}, cur = cattleAnimal(id), guard = 0;
+    while(cur && cur.damId && !out[cur.damId] && guard++<50){ out[cur.damId] = 1; cur = cattleAnimal(cur.damId); }
+    return out;
+  }
+  function cattleDescendantIds(id){
+    var out = {}, queue = [id], guard = 0;
+    while(queue.length && guard++<500){
+      var cur = queue.shift();
+      cattleData().animals.forEach(function(a){ if(a.damId===cur && !out[a.id]){ out[a.id] = 1; queue.push(a.id); } });
+    }
+    return out;
+  }
+  function cattleUnlinkFromMother(s, calf, keepDam){
+    var d = cattleCD(s);
+    d.calvings.forEach(function(c){ c.calfIds = (c.calfIds||[]).filter(function(x){ return x!==calf.id; }); });
+    d.calvings = d.calvings.filter(function(c){
+      if(c.linked && !c.calfIds.length){
+        if(c.autoMarkedService && c.serviceId){
+          var sv = d.services.find(function(x){ return x.id===c.serviceId; });
+          if(sv){ sv.status = 'pregnant'; sv.calvedDate = null; }
+        }
+        return false;
+      }
+      return true;
+    });
+    if(!keepDam) calf.damId = null;
+  }
+  function cattleLinkToMother(s, calf, damId, birthDate){
+    var d = cattleCD(s);
+    cattleUnlinkFromMother(s, calf, true);
+    calf.damId = damId || null;
+    if(!damId) return;
+    var dam = d.animals.find(function(x){ return x.id===damId; }); if(!dam) return;
+    if(birthDate && !calf.dob) calf.dob = birthDate;
+    var date = birthDate || calf.dob;
+    if(!date) return; // birth date unknown — linked as her calf, but no calving date to file it under
+    var near = d.calvings.find(function(c){ return c.damId===damId && Math.abs(daysBetween(parseISO(c.date), parseISO(date)))<=7; });
+    if(near){ near.calfIds = near.calfIds||[]; if(near.calfIds.indexOf(calf.id)===-1) near.calfIds.push(calf.id); }
+    else {
+      var sv = d.services.filter(function(x){ return x.animalId===damId && (x.status==='served' || x.status==='pregnant'); })
+        .find(function(x){ return Math.abs(daysBetween(parseISO(cattleServiceDates(x.date).due), parseISO(date)))<=30; });
+      var c = {id:uid('calv'), damId:damId, serviceId: sv ? sv.id : null, date:date, calfIds:[calf.id], note:'', linked:true};
+      if(sv){ sv.status = 'calved'; sv.calvedDate = date; c.autoMarkedService = true; }
+      d.calvings.push(c);
+    }
+    if(dam.type==='heifer') dam.type = 'cow';
+    if(!calf.sire && near && near.serviceId){ var ns = d.services.find(function(x){ return x.id===near.serviceId; }); if(ns && ns.sire) calf.sire = ns.sire; }
+  }
+  function cattleLinkFormHtml(cowId, calfId){
+    var all = cattleData().animals;
+    var cow = cowId ? cattleAnimal(cowId) : null, calf = calfId ? cattleAnimal(calfId) : null;
+    var options, title, pickName, fixedName, fixedVal, intro;
+    if(cow){
+      var anc = cattleAncestorIds(cow.id), mine = {}; cattleOffspringOf(cow.id).forEach(function(k){ mine[k.id] = 1; });
+      var list = all.filter(function(a){ return a.id!==cow.id && !anc[a.id] && !mine[a.id]; })
+        .sort(function(x,y){ return (y.dob||'').localeCompare(x.dob||''); });
+      title = '🔗 Link a calf to '+esc(cattleName(cow));
+      intro = 'Pick an animal already in your register that '+esc(cow.name||cow.tag||'she')+' gave birth to — a calf, or a heifer or cow that grew up on the farm.';
+      fixedName = 'cowId'; fixedVal = cow.id; pickName = 'calfId';
+      options = list.map(function(a){
+        var curDam = a.damId ? cattleAnimal(a.damId) : null;
+        return '<option value="'+a.id+'" data-dob="'+(a.dob||'')+'">'+esc(cattleName(a))+' — '+cattleCategoryLabel(a)+(a.dob?', born '+dShort(a.dob)+' '+a.dob.slice(0,4):'')+(curDam?' (mother now: '+esc(cattleName(curDam))+')':'')+((a.status||'active')!=='active'?' · gone':'')+'</option>';
+      });
+    } else if(calf){
+      var desc = cattleDescendantIds(calf.id);
+      var mothers = all.filter(function(a){ return a.sex!=='male' && a.id!==calf.id && !desc[a.id] && a.id!==calf.damId; });
+      title = '🔗 Link '+esc(cattleName(calf))+' to '+(calf.sex==='male'?'his':'her')+' mother';
+      intro = 'Pick the cow that gave birth to '+esc(calf.name||calf.tag||'this animal')+'.';
+      fixedName = 'calfId'; fixedVal = calf.id; pickName = 'cowId';
+      options = mothers.map(function(a){ return '<option value="'+a.id+'">'+esc(cattleName(a))+' — '+cattleCategoryLabel(a)+'</option>'; });
+    } else return '';
+    if(!options.length){
+      return '<div class="modal-head"><h3>'+title+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+        '<p class="hint">There\'s no animal in the register to link yet. Add it with "Add animal" first, or use "Add a past calving" for a calf that\'s no longer on the farm.</p>'+
+        '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Close</button></div>';
+    }
+    var firstDob = cow ? ((all.find(function(a){ return options[0].indexOf('value="'+a.id+'"')!==-1; })||{}).dob||'') : (calf.dob||'');
+    return '<div class="modal-head"><h3>'+title+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<form data-form="cattle-link">'+
+      '<input type="hidden" name="'+fixedName+'" value="'+fixedVal+'">'+
+      '<p class="hint" style="margin-top:0">'+intro+'</p>'+
+      '<div class="field-row"><label>'+(cow?'Calf / animal':'Mother')+'</label><select class="field" name="'+pickName+'" '+(cow?'data-change="cattle-link-pick"':'')+' required>'+options.join('')+'</select></div>'+
+      '<div class="field-row" style="margin-top:12px"><label>Date of birth (= the calving date)</label><input class="field" type="date" name="date" id="cattle-link-date" value="'+firstDob+'" max="'+todayISO()+'"></div>'+
+      '<div class="hint" style="margin-top:6px">If she already has a calving recorded within a week of this date, the calf joins it (twins). Otherwise the calving is added to her history — and matched to her service if one was due then. Leave the date empty if you don\'t know it; the calf is still linked to her.</div>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Link</button></div>'+
+    '</form>';
   }
 
   function cattleRecordFormHtml(animalId, kind, id){
@@ -9179,6 +9297,16 @@
         });
         break;
       case 'cattle-history-pdf': cattleHistoryPDF(a1); break;
+      case 'open-cattle-link': openModal(cattleLinkFormHtml(a1, null)); break;
+      case 'open-cattle-link-mother': openModal(cattleLinkFormHtml(null, a1)); break;
+      case 'cattle-unlink-calf': {
+        var ulk = cattleAnimal(a1); if(!ulk) break;
+        confirmModal('Unlink '+cattleName(ulk)+' from its mother? The animal stays in the register; only the mother link (and a calving that was added just for this link) is removed.', function(){
+          mutate(function(s){ var an = cattleCD(s).animals.find(function(x){ return x.id===a1; }); if(an) cattleUnlinkFromMother(s, an); });
+          toast('Unlinked.');
+        }, {danger:false, confirmLabel:'Unlink', title:'Unlink?'});
+        break;
+      }
       case 'open-cattle-service': openModal(cattleServiceFormHtml(a1||null)); break;
       case 'edit-cattle-service': openModal(cattleServiceFormHtml(null, a1)); break;
       case 'delete-cattle-service':
@@ -9949,6 +10077,12 @@
       if(cbox) cbox.style.display = el.value.indexOf('calf')===0 ? 'block' : 'none';
       return;
     }
+    if(name==='cattle-link-pick'){
+      var opt = el.options[el.selectedIndex];
+      var ld = document.getElementById('cattle-link-date');
+      if(ld && opt) ld.value = opt.getAttribute('data-dob') || '';
+      return;
+    }
     if(name==='cattle-record-kind'){
       document.querySelectorAll('.cattle-rec-box').forEach(function(b){ b.style.display = b.getAttribute('data-kind')===el.value ? 'block' : 'none'; });
       return;
@@ -10228,10 +10362,17 @@
         var d = cattleCD(s);
         var an = caId ? d.animals.find(function(x){ return x.id===caId; }) : null;
         if(!an){ an = {id:uid('cow'), status:'active'}; d.animals.push(an); }
+        var prevDam = an.damId || null, prevDob = an.dob || '';
         an.name = caName; an.tag = caTag; an.type = caStoredType; an.sex = caSex;
         an.breed = (val('breed')||'').trim(); an.dob = caDob; an.dateAdded = caDate;
-        an.source = val('source') || 'born'; an.damId = val('damId') || null; an.sire = (val('sire')||'').trim();
+        an.source = val('source') || 'born'; an.sire = (val('sire')||'').trim();
+        // Picking (or changing) the mother here files the animal under her
+        // calvings too, the same as "Link a calf" on her page.
+        var newDam = val('damId') || null;
+        var inCalving = d.calvings.some(function(c){ return (c.calfIds||[]).indexOf(an.id)!==-1; });
+        if(newDam!==prevDam || (newDam && (!inCalving || caDob!==prevDob))){ if(newDam) cattleLinkToMother(s, an, newDam, null); else cattleUnlinkFromMother(s, an); }
         an.note = (val('note')||'').trim();
+        an.damId = newDam;
         if(caStoredType==='calf'){
           an.bottleFed = caBottle;
           an.fullLitres = Math.max(1, Number(val('fullLitres')||4));
@@ -10243,6 +10384,28 @@
       });
       closeModal();
       toast(caId ? 'Saved.' : (CATTLE_CAT_EMOJI[caStoredType]||'🐄')+' Added to the herd.');
+      return;
+    }
+    if(name==='cattle-link'){
+      var lkCow = val('cowId'), lkCalf = val('calfId'), lkDate = val('date') || null;
+      if(!lkCow || !lkCalf){ toast('Pick the animal to link.'); return; }
+      var lkCowObj = cattleAnimal(lkCow), lkCalfObj = cattleAnimal(lkCalf);
+      // Gentle check: a calving under ~9 months from another one of hers
+      // is impossible, so the date (or the mother) is probably wrong.
+      var lkWhen = lkDate || (lkCalfObj && lkCalfObj.dob) || null, lkWarn = '';
+      if(lkWhen){
+        cattleCalvingsOf(lkCow).forEach(function(c){
+          var gap = Math.abs(daysBetween(parseISO(c.date), parseISO(lkWhen)));
+          if(gap>7 && gap<270 && !lkWarn) lkWarn = ' ⚠️ That\'s only '+gap+' days from her calving on '+dLong(c.date)+' — check the date.';
+        });
+      }
+      mutate(function(s){
+        var an = cattleCD(s).animals.find(function(x){ return x.id===lkCalf; }); if(!an) return;
+        if(lkDate && an.dob && an.dob!==lkDate) an.dob = lkDate;
+        cattleLinkToMother(s, an, lkCow, lkDate);
+      });
+      closeModal();
+      toast('🔗 '+cattleName(lkCalfObj)+' is now linked as '+cattleName(lkCowObj)+'\'s calf.'+lkWarn);
       return;
     }
     if(name==='cattle-record'){
@@ -10305,6 +10468,8 @@
       var cvBottle = !!val('bottleFed');
       var cvFull = Math.max(1, Number(val('fullLitres')||4)), cvWean = Number(val('weanWeeks')||12);
       var cvDamObj = cattleAnimal(cvDam);
+      var cvPast = !!val('past');
+      if(cvPast){ cvSvc = null; cvBottle = false; }
       var cvBorn = [];
       mutate(function(s){
         var d = cattleCD(s);
@@ -10313,22 +10478,26 @@
         var calfIds = [];
         for(var i=1;i<=cvCount;i++){
           var dead = !!val('dead'+i);
+          var fate = cvPast ? (val('fate'+i) || 'sold') : null;
+          if(fate==='died') dead = true;
           var sex = val('sex'+i)==='male' ? 'male' : 'female';
           var nm = (val('name'+i)||'').trim() || ((dam.name||dam.tag||'Cow')+'\'s calf'+(cvCount>1?' '+i:''));
           var calf = {id:uid('cow'), name:nm, tag:'', type:'calf', sex:sex, breed:dam.breed||'', dob:cvDate, dateAdded:cvDate,
             source:'born', damId:dam.id, sire: sv ? (sv.sire||'') : '', note:'', status: dead ? 'died' : 'active',
             bottleFed: cvBottle && !dead, fullLitres: cvFull, weanWeeks: cvWean};
-          if(dead) calf.exit = {date:cvDate, reason:'died', note:'Born dead / died at birth'};
+          if(dead) calf.exit = {date:cvPast?null:cvDate, reason:'died', note: cvPast ? 'Recorded with a past calving' : 'Born dead / died at birth'};
+          else if(fate==='sold' || fate==='other'){ calf.status = fate; calf.bottleFed = false; calf.exit = {date:null, reason:fate, note:'Recorded with a past calving'}; }
           d.animals.push(calf); calfIds.push(calf.id);
-          if(!dead) cvBorn.push(sex==='male' ? 'bull calf' : 'heifer calf');
+          if(!dead && !cvPast) cvBorn.push(sex==='male' ? 'bull calf' : 'heifer calf');
         }
         if(sv){ sv.status = 'calved'; sv.calvedDate = cvDate; }
         d.calvings.push({id:uid('calv'), damId:dam.id, serviceId: sv ? sv.id : null, date:cvDate, calfIds:calfIds, note:(val('note')||'').trim()});
+        if(cvPast) d.calvings[d.calvings.length-1].past = true;
         if(dam.type==='heifer') dam.type = 'cow';
       });
       closeModal();
       if(cvBorn.length) celebrate({ title:'🐄 '+cattleName(cvDamObj)+' calved! 🎉', subtitle:'A '+cvBorn.join(' and a ')+' — added to the herd'+(cvBottle?' with a milk plan.':'.') });
-      else toast('Calving recorded.');
+      else toast(cvPast ? '📜 Added to her history.' : 'Calving recorded.');
       return;
     }
     if(name==='cattle-exit'){
