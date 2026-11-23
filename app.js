@@ -3254,9 +3254,71 @@
       '<div class="big"><span>🐄 Expected calving</span><strong>'+dLong(d.due)+'</strong></div>'+
     '</div>';
   }
+  // ---- Breeding guards ------------------------------------------------------
+  // A cow can't be served while she's confirmed in calf, twice within the
+  // same heat cycle, during a pregnancy that ended in a recorded calving,
+  // or straight after calving; and a calving can't come before (or too soon
+  // after) the service it belongs to, or too close to another calving.
+  var CATTLE_MIN_GESTATION = 240;   // earliest a live calf is realistic (premature)
+  function cattleIsInCalf(id){ var s = cattleOpenService(id); return !!(s && s.status==='pregnant'); }
+  function cattleServeBlockReason(animalId, date, editingId){
+    var a = cattleAnimal(animalId); if(!a) return 'Pick the cow or heifer.';
+    var nm = cattleName(a);
+    if(a.sex==='male') return 'Not allowed — '+nm+' is a bull.';
+    if(a.dob && date < a.dob) return 'Not allowed — that date is before '+nm+' was born.';
+    var others = cattleServicesOf(animalId).filter(function(x){ return x.id!==editingId; });
+    var calvings = cattleCalvingsOf(animalId);
+    var close = others.find(function(x){ return Math.abs(daysBetween(parseISO(x.date), parseISO(date))) < CATTLE_HEAT_FROM; });
+    if(close) return 'Not allowed for '+nm+' — she was already served on '+dLong(close.date)+'. A cow only comes back on heat about 21 days after a service. To change that service, edit it instead.';
+    var preg = others.find(function(x){
+      return x.status==='pregnant' && x.date<date && !calvings.some(function(c){ return c.date>=x.date && c.date<=date; });
+    });
+    if(preg) return 'Not allowed for '+nm+' — she is already in calf (served '+dLong(preg.date)+', due '+dLong(cattleServiceDates(preg.date).due)+'). If she lost the calf, edit that service and change its result first.';
+    var carrying = calvings.find(function(c){ var g = daysBetween(parseISO(date), parseISO(c.date)); return g>0 && g<CATTLE_MIN_GESTATION; });
+    if(carrying) return 'Not allowed — on that date '+nm+' was carrying the calf she had on '+dLong(carrying.date)+'.';
+    var fresh = calvings.find(function(c){ var g = daysBetween(parseISO(c.date), parseISO(date)); return g>=0 && g<21; });
+    if(fresh) return 'Too soon — '+nm+' calved on '+dLong(fresh.date)+'. Wait at least 3 weeks (60 days is best) before serving her again.';
+    return null;
+  }
+  function cattleCalvingBlockReason(damId, date, serviceId, editingCalvingId){
+    var a = cattleAnimal(damId); if(!a) return 'That cow is no longer in the register.';
+    var nm = cattleName(a);
+    if(a.dob && daysBetween(parseISO(a.dob), parseISO(date)) < 365) return 'Not allowed — '+nm+' would have been under a year old on that date.';
+    var sv = serviceId ? cattleData().services.find(function(x){ return x.id===serviceId; }) : null;
+    if(sv){
+      var g = daysBetween(parseISO(sv.date), parseISO(date));
+      if(g<0) return 'Not allowed — that date is before she was served ('+dLong(sv.date)+'). For an older calving, use "Add a past calving" on her page.';
+      if(g<CATTLE_MIN_GESTATION) return 'Not allowed — that\'s only '+g+' days after she was served on '+dLong(sv.date)+'. A cow carries her calf about '+CATTLE_GESTATION_DAYS+' days (expected '+dLong(cattleServiceDates(sv.date).due)+').';
+    }
+    var near = cattleCalvingsOf(damId).find(function(c){ return c.id!==editingCalvingId && Math.abs(daysBetween(parseISO(c.date), parseISO(date))) < CATTLE_MIN_GESTATION; });
+    if(near){
+      if(Math.abs(daysBetween(parseISO(near.date), parseISO(date)))<=2) return 'She already has a calving on '+dLong(near.date)+'. For twins, link the second calf to her instead of adding another calving.';
+      return 'Not allowed — she already calved on '+dLong(near.date)+'. Two calvings can\'t be that close together.';
+    }
+    return null;
+  }
+  // Shows a "not allowed" message inside the open form (keeps what was typed).
+  function cattleFormError(form, msg){
+    var box = form.querySelector('.cattle-form-error');
+    if(!box){ box = document.createElement('div'); box.className = 'cattle-form-error'; var foot = form.querySelector('.modal-foot'); form.insertBefore(box, foot); }
+    box.textContent = '⛔ '+msg;
+    try{ box.scrollIntoView({block:'nearest', behavior:'smooth'}); }catch(e){}
+  }
+  function cattleNotAllowedModal(title, msg, extraBtn){
+    return '<div class="modal-head"><h3>⛔ '+title+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+      '<p style="font-size:14px; margin:0">'+esc(msg)+'</p>'+
+      '<div class="modal-foot">'+(extraBtn||'')+'<button type="button" class="btn" data-action="close-modal">OK</button></div>';
+  }
+
   function cattleServiceFormHtml(animalId, id){
     var s = id ? cattleData().services.find(function(x){ return x.id===id; }) : null;
     var selId = s ? s.animalId : (animalId||'');
+    if(!s && animalId && cattleIsInCalf(animalId)){
+      var pg = cattleOpenService(animalId);
+      return cattleNotAllowedModal('Not allowed for this cow',
+        cattleName(cattleAnimal(animalId))+' is already in calf — served '+dLong(pg.date)+', due '+dLong(cattleServiceDates(pg.date).due)+'. A cow that is in calf can\'t be served. If she lost the calf, edit her last service and change its result first.',
+        '<button type="button" class="btn" data-action="cattle-profile:'+animalId+'">Open her history</button>');
+    }
     var females = cattleActive().filter(cattleCanBeServed);
     if(s && !females.some(function(f){ return f.id===s.animalId; })){ var cur = cattleAnimal(s.animalId); if(cur) females.push(cur); }
     if(!females.length){
@@ -3271,7 +3333,10 @@
       '<input type="hidden" name="id" value="'+(s?s.id:'')+'">'+
       '<div class="field-grid">'+
         '<div class="field-row"><label>Cow / heifer</label><select class="field" name="animalId" required>'+
-          females.map(function(f){ return '<option value="'+f.id+'" '+(selId===f.id?'selected':'')+'>'+esc(cattleName(f))+' — '+cattleCategoryLabel(f)+'</option>'; }).join('')+'</select></div>'+
+          females.map(function(f){
+            var blocked = !s && cattleIsInCalf(f.id);
+            return '<option value="'+f.id+'" '+(selId===f.id&&!blocked?'selected':'')+(blocked?' disabled':'')+'>'+esc(cattleName(f))+' — '+cattleCategoryLabel(f)+(blocked?' (in calf — not allowed)':'')+'</option>';
+          }).join('')+'</select></div>'+
         '<div class="field-row"><label>Date served</label><input class="field" type="date" name="date" value="'+date+'" max="'+todayISO()+'" data-change="cattle-service-date" required></div>'+
       '</div>'+
       '<div class="field-grid" style="margin-top:12px">'+
@@ -3286,6 +3351,11 @@
         '<div class="field-row"><label>Currency</label><select class="field" name="costCurrency">'+currencyOptions()+'</select></div>'+
       '</div>'+
       '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" value="'+(s?esc(s.note||''):'')+'" placeholder="Optional"></div>'+
+      (s ? (s.status==='calved'
+          ? '<div class="hint" style="margin-top:12px">Result: <strong>Calved</strong>'+(s.calvedDate?' on '+dLong(s.calvedDate):'')+' — to change that, edit or delete the calving on her history page.</div>'
+          : '<div class="field-row" style="margin-top:12px"><label>Result</label><select class="field" name="status">'+
+              [['served','Served — waiting to see'],['pregnant','In calf (confirmed)'],['repeat','Came back on heat'],['notpregnant','Checked — not in calf / lost the calf']].map(function(o){ return '<option value="'+o[0]+'" '+(s.status===o[0]?'selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select></div>')
+        : '')+
       '<div id="cattle-service-preview" style="margin-top:14px">'+cattleServicePreviewHtml(date)+'</div>'+
       '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(s?'Save changes':'Save service')+'</button></div>'+
     '</form>';
@@ -3331,6 +3401,25 @@
       '</div>'+
       '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" placeholder="Optional — easy birth, vet called, etc."></div>'+
       '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(past?'Add to her history':'Save calving')+'</button></div>'+
+    '</form>';
+  }
+
+  function cattleCalvingEditFormHtml(id){
+    var c = cattleData().calvings.find(function(x){ return x.id===id; }); if(!c) return '';
+    var dam = cattleAnimal(c.damId);
+    var services = cattleServicesOf(c.damId);
+    var calves = (c.calfIds||[]).map(cattleAnimal).filter(Boolean);
+    return '<div class="modal-head"><h3>Edit calving — '+esc(cattleName(dam))+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<form data-form="cattle-calving-edit">'+
+      '<input type="hidden" name="id" value="'+c.id+'">'+
+      '<div class="field-grid">'+
+        '<div class="field-row"><label>Calving date</label><input class="field" type="date" name="date" value="'+c.date+'" max="'+todayISO()+'" required></div>'+
+        '<div class="field-row"><label>From the service of</label><select class="field" name="serviceId"><option value="">Not recorded</option>'+
+          services.map(function(x){ return '<option value="'+x.id+'" '+(c.serviceId===x.id?'selected':'')+'>'+dLong(x.date)+' — '+(x.method==='bull'?'bull':'AI')+(x.sire?' ('+esc(x.sire)+')':'')+'</option>'; }).join('')+'</select></div>'+
+      '</div>'+
+      (calves.length ? '<div class="hint" style="margin-top:10px">Calves: '+calves.map(function(k){ return esc(cattleName(k)); }).join(', ')+' — their date of birth moves with the calving date. Edit a calf itself from "Her calves".</div>' : '')+
+      '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" value="'+esc(c.note||'')+'" placeholder="Optional"></div>'+
+      '<div class="modal-foot"><button type="button" class="btn danger" data-action="delete-cattle-calving:'+c.id+'">Delete calving</button><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save changes</button></div>'+
     '</form>';
   }
 
@@ -3565,7 +3654,7 @@
     if(active && cattleCanBeServed(a)){
       btns += open ? '<button class="btn sm primary" data-action="open-cattle-calving:'+a.id+':'+open.id+'" '+(readOnly?'disabled':'')+'>🐄 Calved</button>'
                    : '<button class="btn sm primary" data-action="open-cattle-service:'+a.id+'" '+(readOnly?'disabled':'')+'>💞 Served</button>';
-      if(open) btns += '<button class="btn sm" data-action="open-cattle-service:'+a.id+'" '+(readOnly?'disabled':'')+'>💞 Served again</button>';
+      if(open && open.status!=='pregnant') btns += '<button class="btn sm" data-action="open-cattle-service:'+a.id+'" '+(readOnly?'disabled':'')+'>💞 Served again</button>';
     }
     if(active) btns += '<button class="btn sm" data-action="open-cattle-record:'+a.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'Add record</button>';
     btns += '<button class="btn sm" data-action="cattle-history-pdf:'+a.id+'">'+ICONS.download+'History PDF</button>'+
@@ -3606,12 +3695,21 @@
         var due = cattleServiceDates(s.date).due;
         return {key:s.date, html:'<tr><td>'+dLong(s.date)+'</td><td>'+(s.method==='bull'?'Bull':'AI')+(s.sire?' · '+esc(s.sire):'')+'</td>'+
           '<td>'+cattlePill(tone,res)+'</td><td>'+(calving ? '<strong>'+dLong(calving.date)+'</strong>' : (s.status==='served'||s.status==='pregnant' ? 'Due '+dLong(due) : '—'))+'</td>'+
-          '<td>'+(calvesHtml||'—')+'</td></tr>'};
+          '<td>'+(calvesHtml||'—')+'</td>'+
+          '<td><div class="row-actions" style="flex-wrap:nowrap">'+
+            '<button class="icon-btn" data-action="edit-cattle-service:'+s.id+'" '+(readOnly?'disabled':'')+' title="Edit service">'+ICONS.edit+'</button>'+
+            '<button class="icon-btn" data-action="delete-cattle-service:'+s.id+'" '+(readOnly?'disabled':'')+' title="Delete service">'+ICONS.trash+'</button>'+
+            (calving ? '<button class="btn sm" data-action="edit-cattle-calving:'+calving.id+'" '+(readOnly?'disabled':'')+'>Edit calving</button>' : '')+
+          '</div></td></tr>'};
       });
       // calvings with no recorded service (e.g. bought in calf)
-      st.calvings.filter(function(c){ return !c.serviceId; }).forEach(function(c){
+      st.calvings.filter(function(c){ return !c.serviceId || !st.services.some(function(x){ return x.id===c.serviceId; }); }).forEach(function(c){
         var calvesHtml = (c.calfIds||[]).map(function(cid){ var k = cattleAnimal(cid); return k ? cattleLink(k) : ''; }).filter(Boolean).join(', ');
-        bRows.push({key:c.date, html:'<tr><td>—</td><td class="hint">Service not recorded</td><td>'+cattlePill('teal','Calved')+'</td><td><strong>'+dLong(c.date)+'</strong></td><td>'+(calvesHtml||'—')+'</td></tr>'});
+        bRows.push({key:c.date, html:'<tr><td>—</td><td class="hint">Service not recorded</td><td>'+cattlePill('teal','Calved')+'</td><td><strong>'+dLong(c.date)+'</strong></td><td>'+(calvesHtml||'—')+'</td>'+
+          '<td><div class="row-actions" style="flex-wrap:nowrap">'+
+            '<button class="btn sm" data-action="edit-cattle-calving:'+c.id+'" '+(readOnly?'disabled':'')+'>Edit calving</button>'+
+            '<button class="icon-btn" data-action="delete-cattle-calving:'+c.id+'" '+(readOnly?'disabled':'')+' title="Delete calving">'+ICONS.trash+'</button>'+
+          '</div></td></tr>'});
       });
       bRows.sort(function(x,y){ return x.key<y.key?1:-1; });
       breedRows = bRows.map(function(r){ return r.html; }).join('');
@@ -3620,7 +3718,8 @@
       var kc = cattleCategory(k);
       return '<tr><td>'+cattleLink(k)+'</td><td>'+CATTLE_CAT_EMOJI[kc]+' '+cattleCategoryLabel(k)+'</td><td>'+(k.dob?dLong(k.dob):'—')+'</td><td>'+cattleAgeText(k)+'</td>'+
         '<td>'+((k.status||'active')==='active' ? cattlePill('green','On the farm') : cattlePill('red', ({sold:'Sold', died:'Died', culled:'Culled', other:'Gone / unknown'})[k.status]))+'</td>'+
-        '<td><button class="icon-btn" data-action="cattle-unlink-calf:'+k.id+'" '+(readOnly?'disabled':'')+' title="Not her calf — unlink">✕</button></td></tr>';
+        '<td><div class="row-actions" style="flex-wrap:nowrap"><button class="icon-btn" data-action="edit-cattle-animal:'+k.id+'" '+(readOnly?'disabled':'')+' title="Edit calf">'+ICONS.edit+'</button>'+
+        '<button class="icon-btn" data-action="cattle-unlink-calf:'+k.id+'" '+(readOnly?'disabled':'')+' title="Not her calf — unlink">✕</button></div></td></tr>';
     }).join('');
     // ---- records tables
     function recActions(r){
@@ -3651,7 +3750,7 @@
       header+
       '<div class="cattle-tiles" style="margin-top:14px">'+tiles.join('')+'</div>'+
       (female ? card('💞 Breeding &amp; calving', st.services.length || st.calvings.length
-          ? '<div class="table-wrap"><table><thead><tr><th>Served</th><th>How</th><th>Result</th><th>Calved</th><th>Calves</th></tr></thead><tbody>'+breedRows+'</tbody></table></div>'
+          ? '<div class="table-wrap"><table><thead><tr><th>Served</th><th>How</th><th>Result</th><th>Calved</th><th>Calves</th><th></th></tr></thead><tbody>'+breedRows+'</tbody></table></div>'
           : '<div class="hint">No services or calvings recorded yet.</div>') : '')+
       (female && cat!=='calf' ? card('🍼 Her calves ('+st.calves.length+')',
           (st.calves.length ? '<div class="table-wrap"><table><thead><tr><th>Calf</th><th>Now</th><th>Born</th><th>Age</th><th>Status</th><th></th></tr></thead><tbody>'+calfRows+'</tbody></table></div>'
@@ -9351,6 +9450,7 @@
             var d = cattleCD(s);
             var sv = d.services.find(function(x){ return x.id===a1; });
             if(sv && sv.linkedExpenseId) s.expenses = s.expenses.filter(function(e){ return e.id!==sv.linkedExpenseId; });
+            d.calvings.forEach(function(c){ if(c.serviceId===a1){ c.serviceId = null; c.autoMarkedService = false; } });
             d.services = d.services.filter(function(x){ return x.id!==a1; });
           });
         });
@@ -9358,13 +9458,16 @@
       case 'cattle-service-outcome': {
         if(readOnly) break;
         mutate(function(s){
-          var sv = cattleCD(s).services.find(function(x){ return x.id===a1; }); if(!sv) return;
+          var d = cattleCD(s);
+          var sv = d.services.find(function(x){ return x.id===a1; }); if(!sv) return;
+          if(a2==='pregnant') d.services.forEach(function(x){ if(x.id!==sv.id && x.animalId===sv.animalId && (x.status==='served' || x.status==='pregnant') && x.date<sv.date) x.status = 'repeat'; });
           sv.status = a2; sv.pdDate = todayISO();
         });
         toast(a2==='pregnant' ? '🐄 Marked in calf 🎉' : 'Marked — record the new service when she\'s served again.');
         break;
       }
       case 'open-cattle-calving': openModal(cattleCalvingFormHtml(a1, a2||null)); break;
+      case 'edit-cattle-calving': openModal(cattleCalvingEditFormHtml(a1)); break;
       case 'delete-cattle-calving':
         confirmModal('Delete this calving record? The calves stay in the register (delete them separately if needed), and the service goes back to "in calf".', function(){
           mutate(function(s){
@@ -10480,6 +10583,13 @@
       if(!csAnimal || !csDate){ toast('Pick the cow and the date.'); return; }
       var csCostRaw = Number(val('cost')||0), csCostCur = val('costCurrency');
       var csAnimalObj = cattleAnimal(csAnimal);
+      var csBlock = cattleServeBlockReason(csAnimal, csDate, csId);
+      if(csBlock){ cattleFormError(form, csBlock); return; }
+      var csStatus = val('status') || null;
+      if(csStatus==='pregnant'){
+        var otherPreg = cattleServicesOf(csAnimal).find(function(x){ return x.id!==csId && x.status==='pregnant' && !cattleCalvingsOf(csAnimal).some(function(c){ return c.date>=x.date; }); });
+        if(otherPreg){ cattleFormError(form, cattleName(csAnimalObj)+' already has another service marked in calf ('+dLong(otherPreg.date)+'). Change that one first.'); return; }
+      }
       mutate(function(s){
         var d = cattleCD(s);
         var sv = csId ? d.services.find(function(x){ return x.id===csId; }) : null;
@@ -10490,12 +10600,13 @@
           sv = {id:uid('svc'), status:'served'}; d.services.push(sv);
         }
         sv.animalId = csAnimal; sv.date = csDate; sv.method = val('method')||'ai';
+        if(csStatus && sv.status!=='calved'){ if(sv.status!==csStatus) sv.pdDate = todayISO(); sv.status = csStatus; }
         sv.sire = (val('sire')||'').trim(); sv.inseminator = (val('inseminator')||'').trim(); sv.note = (val('note')||'').trim();
         sv.cost = csCostRaw>0 ? fromCurrency(csCostRaw, csCostCur) : 0;
         cattleSyncLinkedExpense(s, sv, 'linkedExpenseId', sv.cost, csDate, 'Breeding / AI', (sv.method==='bull'?'Bull service':'AI')+' — '+cattleName(csAnimalObj)+(sv.sire?' ('+sv.sire+')':''));
       });
       closeModal();
-      toast('💞 Saved — expected calving '+dLong(cattleServiceDates(csDate).due));
+      toast(csId ? 'Saved.' : '💞 Saved — expected calving '+dLong(cattleServiceDates(csDate).due));
       return;
     }
     if(name==='cattle-calving'){
@@ -10506,6 +10617,8 @@
       var cvDamObj = cattleAnimal(cvDam);
       var cvPast = !!val('past');
       if(cvPast){ cvSvc = null; cvBottle = false; }
+      var cvBlock = cattleCalvingBlockReason(cvDam, cvDate, cvSvc, null);
+      if(cvBlock){ cattleFormError(form, cvBlock); return; }
       var cvBorn = [];
       mutate(function(s){
         var d = cattleCD(s);
@@ -10534,6 +10647,23 @@
       closeModal();
       if(cvBorn.length) celebrate({ title:'🐄 '+cattleName(cvDamObj)+' calved! 🎉', subtitle:'A '+cvBorn.join(' and a ')+' — added to the herd'+(cvBottle?' with a milk plan.':'.') });
       else toast(cvPast ? '📜 Added to her history.' : 'Calving recorded.');
+      return;
+    }
+    if(name==='cattle-calving-edit'){
+      var ceCId = val('id'), ceDateNew = val('date'), ceSvcNew = val('serviceId') || null, ceNoteNew = (val('note')||'').trim();
+      var ceCal = cattleData().calvings.find(function(x){ return x.id===ceCId; }); if(!ceCal){ closeModal(); return; }
+      var ceBlock = cattleCalvingBlockReason(ceCal.damId, ceDateNew, ceSvcNew, ceCId);
+      if(ceBlock){ cattleFormError(form, ceBlock); return; }
+      mutate(function(s){
+        var d = cattleCD(s);
+        var c = d.calvings.find(function(x){ return x.id===ceCId; }); if(!c) return;
+        var oldDate = c.date, oldSvc = c.serviceId;
+        if(oldSvc && oldSvc!==ceSvcNew){ var os = d.services.find(function(x){ return x.id===oldSvc; }); if(os && os.status==='calved'){ os.status = 'pregnant'; os.calvedDate = null; } }
+        if(ceSvcNew){ var ns = d.services.find(function(x){ return x.id===ceSvcNew; }); if(ns){ ns.status = 'calved'; ns.calvedDate = ceDateNew; } }
+        c.serviceId = ceSvcNew; c.date = ceDateNew; c.note = ceNoteNew; c.autoMarkedService = false;
+        (c.calfIds||[]).forEach(function(cid){ var k = d.animals.find(function(x){ return x.id===cid; }); if(k && (!k.dob || k.dob===oldDate)){ k.dob = ceDateNew; if(k.dateAdded===oldDate) k.dateAdded = ceDateNew; } });
+      });
+      closeModal(); toast('Saved.');
       return;
     }
     if(name==='cattle-exit'){
