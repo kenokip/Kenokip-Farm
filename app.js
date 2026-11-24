@@ -558,7 +558,8 @@
     if(!canSeeFinance()) return '';
     var rows = batchProfitability();
     if(!rows.length) return '';
-    var body = rows.map(function(r){
+    var bpPage = paginate('batch-profit', rows);
+    var body = bpPage.items.map(function(r){
       var b = r.batch;
       var label = genderLabel(b.gender)+(b.gender!=='unsexed'?'s':'')+' · added '+fmtDate(parseISO(b.dateAdded))+(currentCount(b)===0?' · fully removed':'');
       var netColor = r.net<0 ? 'var(--bad)' : (r.net>0 ? 'var(--good)' : 'var(--ink)');
@@ -566,6 +567,7 @@
     }).join('');
     return '<div class="card"><div class="card-title"><h3>Batch profitability</h3><span class="hint">Estimate — feed cost is split by flock size &amp; time; egg income isn\'t tracked per batch</span></div>'+
       '<div class="table-wrap"><table><thead><tr><th>Batch</th><th class="num">Cost</th><th class="num">Sale income</th><th class="num">Net</th></tr></thead><tbody>'+body+'</tbody></table></div>'+
+      pagerHtml('batch-profit', bpPage.pageCount, bpPage.page)+
     '</div>';
   }
   // Standing "what is the flock worth right now" figure — administrator
@@ -601,17 +603,20 @@
         ['Guinea Fowl, 0–1 wk', function(b){var w=ageWeeks(b); return batchSpecies(b)==='guineafowl' && w<2;}, GUINEAFOWL_VALUE_TABLE.chickYoungest]
       );
     }
-    var grandTotal = 0;
-    var body = rows.map(function(rw){
-      var label=rw[0], match=rw[1], price=rw[2];
-      var count = state.flock.reduce(function(a,b){ return a + (match(b) ? currentCount(b) : 0); }, 0);
-      var value = count*price;
-      grandTotal += value;
-      return '<tr><td>'+label+'</td><td class="num">'+count.toLocaleString()+'</td><td class="num">'+fmtMoney(price)+'</td><td class="num">'+fmtMoney(value)+'</td></tr>';
+    var grandTotal = 0, totalBirds = 0;
+    var valued = rows.map(function(rw){
+      var count = state.flock.reduce(function(a,b){ return a + (rw[1](b) ? currentCount(b) : 0); }, 0);
+      grandTotal += count*rw[2]; totalBirds += count;
+      return {label:rw[0], count:count, price:rw[2], value:count*rw[2]};
+    });
+    var avPage = paginate('flock-asset-value', valued);
+    var body = avPage.items.map(function(r){
+      return '<tr><td>'+r.label+'</td><td class="num">'+r.count.toLocaleString()+'</td><td class="num">'+fmtMoney(r.price)+'</td><td class="num">'+fmtMoney(r.value)+'</td></tr>';
     }).join('');
     return '<div class="card"><div class="card-title"><h3>Flock asset value</h3><span class="hint">Only visible to you — fixed price-per-bird estimate, not a market quote</span></div>'+
       '<div class="table-wrap"><table><thead><tr><th>Category</th><th class="num">Birds</th><th class="num">Price each</th><th class="num">Value</th></tr></thead><tbody>'+body+'</tbody>'+
-      '<tfoot><tr style="font-weight:700"><td>Total</td><td></td><td></td><td class="num">'+fmtMoney(grandTotal)+'</td></tr></tfoot></table></div>'+
+      '<tfoot><tr style="font-weight:700"><td>Total (all categories)</td><td class="num">'+totalBirds.toLocaleString()+'</td><td></td><td class="num">'+fmtMoney(grandTotal)+'</td></tr></tfoot></table></div>'+
+      pagerHtml('flock-asset-value', avPage.pageCount, avPage.page)+
     '</div>';
   }
 
@@ -1048,6 +1053,7 @@
     {key:'about', label:'About', icon:PICS.about},
     {key:'settings', label:'Settings', icon:PICS.settings}
   ];
+  var navOpenGroup = null, navLastSection = null;
   function renderNav(){
     var rail = document.getElementById('rail');
     var tabbar = document.getElementById('mobile-tabbar');
@@ -1090,6 +1096,13 @@
       }
       return item.icon;
     }
+    // Which group is open: the one holding the current page whenever the
+    // page changes; otherwise whatever the person last opened or closed.
+    if(navLastSection !== ui.section){
+      navLastSection = ui.section;
+      var holder = groups.find(function(g){ return g.children && g.children.some(function(c){ return c.key===ui.section; }); });
+      if(holder) navOpenGroup = holder.key;
+    }
     var desktopHtml = groups.map(function(g){
       if(!g.children){
         return '<li><button class="nav-item '+(ui.section===g.key?'active':'')+'" data-nav-section="'+g.key+'" data-action="nav:'+g.key+'"><span class="nav-ico">'+navIcon(g)+'</span>'+badgeHtml(badgeFor(g.key))+'<span class="nav-label">'+esc(navT(g))+'</span></button></li>';
@@ -1097,7 +1110,18 @@
       var kidsHtml = g.children.map(function(c){
         return '<li><button class="nav-item nav-item-sub '+(ui.section===c.key?'active':'')+'" data-nav-section="'+c.key+'" data-action="nav:'+c.key+'"><span class="nav-ico">'+navIcon(c)+'</span>'+badgeHtml(badgeFor(c.key))+'<span class="nav-label">'+esc(navT(c))+'</span></button></li>';
       }).join('');
-      return '<li class="nav-group"><div class="nav-group-label">'+esc(navT(g))+'</div><ul class="nav-sublist">'+kidsHtml+'</ul></li>';
+      // Collapsible group ("drop-down"): only one open at a time. The
+      // group holding the page you're on opens by itself; tap a header
+      // to open or close it.
+      var hasActive = g.children.some(function(c){ return c.key===ui.section; });
+      var open = navOpenGroup===g.key;
+      var groupBadge = open ? 0 : g.children.reduce(function(a,c){ return a+badgeFor(c.key); }, 0);
+      return '<li class="nav-group'+(open?' open':'')+(hasActive?' has-active':'')+'">'+
+        '<button type="button" class="nav-group-head" data-action="nav-toggle-group:'+g.key+'" aria-expanded="'+(open?'true':'false')+'">'+
+          '<span class="nav-ico">'+g.icon+'</span>'+badgeHtml(groupBadge)+'<span class="nav-label">'+esc(navT(g))+'</span>'+
+          '<svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'+
+        '</button>'+
+        '<div class="nav-sublist-wrap"><ul class="nav-sublist">'+kidsHtml+'</ul></div></li>';
     }).join('');
 
     rail.innerHTML =
@@ -9750,6 +9774,7 @@
       // Team) jumps to whichever of its sections was open last, or its
       // first allowed one if none was — the actual page never becomes a
       // group, ui.section is always a real leaf section either way.
+      case 'nav-toggle-group': navOpenGroup = (navOpenGroup===a1) ? '__none__' : a1; renderNav(); break;
       case 'nav-group': {
         var navGroup = NAV_GROUPS.find(function(g){ return g.key===a1 && g.children; });
         if(navGroup){
