@@ -1334,3 +1334,46 @@
 
   .cattle-form-error{ margin-top:12px; padding:10px 12px; border-radius:10px; font-size:13.5px; font-weight:600; line-height:1.45;
     color:var(--bad); background:color-mix(in srgb, var(--bad) 10%, transparent); border:1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
+
+  /* ---- Sensors page (Nov 2026) ---- */
+  .sensor-status{ font-size:13.5px; font-weight:600; margin:0 0 10px; color:var(--ink-2); }
+  .sensor-status.off{ color:var(--bad); }
+  .sensor-alert-banner{ padding:10px 14px; border-radius:12px; margin-bottom:12px; font-weight:600; font-size:14px;
+    color:var(--bad); background:color-mix(in srgb, var(--bad) 10%, var(--surface)); border:1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
+  .sensor-tiles{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
+  @media (max-width:860px){ .sensor-tiles{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; } }
+  .sensor-tile{ background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--radius); padding:14px 16px; display:flex; flex-direction:column; gap:4px; position:relative; overflow:hidden; }
+  .sensor-tile::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--z-green); opacity:.6; }
+  .sensor-tile.st-good::before{ background:var(--good); opacity:1; }
+  .sensor-tile.st-warn::before, .sensor-tile.st-cold::before{ background:var(--z-gold); opacity:1; }
+  .sensor-tile.st-bad::before{ background:var(--bad); opacity:1; }
+  .sensor-tile-label{ font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3); }
+  .sensor-tile-value{ font-size:30px; font-weight:700; line-height:1.1; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .sensor-tile-value span{ font-size:15px; font-weight:600; color:var(--ink-2); margin-left:3px; }
+  .sensor-tile-status{ font-size:13px; font-weight:700; color:var(--ink-2); }
+  .sensor-tile.st-good .sensor-tile-status{ color:var(--good); }
+  .sensor-tile.st-bad .sensor-tile-status{ color:var(--bad); }
+  .sensor-tile.st-warn .sensor-tile-status, .sensor-tile.st-cold .sensor-tile-status{ color:color-mix(in srgb, var(--z-gold) 70%, var(--ink)); }
+  .sensor-legend{ display:flex; gap:14px; flex-wrap:wrap; font-size:13px; color:var(--ink-2); margin-bottom:6px; }
+  .sensor-legend i, .sensor-tip i{ display:inline-block; width:12px; height:3px; border-radius:2px; vertical-align:middle; margin-right:6px; }
+  .sensor-chart{ display:flex; gap:8px; }
+  .sensor-y{ display:flex; flex-direction:column; justify-content:space-between; font-size:11.5px; color:var(--ink-3); white-space:nowrap; padding:2px 0; min-width:52px; text-align:right; }
+  .sensor-plot{ position:relative; flex:1; min-width:0; height:200px; touch-action:pan-y; }
+  .sensor-plot svg{ position:absolute; inset:0; width:100%; height:100%; display:block; overflow:visible; }
+  .sensor-x{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-3); margin:4px 0 0 60px; }
+  .sensor-ref-label{ position:absolute; left:4px; transform:translateY(-110%); font-size:11px; color:var(--ink-3); background:color-mix(in srgb, var(--surface) 80%, transparent); padding:0 3px; border-radius:3px; pointer-events:none; }
+  .sensor-end-label{ position:absolute; right:2px; transform:translateY(-120%); font-size:11.5px; font-weight:600; color:var(--ink-2); background:color-mix(in srgb, var(--surface) 85%, transparent); padding:0 4px; border-radius:3px; pointer-events:none; }
+  .sensor-tip{ position:absolute; top:4px; min-width:130px; padding:8px 10px; border-radius:10px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); font-size:12.5px; pointer-events:none; z-index:2; }
+  .sensor-tip div{ white-space:nowrap; }
+  .sensor-chart-empty{ padding:40px 0; text-align:center; color:var(--ink-3); }
+  .sensor-alert-row{ display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-soft); }
+  .sensor-alert-row:last-child{ border-bottom:none; }
+  .sensor-alert-row.clear strong{ color:var(--good); }
+  .sensor-input-unit{ display:flex; align-items:center; gap:8px; }
+  .sensor-input-unit span{ font-size:13px; color:var(--ink-3); white-space:nowrap; }
+  .sensor-snippet{ background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:12.5px; overflow-x:auto; white-space:pre; }
+  .sensor-steps{ padding-left:20px; display:grid; gap:6px; margin:0 0 14px; }
+  .sensor-overview{ display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center; justify-content:space-between; width:100%; text-align:left; cursor:pointer; margin-bottom:14px; font:inherit; color:var(--ink); }
+  :root .nav-item[data-nav-section="sensors"]{ --accent:hsl(100,42%,30%); --accent-strong:hsl(100,42%,23%); --accent-tint:hsl(46,72%,88%); --accent-ink:hsl(100,50%,17%); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .nav-item[data-nav-section="sensors"]{ --accent:hsl(46,75%,62%); --accent-strong:hsl(46,80%,70%); --accent-tint:hsl(46,45%,17%); --accent-ink:hsl(46,80%,86%); } }
+  :root[data-theme="dark"] .nav-item[data-nav-section="sensors"]{ --accent:hsl(46,75%,62%); --accent-strong:hsl(46,80%,70%); --accent-tint:hsl(46,45%,17%); --accent-ink:hsl(46,80%,86%); }

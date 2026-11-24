@@ -57,6 +57,10 @@ Object.assign(exports, require('./digest')(admin, db));
 // reminder — see privacyGuard.js.
 Object.assign(exports, require('./privacyGuard')(admin, db).triggers);
 
+// Poultry-house sensor box (ESP32) — readings in, alerts out, lighting
+// schedule back to the box — see sensors.js and SETUP-SENSORS.md.
+Object.assign(exports, require('./sensors')(admin, db).triggers);
+
 // Team recognition ("Kudos") — congratulations + an optional reward note,
 // to one team member or everyone at once — see kudos.js.
 Object.assign(exports, require('./kudos')(admin, db).triggers);

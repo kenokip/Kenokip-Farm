@@ -78,6 +78,7 @@
     eggs:'<svg viewBox="0 0 48 48"><ellipse cx="24" cy="41" rx="17" ry="3.4" fill="#D9C6A3" opacity=".6"/><path d="M15 40 Q6 40 8 27 Q10 13 17 13 Q24 13 24 27 Q24 40 15 40 Z" fill="#C08347"/><circle cx="12" cy="24" r="1.1" fill="#8A5A2E"/><circle cx="18" cy="20" r="1" fill="#8A5A2E"/><circle cx="14" cy="31" r="1.1" fill="#8A5A2E"/><circle cx="19" cy="28" r="0.9" fill="#8A5A2E"/><path d="M32 40 Q23 40 25 28 Q27 16 33 16 Q39 16 39 28 Q39 40 32 40 Z" fill="#FBF6EA"/><path d="M29 22 Q32 20 35 22" stroke="#EFE4CC" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
     feed:'<svg viewBox="0 0 48 48"><path d="M14 12 h20 l2 8 q2 10 -2 18 q-4 6 -10 6 q-6 0 -10 -6 q-4 -8 -2 -18 Z" fill="#C9A06B"/><path d="M14 12 q10 4 20 0" stroke="#8B5E34" stroke-width="2" fill="none"/><path d="M17 9 q7 4 14 0" stroke="#6B4726" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="20" cy="24" r="2.6" fill="#E8B93D"/><circle cx="27" cy="27" r="2.2" fill="#D6A02E"/><circle cx="22" cy="31" r="2" fill="#E8B93D"/><path d="M31 30 q3 -4 7 -2 q-2 4 -7 2 Z" fill="#5C8F3E"/></svg>',
     health:'<svg viewBox="0 0 48 48"><path d="M24 6 L40 12 V22 Q40 36 24 43 Q8 36 8 22 V12 Z" fill="#2F8F73"/><path d="M24 10 L36 14.5 V22 Q36 33 24 39 Q12 33 12 22 V14.5 Z" fill="#3EA987"/><path d="M24 18 v14 M17 25 h14" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg>',
+    sensors:'<svg viewBox="0 0 48 48"><path d="M8 18 Q14 12 20 18" fill="none" stroke="#6FA84B" stroke-width="2.6" stroke-linecap="round"/><path d="M4 13 Q14 3 24 13" fill="none" stroke="#9CC36A" stroke-width="2.6" stroke-linecap="round"/><rect x="26" y="6" width="10" height="26" rx="5" fill="#F4EBD3" stroke="#8A6A2E" stroke-width="2"/><circle cx="31" cy="36" r="8" fill="#D8452F" stroke="#8A6A2E" stroke-width="2"/><rect x="29" y="14" width="4" height="20" rx="2" fill="#D8452F"/><path d="M38 12 h4 M38 18 h4 M38 24 h4" stroke="#8A6A2E" stroke-width="2" stroke-linecap="round"/></svg>',
     expenses:'<svg viewBox="0 0 48 48"><ellipse cx="24" cy="34" rx="13" ry="5" fill="#8A3A22"/><ellipse cx="24" cy="29" rx="13" ry="5" fill="#BD5B38"/><ellipse cx="24" cy="24" rx="13" ry="5" fill="#D97A50"/><ellipse cx="24" cy="24" rx="13" ry="5" fill="none" stroke="#8A3A22" stroke-width="1.4" opacity=".4"/><path d="M35 12 l4 4 M39 12 l-4 4" stroke="#A63A2E" stroke-width="2.6" stroke-linecap="round"/></svg>',
     income:'<svg viewBox="0 0 48 48"><ellipse cx="24" cy="34" rx="13" ry="5" fill="#215E3B"/><ellipse cx="24" cy="29" rx="13" ry="5" fill="#3E8E5A"/><ellipse cx="24" cy="24" rx="13" ry="5" fill="#6DBB86"/><path d="M37 8 v11 M32 13 l5 -5 l5 5" stroke="#215E3B" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     customers:'<svg viewBox="0 0 48 48"><circle cx="18" cy="17" r="7" fill="#C4667A"/><path d="M6 39 q0 -13 12 -13 q12 0 12 13 Z" fill="#C4667A"/><circle cx="32" cy="20" r="5.6" fill="#E8B93D"/><path d="M22 39 q0 -10.5 10 -10.5 q10 0 10 10.5 Z" fill="#E8B93D" opacity=".9"/></svg>',
@@ -1028,7 +1029,8 @@
       {key:'feed', label:'Feed', icon:PICS.feed},
       {key:'livestock', label:'Other Livestock', icon:PICS.livestockNav},
       {key:'crops', label:'Crops', icon:PICS.cropsNav},
-      {key:'health', label:'Health', icon:PICS.health}
+      {key:'health', label:'Health', icon:PICS.health},
+      {key:'sensors', label:'Sensors', icon:PICS.sensors}
     ]},
     {key:'money-group', label:'Money', icon:PICS.finance, children:[
       {key:'income', label:'Income', icon:PICS.income},
@@ -1274,7 +1276,7 @@
   // crops fresh green with wheat, money emerald with bright gold, the team
   // pages sage with bronze, and home (overview, about, settings, sign-in)
   // the plain green-gold. Overview follows whichever sector is open.
-  var ZONE_OF_SECTION = { flock:'poultry', eggs:'poultry', feed:'poultry', health:'poultry',
+  var ZONE_OF_SECTION = { flock:'poultry', eggs:'poultry', feed:'poultry', health:'poultry', sensors:'poultry',
     livestock:'cattle', crops:'crops',
     income:'money', expenses:'money', finance:'money', reports:'money', customers:'money',
     team:'team', directory:'team', messages:'team', signoffs:'team' };
@@ -1344,6 +1346,7 @@
     // it back in within the same task means the browser never pauses it.
     var keepVideo = document.getElementById('farm-video');
     document.getElementById('panel').innerHTML = '<div id="global-banner">'+bannerHTML()+'</div>' + sec.panel();
+    if(ui.section==='sensors') bindSensorCharts();
     var freshVideo = document.getElementById('farm-video');
     if(keepVideo && freshVideo && keepVideo !== freshVideo) freshVideo.replaceWith(keepVideo);
   }
@@ -1372,7 +1375,8 @@
       directory:[[PICS.directory,'top:9%;left:5%;width:140px']],
       messages:[[PICS.messages,'top:9%;right:5%;width:140px']],
       signoffs:[[PICS.signoffs,'top:9%;left:5%;width:140px']],
-      trash:[[PICS.trash,'top:9%;right:5%;width:130px']]
+      trash:[[PICS.trash,'top:9%;right:5%;width:130px']],
+      sensors:[[PICS.sensors,'top:9%;right:5%;width:130px'],[PICS.hen,'bottom:10%;left:5%;width:110px']]
     };
     var list = defs[key];
     if(!list) return '';
@@ -1527,7 +1531,7 @@
 
     var overdueHealth = overdueHealthCount();
 
-    return overviewGreetingHTML() +
+    return overviewGreetingHTML() + sensorOverviewTileHTML() +
     (isEmpty ? '<div class="banner">Welcome to your ledger — start in <strong>&nbsp;Flock&nbsp;</strong> to add your birds, then log eggs and expenses as you go.</div>' : '') +
     (overdueHealth>0 ? '<div class="banner bad" style="cursor:pointer" data-action="nav:health">'+overdueHealth+' health reminder'+(overdueHealth===1?'':'s')+' overdue — tap to view in Health.</div>' : '') +
     (showProfit ? '<div class="card">'+
@@ -3937,6 +3941,428 @@
     printReceiptNow(html);
   }
 
+  /* ============================= SENSORS ============================= */
+  // Live readings from the ESP32 sensor box in the poultry house (see
+  // functions/sensors.js for the server side and SETUP-SENSORS.md for the
+  // wiring). The box posts every few minutes; the app listens to:
+  //   sensorLatest/{deviceId}            newest reading + today's totals
+  //   sensorDays/{deviceId}_{YYYY-MM-DD} every reading of one day (charts)
+  //   sensorAlerts                       alerts raised / cleared
+  //   sensorSettings/main                alert limits + lighting schedule
+  //   sensorDevices                      the boxes (administrator only)
+  // Everything here is read-only except the settings form and the
+  // add/remove-box buttons (administrator / co-administrator).
+  var SENSOR_DEFAULTS = {
+    intervalSec:300, houseTempHigh:30, houseTempLow:12, chickTempHigh:34, chickTempLow:18,
+    humidityHigh:85, humidityLow:30, ammoniaHigh:25, noWaterHours:3, waterDropPercent:60, notifyTeam:true,
+    lights:{ mode:'off', morningOn:'04:00', morningOff:'07:00', eveningOn:'', eveningOff:'', luxThreshold:50 }
+  };
+  var sensorsSyncStarted = false, sensorPageSyncStarted = false;
+  var sensorLatestMap = {}, sensorLatestLoaded = false;
+  var sensorSettingsDoc = null, sensorAlertsList = [], sensorDevicesList = [];
+  var sensorDayCache = {}, sensorDayUnsub = null, sensorDayUnsubKey = '';
+  var sensorDayLoading = {};
+  function sensorSettings(){
+    var s = Object.assign({}, SENSOR_DEFAULTS, sensorSettingsDoc||{});
+    s.lights = Object.assign({}, SENSOR_DEFAULTS.lights, (sensorSettingsDoc&&sensorSettingsDoc.lights)||{});
+    return s;
+  }
+  function initSensorsSync(){
+    if(sensorsSyncStarted || !db || !currentUser) return;
+    sensorsSyncStarted = true;
+    db.collection('sensorLatest').onSnapshot(function(snap){
+      sensorLatestMap = {};
+      snap.forEach(function(doc){ sensorLatestMap[doc.id] = Object.assign({id:doc.id}, doc.data()); });
+      sensorLatestLoaded = true;
+      if(ui.section==='sensors' || ui.section==='overview') render();
+    }, function(){ sensorLatestLoaded = true; });
+    db.collection('sensorSettings').doc('main').onSnapshot(function(doc){
+      sensorSettingsDoc = doc.exists ? doc.data() : null;
+      if(ui.section==='sensors') render();
+    }, function(){});
+  }
+  function initSensorPageSync(){
+    if(sensorPageSyncStarted || !db || !currentUser) return;
+    sensorPageSyncStarted = true;
+    db.collection('sensorAlerts').orderBy('atMs','desc').limit(25).onSnapshot(function(snap){
+      sensorAlertsList = [];
+      snap.forEach(function(doc){ sensorAlertsList.push(Object.assign({id:doc.id}, doc.data())); });
+      if(ui.section==='sensors') render();
+    }, function(){});
+    if(isAdminLevel()){
+      db.collection('sensorDevices').onSnapshot(function(snap){
+        sensorDevicesList = [];
+        snap.forEach(function(doc){ var d = doc.data(); if(!d.revoked) sensorDevicesList.push(Object.assign({id:doc.id}, d)); });
+        if(ui.section==='sensors') render();
+      }, function(){});
+    }
+  }
+  // Today's doc for the selected box is live; earlier days are fetched once.
+  function sensorDayKey(dev, iso){ return dev+'_'+iso; }
+  function ensureSensorDays(dev, days){
+    if(!db || !dev) return;
+    var today = todayISO();
+    var liveKey = sensorDayKey(dev, today);
+    if(sensorDayUnsubKey!==liveKey){
+      if(sensorDayUnsub){ try{ sensorDayUnsub(); }catch(e){} }
+      sensorDayUnsubKey = liveKey;
+      sensorDayUnsub = db.collection('sensorDays').doc(liveKey).onSnapshot(function(doc){
+        sensorDayCache[liveKey] = doc.exists ? (doc.data().points||[]) : [];
+        if(ui.section==='sensors') render();
+      }, function(){ sensorDayCache[liveKey] = []; });
+    }
+    for(var i=1;i<days;i++){
+      (function(key){
+        if(sensorDayCache[key] || sensorDayLoading[key]) return;
+        sensorDayLoading[key] = true;
+        db.collection('sensorDays').doc(key).get().then(function(doc){
+          sensorDayCache[key] = doc.exists ? (doc.data().points||[]) : [];
+          delete sensorDayLoading[key];
+          if(ui.section==='sensors') render();
+        }).catch(function(){ sensorDayCache[key] = []; delete sensorDayLoading[key]; });
+      })(sensorDayKey(dev, addDaysISO(today, -i)));
+    }
+  }
+  // Every point of the last `days` days, oldest first, with a real time.
+  function sensorPoints(dev, days){
+    var out = [], today = todayISO();
+    for(var i=days-1;i>=0;i--){
+      var iso = addDaysISO(today, -i);
+      (sensorDayCache[sensorDayKey(dev, iso)]||[]).forEach(function(p){
+        var hm = String(p.t||'00:00').split(':');
+        var d = parseISO(iso); d.setHours(Number(hm[0])||0, Number(hm[1])||0, 0, 0);
+        out.push(Object.assign({ms:d.getTime()}, p));
+      });
+    }
+    out.sort(function(a,b){ return a.ms-b.ms; });
+    return out;
+  }
+  function sensorAgoText(ms){
+    if(!ms) return 'never';
+    var m = Math.round((Date.now()-ms)/60000);
+    if(m<1) return 'just now';
+    if(m<60) return m+' min ago';
+    var h = Math.floor(m/60);
+    if(h<24) return h+' h '+(m%60)+' min ago';
+    return fmtDate(new Date(ms), {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+  }
+  function sensorIsOnline(l){ return l && l.atMs && (Date.now()-l.atMs) < 20*60000 && !l.offline; }
+  function sensorSelectedDevice(){
+    var ids = Object.keys(sensorLatestMap).sort();
+    if(!ids.length) return null;
+    if(!ui.sensorDevice || ids.indexOf(ui.sensorDevice)===-1) ui.sensorDevice = ids[0];
+    return ui.sensorDevice;
+  }
+  // Status for a reading: {tone, label, icon} — never colour alone.
+  function sensorStatus(kind, v, s){
+    if(v===null || v===undefined) return {tone:'', label:'No reading', icon:'·'};
+    if(kind==='houseTemp'){ if(v>=s.houseTempHigh) return {tone:'bad', label:'Too hot', icon:'⚠'}; if(v<=s.houseTempLow) return {tone:'cold', label:'Cold', icon:'⚠'}; return {tone:'good', label:'Good', icon:'✓'}; }
+    if(kind==='chickTemp'){ if(v>=s.chickTempHigh) return {tone:'bad', label:'Too hot', icon:'⚠'}; if(v<=s.chickTempLow) return {tone:'cold', label:'Cold for chicks', icon:'⚠'}; return {tone:'good', label:'Good', icon:'✓'}; }
+    if(kind==='hum'){ if(v>=s.humidityHigh) return {tone:'bad', label:'Too damp', icon:'⚠'}; if(v<=s.humidityLow) return {tone:'warn', label:'Very dry', icon:'⚠'}; if(v>=75) return {tone:'warn', label:'Damp', icon:'!'}; return {tone:'good', label:'Good', icon:'✓'}; }
+    if(kind==='nh3'){ if(v>=s.ammoniaHigh) return {tone:'bad', label:'High', icon:'⚠'}; if(v>=10) return {tone:'warn', label:'Noticeable', icon:'!'}; return {tone:'good', label:'Fresh air', icon:'✓'}; }
+    return {tone:'', label:'', icon:''};
+  }
+  function sensorTile(icon, label, value, unit, st, sub){
+    return '<div class="sensor-tile'+(st&&st.tone?' st-'+st.tone:'')+'">'+
+      '<div class="sensor-tile-label">'+icon+' '+label+'</div>'+
+      '<div class="sensor-tile-value">'+(value===null||value===undefined?'—':value)+(value===null||value===undefined?'':'<span>'+unit+'</span>')+'</div>'+
+      (st&&st.label ? '<div class="sensor-tile-status">'+st.icon+' '+st.label+'</div>' : '')+
+      (sub ? '<div class="hint">'+sub+'</div>' : '')+
+    '</div>';
+  }
+
+  // ---- Charts ----------------------------------------------------------------
+  // One y-axis per chart (temperature and humidity are separate charts),
+  // thin 2px lines, a legend + end labels when there are two lines, dashed
+  // reference lines for the alert limits, and a crosshair tooltip on hover
+  // (see the pointer handlers in bindSensorCharts).
+  function sensorSeriesColors(){
+    var dark = document.documentElement.getAttribute('data-theme')==='dark' ||
+      (document.documentElement.getAttribute('data-theme')!=='light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    return dark ? ['#38906c','#c98420'] : ['#3f6e2a','#b07f00'];
+  }
+  function sensorBucket(points, field, fromMs, toMs, bucketMs, agg){
+    var n = Math.max(1, Math.round((toMs-fromMs)/bucketMs)), sums = [], counts = [];
+    for(var i=0;i<n;i++){ sums.push(0); counts.push(0); }
+    points.forEach(function(p){
+      if(p.ms<fromMs || p.ms>=toMs || p[field]===undefined || p[field]===null) return;
+      var b = Math.min(n-1, Math.floor((p.ms-fromMs)/bucketMs));
+      sums[b] += Number(p[field]); counts[b] += 1;
+    });
+    return sums.map(function(sum, i){
+      var y = counts[i] ? (agg==='sum' ? sum : sum/counts[i]) : null;
+      return {x: fromMs + i*bucketMs + bucketMs/2, y: y===null ? null : Math.round(y*10)/10};
+    });
+  }
+  function sensorChartHTML(cfg){
+    // cfg: {id, unit, series:[{label, pts:[{x,y}]}], bars:bool, refs:[{y,label}], fromMs, toMs, shade:[[from,to]]}
+    var colors = sensorSeriesColors();
+    var W = 600, H = 200, padT = 10, padB = 6;
+    var ys = [];
+    cfg.series.forEach(function(s){ s.pts.forEach(function(p){ if(p.y!==null) ys.push(p.y); }); });
+    (cfg.refs||[]).forEach(function(r){ ys.push(r.y); });
+    if(!ys.length) return '<div class="sensor-chart-empty">No readings in this period yet.</div>';
+    var min = cfg.bars ? 0 : Math.min.apply(null, ys), max = Math.max.apply(null, ys);
+    if(max===min){ max += 1; if(!cfg.bars) min -= 1; }
+    var span = max-min; if(!cfg.bars){ min -= span*0.08; } max += span*0.08;
+    function X(x){ return (x-cfg.fromMs)/(cfg.toMs-cfg.fromMs)*W; }
+    function Y(y){ return padT + (1-(y-min)/(max-min))*(H-padT-padB); }
+    var svg = '';
+    (cfg.shade||[]).forEach(function(r){ svg += '<rect x="'+X(r[0]).toFixed(1)+'" y="0" width="'+Math.max(1,X(r[1])-X(r[0])).toFixed(1)+'" height="'+H+'" fill="var(--z-gold)" opacity=".13"/>'; });
+    // recessive grid: 3 lines
+    for(var g=0; g<=2; g++){ var gy = padT + g*(H-padT-padB)/2; svg += '<line x1="0" x2="'+W+'" y1="'+gy.toFixed(1)+'" y2="'+gy.toFixed(1)+'" stroke="var(--border-soft)" vector-effect="non-scaling-stroke"/>'; }
+    (cfg.refs||[]).forEach(function(r){ svg += '<line x1="0" x2="'+W+'" y1="'+Y(r.y).toFixed(1)+'" y2="'+Y(r.y).toFixed(1)+'" stroke="var(--ink-3)" stroke-dasharray="5 5" vector-effect="non-scaling-stroke"/>'; });
+    var endLabels = '';
+    cfg.series.forEach(function(s, si){
+      var col = colors[si] || colors[0];
+      if(cfg.bars){
+        var bw = W/Math.max(1, s.pts.length);
+        s.pts.forEach(function(p){
+          if(p.y===null || p.y<=0) return;
+          var top = Y(p.y), x = X(p.x)-bw/2;
+          svg += '<rect x="'+(x+1).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+Math.max(1,bw-2).toFixed(1)+'" height="'+Math.max(1,Y(0)-top).toFixed(1)+'" rx="2" fill="'+col+'"/>';
+        });
+        return;
+      }
+      var segs = [], cur = [];
+      s.pts.forEach(function(p){ if(p.y===null){ if(cur.length) segs.push(cur); cur = []; } else cur.push(X(p.x).toFixed(1)+','+Y(p.y).toFixed(1)); });
+      if(cur.length) segs.push(cur);
+      segs.forEach(function(seg){
+        if(seg.length===1){ var xy = seg[0].split(','); svg += '<circle cx="'+xy[0]+'" cy="'+xy[1]+'" r="2.5" fill="'+col+'"/>'; }
+        else svg += '<polyline points="'+seg.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+      });
+      if(cfg.series.length>1){
+        var last = null; for(var i=s.pts.length-1;i>=0;i--){ if(s.pts[i].y!==null){ last = s.pts[i]; break; } }
+        if(last) endLabels += '<span class="sensor-end-label" style="top:'+(Y(last.y)/H*100).toFixed(1)+'%">'+esc(s.label)+'</span>';
+      }
+    });
+    // keep the end-of-line labels from sitting on top of each other
+    if(cfg.series.length>1){
+      var tops = [];
+      endLabels = endLabels.replace(/top:([0-9.]+)%/g, function(m, v){
+        var t = Number(v);
+        tops.forEach(function(o){ if(Math.abs(o-t)<10) t = o<=t ? o+10 : o-10; });
+        tops.push(t);
+        return 'top:'+Math.max(6, Math.min(100, t)).toFixed(1)+'%';
+      });
+    }
+    var refLabels = (cfg.refs||[]).map(function(r){ return '<span class="sensor-ref-label" style="top:'+(Y(r.y)/H*100).toFixed(1)+'%">'+esc(r.label)+'</span>'; }).join('');
+    var legend = cfg.series.length>1 ? '<div class="sensor-legend">'+cfg.series.map(function(s, si){ return '<span><i style="background:'+(colors[si]||colors[0])+'"></i>'+esc(s.label)+'</span>'; }).join('')+'</div>' : '';
+    var fmtX = function(ms){ var d = new Date(ms); return (cfg.toMs-cfg.fromMs)>2*86400000 ? fmtDate(d,{weekday:'short', day:'numeric'}) : d.toLocaleTimeString('en-GB',{hour:'2-digit', minute:'2-digit'}); };
+    var data = { unit: cfg.unit, from: cfg.fromMs, to: cfg.toMs, bars: !!cfg.bars, long: (cfg.toMs-cfg.fromMs)>2*86400000,
+      s: cfg.series.map(function(s, si){ return {l:s.label, c:colors[si]||colors[0], p:s.pts.map(function(p){ return [p.x, p.y]; })}; }) };
+    return legend+
+      '<div class="sensor-chart" data-chart="'+esc(JSON.stringify(data))+'">'+
+        '<div class="sensor-y"><span>'+(Math.round(max*10)/10)+' '+esc(cfg.unit)+'</span><span>'+(Math.round(min*10)/10)+' '+esc(cfg.unit)+'</span></div>'+
+        '<div class="sensor-plot"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="'+esc(cfg.label||'Sensor chart')+'">'+svg+
+          '<line class="sensor-cross" x1="0" x2="0" y1="0" y2="'+H+'" stroke="var(--ink-2)" vector-effect="non-scaling-stroke" style="display:none"/></svg>'+
+          refLabels+endLabels+'<div class="sensor-tip" hidden></div></div>'+
+      '</div>'+
+      '<div class="sensor-x"><span>'+fmtX(cfg.fromMs)+'</span><span>'+fmtX((cfg.fromMs+cfg.toMs)/2)+'</span><span>Now</span></div>';
+  }
+  // Crosshair + tooltip, wired after every render (cheap: a few charts).
+  function bindSensorCharts(){
+    document.querySelectorAll('.sensor-chart').forEach(function(el){
+      if(el._bound) return; el._bound = true;
+      var data; try{ data = JSON.parse(el.getAttribute('data-chart')); }catch(e){ return; }
+      var plot = el.querySelector('.sensor-plot'), tip = el.querySelector('.sensor-tip'), cross = el.querySelector('.sensor-cross');
+      function move(ev){
+        var rect = plot.getBoundingClientRect();
+        var cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - rect.left;
+        var frac = Math.max(0, Math.min(1, cx/rect.width));
+        var x = data.from + frac*(data.to-data.from);
+        var rows = [], when = null;
+        data.s.forEach(function(s){
+          var best = null; s.p.forEach(function(p){ if(p[1]!==null && (!best || Math.abs(p[0]-x)<Math.abs(best[0]-x))) best = p; });
+          if(best && Math.abs(best[0]-x) < (data.to-data.from)/40){ rows.push('<div><i style="background:'+s.c+'"></i>'+esc(s.l)+' <strong>'+best[1]+' '+esc(data.unit)+'</strong></div>'); when = when || best[0]; }
+        });
+        if(!rows.length){ tip.hidden = true; cross.style.display='none'; return; }
+        var d = new Date(when);
+        tip.innerHTML = '<div class="hint">'+(data.long ? fmtDate(d,{weekday:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : d.toLocaleTimeString('en-GB',{hour:'2-digit', minute:'2-digit'}))+'</div>'+rows.join('');
+        tip.hidden = false;
+        var px = (when-data.from)/(data.to-data.from)*600;
+        cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.style.display='';
+        var left = (when-data.from)/(data.to-data.from)*rect.width;
+        tip.style.left = Math.min(rect.width-140, Math.max(0, left+10))+'px';
+      }
+      function leave(){ tip.hidden = true; cross.style.display='none'; }
+      plot.addEventListener('pointermove', move);
+      plot.addEventListener('touchmove', move, {passive:true});
+      plot.addEventListener('pointerleave', leave);
+    });
+  }
+
+  // ---- Page --------------------------------------------------------------------
+  function sensorsPanel(){
+    initSensorsSync(); initSensorPageSync();
+    var s = sensorSettings();
+    var dev = sensorSelectedDevice();
+    var admin = isAdminLevel();
+    if(!sensorLatestLoaded) return '<div class="card"><div class="hint">Loading sensor readings…</div></div>';
+    if(!dev){
+      return '<div class="card sensor-setup"><div class="card-title"><h3>🌡️ Connect your sensor box</h3></div>'+
+        '<p style="margin-top:0">When the ESP32 sensor box in the poultry house is connected, this page shows the temperature, humidity, ammonia, water use and lights live — and sends a push alert to your phone when something needs attention.</p>'+
+        '<ol class="sensor-steps">'+
+          '<li>Buy the parts and wire them up as in the setup guide (SETUP-SENSORS.md).</li>'+
+          '<li>'+(admin ? 'Tap <strong>Add sensor box</strong> below. The app gives you a device ID and a secret key.' : 'Ask the administrator to add the sensor box here — they get a device ID and a secret key.')+'</li>'+
+          '<li>Put the Wi-Fi name and password, the ID and the key into the box\'s <code>secrets.h</code>, then upload the program to the ESP32.</li>'+
+          '<li>Plug it in. Readings appear here within five minutes.</li>'+
+        '</ol>'+
+        (admin ? '<button class="btn primary" data-action="sensor-add-device" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'Add sensor box</button>' : '')+
+      '</div>'+sensorGuideCardHTML(s)+(admin ? sensorSettingsCardHTML(s) : '');
+    }
+    var l = sensorLatestMap[dev];
+    ensureSensorDays(dev, (ui.sensorRange==='7d') ? 7 : 2);
+    var online = sensorIsOnline(l);
+    var ids = Object.keys(sensorLatestMap).sort();
+    var picker = ids.length>1 ? '<div class="chip-row" style="margin-bottom:12px">'+ids.map(function(id){ return '<button class="chip'+(id===dev?' active':'')+'" data-action="sensor-device:'+id+'">'+esc(sensorLatestMap[id].name||id)+'</button>'; }).join('')+'</div>' : '';
+    var status = '<div class="sensor-status '+(online?'on':'off')+'">'+(online ? '🟢 Online' : '🔴 Offline')+' · '+esc(l.name||'Sensor box')+' · updated '+sensorAgoText(l.atMs)+
+      (l.rssi ? ' · Wi-Fi '+(l.rssi>-60?'strong':(l.rssi>-75?'fair':'weak'))+' ('+l.rssi+' dBm)' : '')+'</div>';
+    // usual water by this time (previous days, from cached day docs)
+    var usual = null;
+    (function(){
+      var now = new Date(), hhmm = ('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2), tot = [], i;
+      for(i=1;i<=3;i++){
+        var pts = sensorDayCache[sensorDayKey(dev, addDaysISO(todayISO(), -i))];
+        if(!pts || !pts.length) continue;
+        var w = pts.filter(function(p){ return p.t<=hhmm; }).reduce(function(a,p){ return a+(Number(p.wl)||0); }, 0);
+        if(w>0) tot.push(w);
+      }
+      if(tot.length) usual = Math.round(tot.reduce(function(a,b){return a+b;},0)/tot.length);
+    })();
+    var lightsTxt = l.lt===1 ? 'On' : (l.lt===0 ? 'Off' : null);
+    var tiles = '<div class="sensor-tiles">'+
+      sensorTile('🌡️', 'House temperature', l.ht, '°C', sensorStatus('houseTemp', l.ht, s))+
+      sensorTile('💧', 'House humidity', l.hh, '%', sensorStatus('hum', l.hh, s))+
+      sensorTile('🐥', 'Chick corner', l.ct, '°C', sensorStatus('chickTemp', l.ct, s), l.ch!==null&&l.ch!==undefined ? 'Humidity '+l.ch+'%' : '')+
+      sensorTile('🫧', 'Ammonia (estimate)', l.nh3===null||l.nh3===undefined ? null : Math.round(l.nh3), 'ppm', l.nh3===null||l.nh3===undefined ? null : sensorStatus('nh3', l.nh3, s),
+        l.nh3===null||l.nh3===undefined ? 'No reading yet — the sensor needs warming up and a one-time fresh-air calibration (see the setup guide).' : '')+
+      sensorTile('🚰', 'Water today', l.waterToday===undefined ? null : l.waterToday, 'L', null,
+        (usual!==null ? 'Usually about '+usual+' L by now' : 'Shows "usual" after a few days')+(l.lastFlowAtMs ? ' · last flow '+sensorAgoText(l.lastFlowAtMs) : ''))+
+      sensorTile('💡', 'Lights', lightsTxt, '', null,
+        (l.lx!==null&&l.lx!==undefined ? 'Light level '+Math.round(l.lx)+' lux · ' : '')+'on '+(Math.round((l.lightMinutesToday||0)/6)/10)+' h today')+
+    '</div>';
+    // active alerts banner
+    var active = Object.keys(l.alerts||{}).filter(function(k){ return l.alerts[k] && l.alerts[k].active; });
+    var banner = (!online ? '<div class="sensor-alert-banner">📡 No readings since '+sensorAgoText(l.atMs)+' — the power or internet at the farm may be off, or the box needs a restart.</div>' : '')+
+      (active.length ? '<div class="sensor-alert-banner">⚠️ Needs attention: '+active.map(function(k){ return ({houseHot:'house too hot', houseCold:'house cold', chickCold:'chick corner cold', chickHot:'chick corner hot', humidHigh:'very damp', ammoniaHigh:'strong ammonia', noWater:'no water flowing'})[k]||k; }).join(', ')+'</div>' : '');
+    return picker+status+banner+tiles+sensorChartsCardHTML(dev, s, l)+sensorAlertsCardHTML()+
+      (admin ? sensorSettingsCardHTML(s)+sensorDevicesCardHTML() : '')+sensorGuideCardHTML(s);
+  }
+  function sensorChartsCardHTML(dev, s, l){
+    var range = ui.sensorRange || '24h', metric = ui.sensorMetric || 'temp';
+    var days = range==='7d' ? 7 : 2;
+    var toMs = Date.now(), fromMs = toMs - (range==='7d' ? 7*86400000 : 86400000);
+    var pts = sensorPoints(dev, days).filter(function(p){ return p.ms>=fromMs; });
+    var bucket = range==='7d' ? 3600000 : 15*60000;
+    var cfg;
+    if(metric==='temp'){
+      cfg = {label:'Temperature', unit:'°C', series:[{label:'House', pts:sensorBucket(pts,'ht',fromMs,toMs,bucket)},{label:'Chick corner', pts:sensorBucket(pts,'ct',fromMs,toMs,bucket)}].filter(function(x){ return x.pts.some(function(p){ return p.y!==null; }); }),
+        refs:[{y:s.houseTempHigh, label:'Hot '+s.houseTempHigh+'°'},{y:s.houseTempLow, label:'Cold '+s.houseTempLow+'°'}]};
+    } else if(metric==='hum'){
+      cfg = {label:'Humidity', unit:'%', series:[{label:'House', pts:sensorBucket(pts,'hh',fromMs,toMs,bucket)},{label:'Chick corner', pts:sensorBucket(pts,'ch',fromMs,toMs,bucket)}].filter(function(x){ return x.pts.some(function(p){ return p.y!==null; }); }),
+        refs:[{y:s.humidityHigh, label:'Too damp '+s.humidityHigh+'%'}]};
+    } else if(metric==='nh3'){
+      cfg = {label:'Ammonia', unit:'ppm', series:[{label:'Ammonia', pts:sensorBucket(pts,'nh3',fromMs,toMs,bucket)}], refs:[{y:s.ammoniaHigh, label:'High '+s.ammoniaHigh}]};
+    } else if(metric==='water'){
+      cfg = {label:'Water', unit:'L', bars:true, series:[{label:'Water', pts:sensorBucket(pts,'wl',fromMs,toMs, range==='7d'?86400000:3600000,'sum')}]};
+    } else {
+      var shade = [], on = null;
+      pts.forEach(function(p){ if(p.lt===1 && on===null) on = p.ms; if(p.lt!==1 && on!==null){ shade.push([on, p.ms]); on = null; } });
+      if(on!==null) shade.push([on, toMs]);
+      cfg = {label:'Light', unit:'lux', series:[{label:'Light level', pts:sensorBucket(pts,'lx',fromMs,toMs,bucket)}], shade:shade};
+    }
+    cfg.fromMs = fromMs; cfg.toMs = toMs;
+    var metrics = [['temp','🌡️ Temperature'],['hum','💧 Humidity'],['nh3','🫧 Ammonia'],['water','🚰 Water'],['light','💡 Light']];
+    var note = metric==='water' ? '<div class="hint" style="margin-top:6px">'+(range==='7d'?'Litres per day':'Litres per hour')+'. A sudden drop is often the first sign of sickness or a blocked drinker.</div>'
+      : metric==='light' ? '<div class="hint" style="margin-top:6px">Shaded = the bulbs were on.</div>'
+      : metric==='nh3' ? '<div class="hint" style="margin-top:6px">An estimate from a low-cost sensor — good for spotting a rise, not an exact lab number. Dashed line = alert level.</div>'
+      : '<div class="hint" style="margin-top:6px">Dashed lines = your alert limits.</div>';
+    return '<div class="card" style="margin-top:14px"><div class="card-title"><h3>📈 History</h3>'+
+        '<div class="chip-row">'+[['24h','24 hours'],['7d','7 days']].map(function(r){ return '<button class="chip'+(range===r[0]?' active':'')+'" data-action="sensor-range:'+r[0]+'">'+r[1]+'</button>'; }).join('')+'</div></div>'+
+      '<div class="chip-row" style="margin-bottom:12px">'+metrics.map(function(m){ return '<button class="chip'+(metric===m[0]?' active':'')+'" data-action="sensor-metric:'+m[0]+'">'+m[1]+'</button>'; }).join('')+'</div>'+
+      sensorChartHTML(cfg)+note+'</div>';
+  }
+  function sensorAlertsCardHTML(){
+    if(!sensorAlertsList.length) return '<div class="card" style="margin-top:14px"><div class="card-title"><h3>🔔 Alerts</h3></div><div class="hint">No alerts yet. When a reading goes outside your limits, you and the team get a push notification and it\'s listed here.</div></div>';
+    var rows = sensorAlertsList.slice(0, 12).map(function(a){
+      return '<div class="sensor-alert-row '+(a.level==='clear'?'clear':'')+'"><div><strong>'+esc(a.title||'')+'</strong><div class="hint">'+esc(a.body||'')+'</div></div><div class="hint" style="white-space:nowrap">'+sensorAgoText(a.atMs)+'</div></div>';
+    }).join('');
+    return '<div class="card" style="margin-top:14px"><div class="card-title"><h3>🔔 Alerts</h3><span class="hint">latest '+Math.min(12, sensorAlertsList.length)+'</span></div>'+rows+'</div>';
+  }
+  function sensorSettingsCardHTML(s){
+    function n(name, label, val, step, unit){ return '<div class="field-row"><label>'+label+'</label><div class="sensor-input-unit"><input class="field" type="number" step="'+(step||1)+'" name="'+name+'" value="'+val+'"><span>'+unit+'</span></div></div>'; }
+    var L = s.lights;
+    return '<div class="card" style="margin-top:14px"><div class="card-title"><h3>⚙️ Alert limits &amp; lights</h3><span class="hint">administrator</span></div>'+
+      '<form data-form="sensor-settings">'+
+        '<div class="field-grid">'+n('houseTempHigh','House too hot at', s.houseTempHigh, 0.5, '°C')+n('houseTempLow','House too cold at', s.houseTempLow, 0.5, '°C')+'</div>'+
+        '<div class="field-grid" style="margin-top:10px">'+n('chickTempLow','Chick corner too cold at', s.chickTempLow, 0.5, '°C')+n('chickTempHigh','Chick corner too hot at', s.chickTempHigh, 0.5, '°C')+'</div>'+
+        '<div class="field-grid" style="margin-top:10px">'+n('humidityHigh','Too damp at', s.humidityHigh, 1, '%')+n('ammoniaHigh','Ammonia too high at', s.ammoniaHigh, 1, 'ppm')+'</div>'+
+        '<div class="field-grid" style="margin-top:10px">'+n('noWaterHours','Alert if no water flows for', s.noWaterHours, 0.5, 'hours')+n('waterDropPercent','Alert if water by 5 pm is under', s.waterDropPercent, 5, '% of usual')+'</div>'+
+        '<div class="field-grid" style="margin-top:10px">'+
+          '<div class="field-row"><label>Send a reading every</label><select class="field" name="intervalSec">'+[[60,'1 minute'],[120,'2 minutes'],[300,'5 minutes'],[600,'10 minutes']].map(function(o){ return '<option value="'+o[0]+'" '+(Number(s.intervalSec)===o[0]?'selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select></div>'+
+          '<div class="field-row"><label>Who gets alerts</label><select class="field" name="notifyTeam"><option value="1" '+(s.notifyTeam?'selected':'')+'>Administrators + Supervisor + Farmhand</option><option value="0" '+(!s.notifyTeam?'selected':'')+'>Administrators only</option></select></div>'+
+        '</div>'+
+        '<h4 style="margin:18px 0 6px">💡 Lights for laying hens</h4>'+
+        '<div class="hint" style="margin-bottom:8px">Layers lay best with about 16 hours of light a day; Kenya gives about 12. The box switches the bulbs on during these times, only while it is still dark (below the light level you set). Only light laying hens — growing pullets should not get extra light before they start laying.</div>'+
+        '<div class="field-grid">'+
+          '<div class="field-row"><label>Lights control</label><select class="field" name="lightsMode">'+[['off','Off — the box never switches the lights'],['auto','Automatic — follow the times below'],['on','Always on'],]
+            .map(function(o){ return '<option value="'+o[0]+'" '+(L.mode===o[0]?'selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select></div>'+
+          n('luxThreshold','Counts as dark below', L.luxThreshold, 5, 'lux')+
+        '</div>'+
+        '<div class="field-grid" style="margin-top:10px">'+
+          '<div class="field-row"><label>Morning on</label><input class="field" type="time" name="morningOn" value="'+esc(L.morningOn||'')+'"></div>'+
+          '<div class="field-row"><label>Morning off</label><input class="field" type="time" name="morningOff" value="'+esc(L.morningOff||'')+'"></div>'+
+          '<div class="field-row"><label>Evening on (optional)</label><input class="field" type="time" name="eveningOn" value="'+esc(L.eveningOn||'')+'"></div>'+
+          '<div class="field-row"><label>Evening off</label><input class="field" type="time" name="eveningOff" value="'+esc(L.eveningOff||'')+'"></div>'+
+        '</div>'+
+        '<div class="modal-foot" style="justify-content:flex-start"><button class="btn primary" type="submit" '+(readOnly?'disabled':'')+'>Save settings</button><button type="button" class="btn" data-action="sensor-settings-defaults" '+(readOnly?'disabled':'')+'>Back to recommended</button></div>'+
+      '</form></div>';
+  }
+  function sensorDevicesCardHTML(){
+    var rows = sensorDevicesList.map(function(d){
+      var l = sensorLatestMap[d.id];
+      return '<tr><td><strong>'+esc(d.name||d.id)+'</strong><div class="hint">'+esc(d.id)+'</div></td><td>'+(l ? (sensorIsOnline(l)?'🟢 Online':'🔴 Offline')+'<div class="hint">'+sensorAgoText(l.atMs)+'</div>' : 'Waiting for first reading')+'</td><td>'+esc(d.fw||'—')+'</td>'+
+        '<td><button class="btn sm" data-action="sensor-revoke:'+d.id+'" '+(readOnly?'disabled':'')+'>Remove</button></td></tr>';
+    }).join('');
+    return '<div class="card" style="margin-top:14px"><div class="card-title"><h3>📦 Sensor boxes</h3><button class="btn sm" data-action="sensor-add-device" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'Add another box</button></div>'+
+      (rows ? '<div class="table-wrap"><table><thead><tr><th>Box</th><th>Status</th><th>Program</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="hint">No boxes yet.</div>')+
+      '<div class="hint" style="margin-top:8px">If a box is lost or its key leaks, remove it here — it can\'t send readings any more. Add a new box to get a fresh key.</div></div>';
+  }
+  function sensorGuideCardHTML(s){
+    return '<div class="card" style="margin-top:14px"><div class="card-title"><h3>📘 What the readings mean</h3></div>'+
+      '<div class="table-wrap"><table><thead><tr><th>Reading</th><th>Good</th><th>Act when</th><th>What to do</th></tr></thead><tbody>'+
+        '<tr><td>🌡️ House temperature</td><td>18–24°C</td><td>Over '+s.houseTempHigh+'°C or under '+s.houseTempLow+'°C</td><td>Hot: open the sides, shade, cool water. Cold: close curtains against wind.</td></tr>'+
+        '<tr><td>🐥 Chick corner</td><td>Chicks spread out calmly near the hen</td><td>Under '+s.chickTempLow+'°C</td><td>Check chicks are under their mothers and out of draughts.</td></tr>'+
+        '<tr><td>💧 Humidity</td><td>50–70%</td><td>Over '+s.humidityHigh+'%</td><td>Airflow; replace wet, caked litter (coccidiosis risk).</td></tr>'+
+        '<tr><td>🫧 Ammonia</td><td>Under 10 ppm</td><td>Over '+s.ammoniaHigh+' ppm (you can smell it)</td><td>Remove wet litter, add dry litter, open up.</td></tr>'+
+        '<tr><td>🚰 Water</td><td>About 200–250 ml per hen a day</td><td>No flow for '+s.noWaterHours+' h, or much less than usual</td><td>Check tank and drinkers; watch for sick birds.</td></tr>'+
+        '<tr><td>💡 Light</td><td>About 16 h a day for layers</td><td>—</td><td>Set the lights schedule above.</td></tr>'+
+      '</tbody></table></div></div>';
+  }
+  // Shown once, right after a box is created — the key is never shown again.
+  function sensorNewDeviceModalHtml(res){
+    var url = 'https://us-central1-'+FIREBASE_CONFIG.projectId+'.cloudfunctions.net/sensorIngest';
+    var snippet = '#define WIFI_SSID     "your-wifi-name"\n#define WIFI_PASSWORD "your-wifi-password"\n#define DEVICE_ID     "'+res.deviceId+'"\n#define DEVICE_KEY    "'+res.key+'"\n#define INGEST_URL    "'+url+'"';
+    pendingSensorSnippet = snippet;
+    return '<div class="modal-head"><h3>📦 '+esc(res.name)+' added</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+      '<p style="margin-top:0">Copy these lines into <code>secrets.h</code> in the sensor box program, put in your Wi-Fi name and password, then upload it to the ESP32.</p>'+
+      '<pre class="sensor-snippet">'+esc(snippet)+'</pre>'+
+      '<div class="cattle-form-error" style="color:var(--ink); background:color-mix(in srgb, var(--z-gold) 14%, transparent); border-color:color-mix(in srgb, var(--z-gold) 40%, transparent)">🔑 This key is shown only once. Keep it private — anyone with it could send fake readings. If it gets lost, remove this box and add a new one.</div>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="sensor-copy-snippet">Copy</button><button type="button" class="btn primary" data-action="close-modal">Done</button></div>';
+  }
+  var pendingSensorSnippet = null;
+  function sensorOverviewTileHTML(){
+    if(!currentUser) return '';
+    var ids = Object.keys(sensorLatestMap); if(!ids.length) return '';
+    var l = sensorLatestMap[ids.sort()[0]], s = sensorSettings();
+    var st = sensorStatus('houseTemp', l.ht, s);
+    return '<button type="button" class="card sensor-overview" data-action="nav:sensors">'+
+      '<span>'+(sensorIsOnline(l)?'🟢':'🔴')+' <strong>Poultry house now</strong></span>'+
+      '<span>🌡️ '+(l.ht!==null&&l.ht!==undefined?l.ht+'°C':'—')+' · 💧 '+(l.hh!==null&&l.hh!==undefined?l.hh+'%':'—')+(l.nh3!==null&&l.nh3!==undefined?' · 🫧 '+Math.round(l.nh3)+' ppm':'')+(l.waterToday!==undefined?' · 🚰 '+l.waterToday+' L':'')+'</span>'+
+      '<span class="hint">'+st.icon+' '+st.label+' · '+sensorAgoText(l.atMs)+' →</span></button>';
+  }
+
   /* ============================= CROPS ============================= */
   // Deliberately simple: one flat, dated journal (not a per-plot/batch
   // model like Livestock's herd) — planting, harvest, and sale/loss
@@ -4134,7 +4560,7 @@
   // keys — sectionVisibleForCurrentSector below is what actually matches
   // on the prefix.
   function sectorForSection(key){
-    if(key==='flock'||key==='eggs'||key==='feed'||key==='health') return 'poultry';
+    if(key==='flock'||key==='eggs'||key==='feed'||key==='health'||key==='sensors') return 'poultry';
     if(key==='livestock') return 'livestock';
     if(key==='crops') return 'crops';
     return null;
@@ -5828,7 +6254,7 @@
     var fs = (state.settings && state.settings.farmSetup) || {};
     var cats = fs.categories || {livestock:true, crops:false};
     var species = fs.species || ['poultry'];
-    if(key==='flock' || key==='eggs' || key==='feed' || key==='health'){
+    if(key==='flock' || key==='eggs' || key==='feed' || key==='health' || key==='sensors'){
       return !!cats.livestock && species.indexOf('poultry')!==-1;
     }
     if(key==='livestock'){
@@ -5855,6 +6281,8 @@
         return isSupervisorUser() || isFarmhandUser();
       case 'health':
         return isSupervisorUser() || isVetUser();
+      case 'sensors':
+        return isSupervisorUser() || isFarmhandUser() || isVetUser();
       case 'customers':
         return isSupervisorUser();
       case 'team':
@@ -6386,6 +6814,7 @@
     initOwnProfileSync();
     if(isAdminLevel()){ initAdminLogsSync(); initSecurityEventsSync(); initPendingSignoffsAdminSync(); initC2BLogSync(); }
     if(isAdminLevel() && mpesaEnabled) initMpesaQueriesSync();
+    initSensorsSync();
     if(canSeeFinance()){ financeGuardStatus = null; refreshFinanceGuardStatus(); }
     if(isAdmin()){ birthdayGuardStatus = null; refreshBirthdayGuardStatus(); }
     refreshMyDob();
@@ -8562,6 +8991,7 @@
       return topbarHTML(t('title.livestock','Other Livestock'),t('sub.livestock','Dairy cattle, goats & sheep, pigs, rabbits, and horses'), '', PICS.livestockNav);
     }, panel:livestockPanel },
     crops:{ topbar:function(){ return topbarHTML(t('title.crops','Crops'),t('sub.crops','Planting, harvest, and sales — the basics'), '', PICS.cropsNav); }, panel:cropsPanel },
+    sensors:{ topbar:function(){ return topbarHTML('Sensors','Live readings from the poultry house', '', PICS.sensors); }, panel:sensorsPanel },
     health:{ topbar:function(){ return topbarHTML(t('title.health','Health'),t('sub.health','Vaccinations, treatments &amp; reminders'), addBtn('open-add-health','Add record'), PICS.health); }, panel:healthPanel },
     reports:{ topbar:function(){ return topbarHTML(t('title.reports','Reports'),t('sub.reports','Print or export a period summary'), '', PICS.reports); }, panel:reportsPanel },
     expenses:{ topbar:function(){ return topbarHTML(t('title.expenses','Expenses'),t('sub.expenses','What you’re spending, by category'), currencySelectHTML()+addBtn('open-add-expense','Add expense'), PICS.expenses); }, panel:function(){ return moneyBreakdownPanel(state.expenses, state.settings.expenseCategories, 'expense'); } },
@@ -8580,7 +9010,7 @@
   // confirmation toast ("Opened Flock.") since SECTIONS[key] only holds
   // functions, not a label string.
   var SECTION_LABELS = {
-    overview:'Overview', flock:'Flock', eggs:'Eggs', feed:'Feed', livestock:'Other Livestock', crops:'Crops', health:'Health',
+    overview:'Overview', flock:'Flock', eggs:'Eggs', feed:'Feed', livestock:'Other Livestock', crops:'Crops', health:'Health', sensors:'Sensors',
     reports:'Reports', expenses:'Expenses', income:'Income', customers:'Customers',
     finance:'Finance', about:'About', settings:'Settings', team:'Team', messages:'Messages', signoffs:'Pending signatures'
   };
@@ -9396,6 +9826,30 @@
         break;
       // Cattle per-animal register / breeding / calves (see "CATTLE (per animal)").
       case 'cattle-filter': ui.cattleFilter = a1; setView('livestock','cattle-register'); render(); break;
+      case 'sensor-device': ui.sensorDevice = a1; render(); break;
+      case 'sensor-range': ui.sensorRange = a1; render(); break;
+      case 'sensor-metric': ui.sensorMetric = a1; render(); break;
+      case 'sensor-add-device':
+        if(!isAdminLevel()){ toast('Only the administrator can add a sensor box.'); break; }
+        openModal('<div class="modal-head"><h3>📦 Add a sensor box</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+          '<form data-form="sensor-new-device"><div class="field-row"><label>Name</label><input class="field" type="text" name="name" value="'+(sensorDevicesList.length?'Box '+(sensorDevicesList.length+1):'Layer house')+'" maxlength="40" required autofocus></div>'+
+          '<div class="hint" style="margin-top:8px">You\'ll get a device ID and a secret key to put in the box\'s program.</div>'+
+          '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Create</button></div></form>');
+        break;
+      case 'sensor-copy-snippet':
+        if(pendingSensorSnippet) copyTextToClipboard(pendingSensorSnippet).then(function(ok){ toast(ok===false?'Could not copy — select the text and copy it.':'Copied.'); });
+        break;
+      case 'sensor-revoke':
+        confirmModal('Remove this sensor box? It will no longer be able to send readings, and its current readings disappear from this page. (Past days stay saved.)', function(){
+          firebase.functions().httpsCallable('revokeSensorDevice')({deviceId:a1}).then(function(){ toast('Removed.'); }).catch(function(e){ toast((e&&e.message)||'Could not remove it.'); });
+        }, {confirmLabel:'Remove'});
+        break;
+      case 'sensor-settings-defaults':
+        if(!isAdminLevel() || !db) break;
+        confirmModal('Put every alert limit and the lights schedule back to the recommended values?', function(){
+          db.collection('sensorSettings').doc('main').set(JSON.parse(JSON.stringify(SENSOR_DEFAULTS))).then(function(){ toast('Back to recommended.'); }).catch(function(e){ toast((e&&e.message)||'Could not save.'); });
+        }, {danger:false, confirmLabel:'Reset', title:'Reset settings?'});
+        break;
       case 'open-cattle-animal': openModal(cattleAnimalFormHtml(null, a1)); break;
       case 'edit-cattle-animal': openModal(cattleAnimalFormHtml(a1)); break;
       case 'delete-cattle-animal': {
@@ -10647,6 +11101,35 @@
       closeModal();
       if(cvBorn.length) celebrate({ title:'🐄 '+cattleName(cvDamObj)+' calved! 🎉', subtitle:'A '+cvBorn.join(' and a ')+' — added to the herd'+(cvBottle?' with a milk plan.':'.') });
       else toast(cvPast ? '📜 Added to her history.' : 'Calving recorded.');
+      return;
+    }
+    if(name==='sensor-new-device'){
+      var sdName = (val('name')||'').trim() || 'Layer house';
+      var sdBtn = form.querySelector('button[type=submit]'); if(sdBtn){ sdBtn.disabled = true; sdBtn.textContent = 'Creating…'; }
+      firebase.functions().httpsCallable('createSensorDevice')({name:sdName}).then(function(r){
+        openModal(sensorNewDeviceModalHtml(r.data));
+      }).catch(function(e){
+        if(sdBtn){ sdBtn.disabled = false; sdBtn.textContent = 'Create'; }
+        cattleFormError(form, (e&&e.message)||'Could not create the box — is the sensors update deployed to Firebase?');
+      });
+      return;
+    }
+    if(name==='sensor-settings'){
+      if(!isAdminLevel() || !db){ toast('Only the administrator can change these.'); return; }
+      function nv(k, lo, hi){ var v = Number(val(k)); return (isFinite(v) && v>=lo && v<=hi) ? v : null; }
+      var ss = { houseTempHigh:nv('houseTempHigh',15,50), houseTempLow:nv('houseTempLow',-5,25), chickTempLow:nv('chickTempLow',5,35), chickTempHigh:nv('chickTempHigh',20,45),
+        humidityHigh:nv('humidityHigh',50,100), ammoniaHigh:nv('ammoniaHigh',5,100), noWaterHours:nv('noWaterHours',0.5,12), waterDropPercent:nv('waterDropPercent',10,95),
+        intervalSec:nv('intervalSec',60,600) };
+      var bad = Object.keys(ss).filter(function(k){ return ss[k]===null; });
+      if(bad.length){ cattleFormError(form, 'Check the numbers — one of them is outside a sensible range.'); return; }
+      if(ss.houseTempLow>=ss.houseTempHigh || ss.chickTempLow>=ss.chickTempHigh){ cattleFormError(form, 'The "cold" limit must be lower than the "hot" limit.'); return; }
+      var lx = nv('luxThreshold', 1, 2000);
+      ss.notifyTeam = val('notifyTeam')==='1';
+      ss.lights = { mode: val('lightsMode')||'off', morningOn: val('morningOn')||'', morningOff: val('morningOff')||'', eveningOn: val('eveningOn')||'', eveningOff: val('eveningOff')||'', luxThreshold: lx===null?50:lx };
+      if(ss.lights.mode==='auto' && !((ss.lights.morningOn && ss.lights.morningOff) || (ss.lights.eveningOn && ss.lights.eveningOff))){ cattleFormError(form, 'For automatic lights, set at least a morning (or evening) on and off time.'); return; }
+      ss.updatedAtMs = Date.now();
+      db.collection('sensorSettings').doc('main').set(ss).then(function(){ toast('✅ Saved — the box picks this up with its next reading.'); })
+        .catch(function(e){ cattleFormError(form, (e&&e.message)||'Could not save — is the sensors update deployed (Firestore rules)?'); });
       return;
     }
     if(name==='cattle-calving-edit'){
