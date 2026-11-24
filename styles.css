@@ -1399,3 +1399,16 @@
   .nav-group .nav-item-sub .nav-ico svg{ width:17px; height:17px; }
   .nav-group-label{ display:none; }
   @media (prefers-reduced-motion: reduce){ .nav-sublist-wrap, .nav-chev{ transition:none; } }
+
+  /* ---- One page per heading: tab row (see applyCardTabs in app.js) ---- */
+  .ct-hidden{ display:none !important; }
+  .card-tabs{ position:sticky; top:0; z-index:20; display:flex; gap:6px; overflow-x:auto; scrollbar-width:none;
+    margin:0 0 16px; padding:6px; border-radius:14px;
+    background:color-mix(in srgb, var(--surface) 88%, transparent); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    border:1px solid var(--border-soft); box-shadow:0 6px 18px -12px rgba(0,0,0,.35); }
+  .card-tabs::-webkit-scrollbar{ display:none; }
+  .card-tab{ flex:none; border:none; background:none; color:var(--ink-2); font:inherit; font-size:13.5px; font-weight:600;
+    padding:8px 14px; border-radius:10px; cursor:pointer; white-space:nowrap; transition:background .15s ease, color .15s ease; }
+  .card-tab:hover{ background:color-mix(in srgb, var(--z-green) 10%, transparent); color:var(--ink); }
+  .card-tab.active{ color:var(--btn-ink); background:linear-gradient(135deg, var(--btn-from), var(--btn-to)); box-shadow:0 3px 10px -5px color-mix(in srgb, var(--btn-from) 70%, transparent); }
+  @media (max-width:860px){ .card-tabs{ margin:0 0 12px; } .card-tab{ padding:8px 12px; font-size:13px; } }

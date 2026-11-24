@@ -1327,6 +1327,76 @@
       if(meta && meta.getAttribute('content')!==col) meta.setAttribute('content', col);
     }catch(e){}
   }
+  // ---- One page per heading ---------------------------------------------------
+  // Long pages are split so each titled card ("Batches", "Losses & sales",
+  // "Batch profitability"…) is its own page, picked from a row of tabs at
+  // the top. Whatever sits above the first titled card (summary tiles,
+  // banners) becomes the "Overview" tab. The Viewing / Money drop-downs and
+  // the global banner stay visible on every tab. The chosen tab is
+  // remembered per page (section + its Viewing choice). Works on every
+  // section automatically, so new cards get their own tab too. The home
+  // Overview dashboard and the Messages feed stay as one page on purpose.
+  var CARD_TABS_SKIP = { overview:1, messages:1 };
+  function cardTabKey(label){ return String(label||'').replace(/\([^)]*\)/g,'').replace(/[0-9]+/g,'').replace(/\s+/g,' ').trim(); }
+  function applyCardTabs(){
+    var panel = document.getElementById('panel');
+    if(!panel || CARD_TABS_SKIP[ui.section]) return;
+    function titleOf(el){
+      if(!el.classList) return null;
+      var card = el.classList.contains('card') ? el :
+        ((el.children.length===1 && el.firstElementChild.classList && el.firstElementChild.classList.contains('card')) ? el.firstElementChild : null);
+      if(!card) return null;
+      var head = null;
+      for(var i=0;i<card.children.length;i++){ if(card.children[i].classList.contains('card-title')){ head = card.children[i]; break; } }
+      var h = head ? head.querySelector('h3, h2') : null;
+      return h ? h.textContent.trim() : null;
+    }
+    function isNav(el){
+      if(el.id==='global-banner') return true;
+      if(el.querySelector && el.querySelector('select[data-change^="view-select"], select[data-change="money-nav"]') && !titleOf(el)) return true;
+      // a lone "← Back" link line
+      if(el.querySelector && el.textContent.trim().length<40 && el.querySelector('.linklike[data-action^="view-select"]') && !el.querySelector('.card')) return true;
+      return false;
+    }
+    var pinned = [], pre = [], pages = [], cur = null;
+    Array.prototype.slice.call(panel.children).forEach(function(el){
+      if(isNav(el)){ pinned.push(el); return; }
+      var t = titleOf(el);
+      if(t){ cur = {label:t, key:cardTabKey(t), els:[el]}; pages.push(cur); }
+      else if(cur) cur.els.push(el);
+      else pre.push(el);
+    });
+    // Only split pages that really have two or more headed cards — a page
+    // with one card (plus a banner) reads better as it is.
+    if(pages.length<2) return;
+    var preVisible = pre.filter(function(el){ return el.textContent.trim().length || el.querySelector('img,svg,canvas,video'); });
+    if(preVisible.length) pages.unshift({label:'Overview', key:'Overview', els:pre});
+    else pinned = pinned.concat(pre);
+    ui.cardTabs = ui.cardTabs || {};
+    var ctx = ui.section+':'+(ui.view[ui.section]||'overview');
+    var sel = 0;
+    pages.forEach(function(p, i){ if(p.key===ui.cardTabs[ctx]) sel = i; });
+    pages.forEach(function(p, i){
+      p.els.forEach(function(el){
+        el.classList.toggle('ct-hidden', i!==sel);
+        if(i!==sel) el.querySelectorAll('video').forEach(function(v){ try{ v.pause(); }catch(e){} });
+      });
+    });
+    var bar = document.createElement('div');
+    bar.className = 'card-tabs';
+    bar.setAttribute('role','tablist');
+    bar.innerHTML = pages.map(function(p, i){
+      return '<button type="button" role="tab" aria-selected="'+(i===sel)+'" class="card-tab'+(i===sel?' active':'')+'" data-action="card-tab:'+i+'">'+esc(p.label)+'</button>';
+    }).join('');
+    cardTabsCurrent = { ctx:ctx, keys:pages.map(function(p){ return p.key; }) };
+    var anchor = pinned.length ? pinned[pinned.length-1] : null;
+    if(anchor && anchor.parentNode===panel) panel.insertBefore(bar, anchor.nextSibling);
+    else panel.insertBefore(bar, panel.firstChild);
+    var active = bar.querySelector('.card-tab.active');
+    if(active && active.scrollIntoView && bar.scrollWidth>bar.clientWidth){ bar.scrollLeft = Math.max(0, active.offsetLeft - 16); }
+  }
+  var cardTabsCurrent = null;
+
   function render(){
     updateAuthGate();
     applyThemeZone('home');
@@ -1370,6 +1440,7 @@
     // it back in within the same task means the browser never pauses it.
     var keepVideo = document.getElementById('farm-video');
     document.getElementById('panel').innerHTML = '<div id="global-banner">'+bannerHTML()+'</div>' + sec.panel();
+    applyCardTabs();
     if(ui.section==='sensors') bindSensorCharts();
     var freshVideo = document.getElementById('farm-video');
     if(keepVideo && freshVideo && keepVideo !== freshVideo) freshVideo.replaceWith(keepVideo);
@@ -9794,6 +9865,17 @@
       case 'period': ui.periods[a1] = a2; render(); break;
       case 'pager-prev': setPageFor(a1, pageFor(a1)-1); render(); break;
       case 'pager-next': setPageFor(a1, pageFor(a1)+1); render(); break;
+      case 'card-tab': {
+        if(!cardTabsCurrent) break;
+        var ctKey = cardTabsCurrent.keys[Number(a1)];
+        if(ctKey===undefined) break;
+        ui.cardTabs = ui.cardTabs || {};
+        ui.cardTabs[cardTabsCurrent.ctx] = ctKey;
+        render();
+        var ctBar = document.querySelector('.card-tabs');
+        if(ctBar){ var r = ctBar.getBoundingClientRect(); if(r.top<0 || r.top>window.innerHeight*0.6) ctBar.scrollIntoView({block:'start', behavior:'smooth'}); }
+        break;
+      }
       case 'close-modal': closeModal(); break;
       case 'open-add-egg': openModal(eggFormHtml()); break;
       case 'edit-egg': openModal(eggFormHtml(a1)); break;
