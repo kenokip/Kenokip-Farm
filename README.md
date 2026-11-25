@@ -29,16 +29,22 @@ Kenokip Farm keeps a farm's day-to-day records, money and team in one place.
 
 | Area | Highlights |
 | --- | --- |
-| 🐔 **Poultry** | Flock batches (hens, cocks, growers, chicks), Guinea Fowl, brooding, daily egg collection, feed and health records, batch profitability |
-| 🐄 **Livestock** | Dairy cattle herd register, breeding and calving dates, calf feeding plans, milk log, full history per animal; goats & sheep, pigs, rabbits and horses |
+| 📊 **Dashboard** | Whole-farm overview: animals by type, eggs today, births, sales, deaths and mortality, feed stock, upcoming care, income vs expenses chart, recent activity |
+| 🐔 **Poultry** | Flock batches (hens, cocks, growers, chicks), Guinea Fowl, brooding, daily egg collection, batch profitability, poultry-house sensors |
+| 🐄 **Livestock** | Dairy cattle register with breeding, calving, calf feeding and milk log; goats & sheep, pigs, rabbits, horses, ducks, turkeys, geese, plus any animal type the farm adds |
+| 🩺 **Animal Health** | Vaccinations, deworming, treatments, vet visits and symptom notes for every animal, with Healthy / Needs attention / Overdue status and reminders |
+| 💞 **Breeding & Reproduction** | Expected births and hatches, mating records with gestation-based due dates, births added straight to the herd |
+| 🥚 **Production** | Eggs, milk and other yields with 30-day trend charts |
+| 🌾 **Feed & Inventory** | Feed use per animal group, stock on hand and days left; medicines, vaccines, equipment and supplies with low-stock and expiry alerts |
 | 🌱 **Crops** | Planting, harvest and sales |
-| 💰 **Money** | Income, expenses, reports and a Finance portal with a live balance |
+| 💰 **Money** | Income, expenses, profit and loss, reports, and a Finance portal with a live balance |
 | 📱 **M-Pesa** | STK Push deposits, automatic detection of Till and Paybill payments, payouts (B2C), account balance, transaction status and payment QR codes; bank payouts through IntaSend |
 | 👥 **Team** | Logins with roles and permissions, approvals, messages, signed receipts, birthdays and kudos |
 | 🔒 **Security** | Authenticator-app (TOTP) codes, fingerprint/Face unlock, PIN lockout and alerts |
-| 🌡️ **Sensors** | An ESP32 box in the poultry house reports temperature and humidity, raises alerts and runs the lights schedule |
-| 🔔 **Notifications** | Push notifications even when the app is closed, plus a daily digest |
+| 🔔 **Notifications** | Push notifications even when the app is closed, plus a weekly digest |
 | 🛒 **Installations** | A public order page and an admin page for selling and licensing the app to other farms |
+
+The interface uses one nature-inspired palette (forest green, fresh green, golden yellow, warm cream, earth brown) with light and dark modes, and works on phones, tablets and desktops.
 
 ## Screenshots
 
@@ -118,7 +124,7 @@ The app connects to the Firebase project named in `.firebaserc`.
 | Part | How |
 | --- | --- |
 | **Web app** | Upload the root folder to any static HTTPS host (GitHub Pages, Netlify, etc.). After changing `app.js`, `index.html` or `styles.css`, bump `CACHE_NAME` in `sw.js` so installed copies update. |
-| **Backend** | `firebase deploy --only functions,firestore,storage,hosting` (needs the Blaze plan). Secrets are set with `firebase functions:secrets:set NAME`. See [`docs/setup/SETUP-MPESA.md`](docs/setup/SETUP-MPESA.md). |
+| **Backend** | `firebase deploy --only functions,firestore,storage,hosting` (needs the Blaze plan). Redeploy `firestore` whenever `firestore.rules` changes. Secrets are set with `firebase functions:secrets:set NAME`. See [`docs/setup/SETUP-MPESA.md`](docs/setup/SETUP-MPESA.md). |
 | **A new farm** | Edit `farm.config.js` and follow [`docs/guides/HOW-TO-DEPLOY-FOR-A-NEW-FARM.md`](docs/guides/HOW-TO-DEPLOY-FOR-A-NEW-FARM.md). |
 
 **Installing the app:** open the site in Chrome or Edge and choose **Install app** (Android: ⋮ menu → *Add to Home screen*; iPhone: Safari → Share → *Add to Home Screen*).
