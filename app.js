@@ -2064,14 +2064,37 @@
     var items = upcomingHealthReminders().filter(function(r){ return r.nextDueDate <= addDaysISO(today, 30); }).slice(0, 6).map(function(r){
       return {date:r.nextDueDate, title:r.title, sub:healthTypeLabel(r.type)+' · '+healthTargetLabel(r), status: r.overdue ? ['bad','Overdue'] : (r.dueSoon ? ['warn','Due soon'] : ['info','Upcoming']), action:'edit-health:'+r.id};
     });
-    breedingUpcoming(30).slice(0, 4).forEach(function(b){
+    // Cattle: heat checks, pregnancy checks, dry-off, calving and calf
+    // milk changes (the same list as Dairy Cattle → Coming up).
+    if(sectionAllowedAnySector('livestock')){
+      try{
+        cattleEvents().forEach(function(e){
+          var late = e.date<today;
+          var lbl = ({'👀':'Watch', '🩺':'Vet check', '🥛':'Dry off', '🐄':'Calving', '🍼':'Calf milk', '💞':'Ready'})[e.icon] || 'Cattle';
+          var canBeLate = e.icon!=='💞' && e.icon!=='👀';
+          var st = (late && canBeLate) ? ['bad','Overdue'] : (e.urgent ? ['warn', lbl] : ['info', lbl]);
+          items.push({date:e.date, title:e.text, sub:'Dairy cattle', status:st, action:'open-species-view:cattle:cattle-breeding'});
+        });
+      }catch(err){}
+    }
+    breedingUpcoming(30).filter(function(b){ return b.kind!=='cattle'; }).slice(0, 4).forEach(function(b){
       items.push({date:b.date, title:b.title, sub:b.sub, status: b.date<today ? ['bad','Overdue'] : ['info','Breeding'], action:'nav:breeding'});
     });
     items.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:0); });
     items = items.slice(0, 7);
+    // Every confirmed pregnancy further away than 30 days, so a cow that's
+    // in calf always shows here with her due date.
+    var later = breedingUpcoming(3650, true).filter(function(b){ return b.pregnant && b.date>addDaysISO(today, 30); }).slice(0, 4);
+    later.forEach(function(b){
+      var left = daysBetween(parseISO(today), parseISO(b.date));
+      items.push({date:b.date, title:b.title, sub:b.sub+' · in '+left+' days', status:['good', b.kind==='cattle'?'In calf':'Pregnant'], action: b.kind==='cattle' && b.animalId ? 'cattle-profile-open:'+b.animalId : 'nav:breeding', later:true});
+    });
+    var shownLaterHead = false;
     var rows = items.map(function(it){
       var d = parseISO(it.date);
-      return '<div class="task"><div class="task-date"><b>'+d.getDate()+'</b><span>'+fmtDate(d,{month:'short'})+'</span></div>'+
+      var head = '';
+      if(it.later && !shownLaterHead){ shownLaterHead = true; head = '<div class="task-group-head">Expecting later</div>'; }
+      return head+'<div class="task" '+(it.action?'data-action="'+it.action+'" style="cursor:pointer"':'')+'><div class="task-date"><b>'+d.getDate()+'</b><span>'+fmtDate(d,{month:'short'})+(d.getFullYear()!==new Date().getFullYear()?' '+String(d.getFullYear()).slice(2):'')+'</span></div>'+
         '<div class="task-body"><div class="task-title">'+esc(it.title)+'</div><div class="task-sub">'+esc(it.sub)+'</div></div>'+
         '<span class="status '+it.status[0]+'">'+it.status[1]+'</span></div>';
     }).join('');
@@ -2367,7 +2390,10 @@
   }
   // Upcoming births/hatches within `days` (including overdue ones), for the
   // Dashboard and this page: [{date, title, sub, kind}]
-  function breedingUpcoming(days){
+  // allPregnant: also list every CONFIRMED pregnancy (cow in calf, goat
+  // pregnant…) however far away the birth is — a cow due in 6 months
+  // should still show as expected, not vanish until her last 30 days.
+  function breedingUpcoming(days, allPregnant){
     var today = todayISO(), horizon = addDaysISO(today, days||30), out = [];
     var cd = lsRO('cattle');
     (cd.animals||[]).forEach(function(a){
@@ -2378,7 +2404,7 @@
       var calved = (cd.calvings||[]).some(function(c){ return c.damId===a.id && c.date>=s.date; });
       if(calved) return;
       var due = addDaysISO(s.date, CATTLE_GESTATION_DAYS);
-      if(due<=horizon) out.push({date:due, title:cattleName(a)+' due to calve', sub:'Dairy cattle · '+(s.status==='pregnant'?'confirmed in calf':'served '+fmtDate(parseISO(s.date))), kind:'cattle'});
+      if(due<=horizon || (allPregnant && s.status==='pregnant')) out.push({date:due, title:cattleName(a)+' due to calve', sub:'Dairy cattle · '+(s.status==='pregnant'?'confirmed in calf':'served '+fmtDate(parseISO(s.date))), kind:'cattle', pregnant:s.status==='pregnant', animalId:a.id});
     });
     (state.broodings||[]).forEach(function(b){
       if(b.status==='hatched') return;
@@ -2386,8 +2412,9 @@
       if(hatch<=horizon) out.push({date:hatch, title:b.eggsGiven+' '+speciesLabel(broodSpecies(b)).toLowerCase()+' eggs due to hatch', sub:'Poultry · brooding started '+fmtDate(parseISO(b.dateStarted)), kind:'brooding'});
     });
     allGenericBreedings().forEach(function(b){
-      if(b.outcome && b.outcome!=='pending') return;
-      if(b.expectedDate && b.expectedDate<=horizon) out.push({date:b.expectedDate, title:(b.female||b.spLabel)+' due to give birth', sub:b.spLabel+' · mated '+fmtDate(parseISO(b.date)), kind:'generic'});
+      if(b.outcome && b.outcome!=='pending' && b.outcome!=='pregnant') return;
+      var preg = b.outcome==='pregnant';
+      if(b.expectedDate && (b.expectedDate<=horizon || (allPregnant && preg))) out.push({date:b.expectedDate, title:(b.female||b.spLabel)+' due to give birth', sub:b.spLabel+' · '+(preg?'confirmed pregnant':'mated '+fmtDate(parseISO(b.date))), kind:'generic', pregnant:preg});
     });
     out.sort(function(x,y){ return x.date<y.date?-1:(x.date>y.date?1:0); });
     return out;
@@ -2401,7 +2428,7 @@
   }
   function breedingPanel(){
     var today = todayISO();
-    var upcoming = breedingUpcoming(60);
+    var upcoming = breedingUpcoming(60, true);
     var cd = lsRO('cattle');
     var inCalf = (cd.services||[]).filter(function(s){ return s.status==='pregnant'; }).length;
     var generic = allGenericBreedings();
@@ -2411,7 +2438,7 @@
     var bornMonth = farmMovements(rm.startISO, rm.endISO).born;
     var upHtml = upcoming.length ? '<div class="task-list">'+upcoming.map(function(u){
       var d = parseISO(u.date);
-      var st = u.date<today ? ['bad','Overdue'] : (u.date<=addDaysISO(today,7) ? ['warn','This week'] : ['info','Upcoming']);
+      var st = u.date<today ? ['bad','Overdue'] : (u.date<=addDaysISO(today,7) ? ['warn','This week'] : (u.pregnant && u.date>addDaysISO(today,60) ? ['good', u.kind==='cattle'?'In calf':'Pregnant'] : ['info','Upcoming']));
       return '<div class="task"><div class="task-date"><b>'+d.getDate()+'</b><span>'+fmtDate(d,{month:'short'})+'</span></div><div class="task-body"><div class="task-title">'+esc(u.title)+'</div><div class="task-sub">'+esc(u.sub)+'</div></div><span class="status '+st[0]+'">'+st[1]+'</span></div>';
     }).join('')+'</div>' : '<div class="empty">'+ICONS.empty+'<div>No births or hatches expected in the next 60 days.</div></div>';
     var list = generic.slice().sort(function(a,b){ return a.date<b.date?1:-1; });
@@ -2438,7 +2465,7 @@
         kpiHTML({label:'Born this month', icon:NAV_ICONS.baby, value:bornMonth.toLocaleString(), foot:'<span>'+esc(rm.label)+'</span>'})+
       '</div>'+
       (links.length ? '<div class="toolbar">'+links.join('')+'</div>' : '')+
-      '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.calendar+'Expected births &amp; hatches</h3><span class="hint">next 60 days</span></div>'+upHtml+'</div>'+
+      '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.calendar+'Expected births &amp; hatches</h3><span class="hint">next 60 days + every confirmed pregnancy</span></div>'+upHtml+'</div>'+
       '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.breeding+'Mating records</h3>'+
         (canLog && !readOnly ? '<button class="btn sm primary" data-action="open-add-breeding">'+NAV_ICONS.plus+'Record mating</button>' : '')+'</div>'+
         '<div class="table-wrap">'+
@@ -7389,6 +7416,12 @@
     if(key==='crops') return !!cats.crops;
     return true;
   }
+  // Like sectionAllowed(), but ignoring which sector is open right now —
+  // for farm-wide pages (the Dashboard) that list things from every sector.
+  function sectionAllowedAnySector(key){
+    var keep = ui.sector; ui.sector = null;
+    try{ return sectionAllowed(key); } finally { ui.sector = keep; }
+  }
   function sectionAllowed(key){
     if(!sectionEnabledByFarmSetup(key)) return false;
     if(!sectionVisibleForCurrentSector(key)) return false;
@@ -11296,6 +11329,7 @@
       case 'health-filter-group': ui.healthFilter = Object.assign({}, ui.healthFilter||{}, {group:a1}); setView('health','records'); render(); break;
       case 'open-species': openSpeciesPage(a1); break;
       case 'open-species-view': openSpeciesPage(a1, a2); break;
+      case 'cattle-profile-open': ui.cattleAnimalId = a1; openSpeciesPage('cattle', 'cattle-animal'); break;
       case 'open-flock-view': {
         if(ui.sector && ui.sector!=='poultry' && availableSectors().some(function(x){ return x.key==='poultry'; })) ui.sector = 'poultry';
         setView('flock', a1); goToSection('flock'); break;
