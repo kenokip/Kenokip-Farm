@@ -4,7 +4,7 @@
   // Bump this alongside sw.js's CACHE_NAME on every deploy — shown in
   // Settings → About this app, purely so a person (or you, debugging a
   // support message) can confirm which build is actually running.
-  var APP_VERSION = 'v56';
+  var APP_VERSION = 'v57';
 
   /* ============================= ICONS ============================= */
   var ICONS = {
@@ -130,8 +130,8 @@
   // anything that was cascade-deleted alongside it, e.g. a feed entry's
   // linked Expense) so Restore can put everything back exactly as it was,
   // not just the main record on its own.
-  var TRASH_ARRAY_BY_TYPE = { egg:'eggs', eggloss:'eggLosses', feed:'feedLogs', health:'healthRecords', expense:'expenses', income:'incomes', customer:'customers', flock:'flock', brooding:'broodings' };
-  var TRASH_TYPE_LABELS = { egg:'Egg entry', eggloss:'Egg sale/loss', feed:'Feed entry', health:'Health record', expense:'Expense', income:'Income', customer:'Customer', flock:'Flock batch', brooding:'Brooding record' };
+  var TRASH_ARRAY_BY_TYPE = { egg:'eggs', eggloss:'eggLosses', feed:'feedLogs', health:'healthRecords', expense:'expenses', income:'incomes', customer:'customers', flock:'flock', brooding:'broodings', inventory:'inventory' };
+  var TRASH_TYPE_LABELS = { egg:'Egg entry', eggloss:'Egg sale/loss', feed:'Feed entry', health:'Health record', expense:'Expense', income:'Income', customer:'Customer', flock:'Flock batch', brooding:'Brooding record', inventory:'Inventory item' };
   var TRASH_RETENTION_MS = 30*24*3600*1000;
   function trashPush(s, type, record, linked){
     s.trash = s.trash || [];
@@ -170,7 +170,7 @@
   // Which page's access rules govern seeing a given trash entry — a
   // farmhand who can't see Expenses shouldn't see a trashed one either,
   // just because it happened to get deleted.
-  var TRASH_TYPE_SECTION = { egg:'eggs', eggloss:'eggs', feed:'feed', health:'health', expense:'expenses', income:'income', customer:'customers', flock:'flock', brooding:'flock' };
+  var TRASH_TYPE_SECTION = { egg:'eggs', eggloss:'eggs', feed:'feed', health:'health', expense:'expenses', income:'income', customer:'customers', flock:'flock', brooding:'flock', inventory:'inventory' };
   function visibleTrashItems(){
     return (state.trash||[]).filter(function(x){ return sectionAllowed(TRASH_TYPE_SECTION[x.type]||'overview'); });
   }
@@ -186,6 +186,7 @@
       case 'customer': return r.name;
       case 'flock': return r.count+' '+genderLabel(r.gender)+(r.count===1?'':'s')+' — added '+fmtDate(parseISO(r.dateAdded));
       case 'brooding': return r.eggsGiven+' '+speciesLabel(broodSpecies(r))+' eggs given for brooding — '+fmtDate(parseISO(r.dateStarted));
+      case 'inventory': return r.name+' ('+inventoryCategoryLabel(r.category)+')';
       default: return 'Deleted record';
     }
   }
@@ -428,16 +429,20 @@
       var baseLivestock = base.livestock;
       var incoming = (data && data.livestock) || {};
       merged.livestock = {};
-      Object.keys(baseLivestock).forEach(function(key){
+      // Every species already saved is kept — the built-in ones, plus any
+      // added later (ducks, turkeys, geese, the farm's own custom types) —
+      // so nothing is ever dropped on load.
+      var keys = Object.keys(baseLivestock).concat(Object.keys(incoming).filter(function(k){ return !baseLivestock[k]; }));
+      keys.forEach(function(key){
         var src = incoming[key] || {};
         merged.livestock[key] = {
           herd: Array.isArray(src.herd) ? src.herd : [],
           journal: Array.isArray(src.journal) ? src.journal : []
         };
-        // Cattle's per-animal register (see "CATTLE (per animal)") — kept
-        // whenever present so it's never dropped on load.
-        ['animals','services','calvings','records'].forEach(function(k){
-          if(Array.isArray(src[k]) || key==='cattle') merged.livestock[key][k] = Array.isArray(src[k]) ? src[k] : [];
+        // Cattle's per-animal register (see "CATTLE (per animal)") and any
+        // species' mating log (see BREEDING) — kept whenever present.
+        ['animals','services','calvings','records','breedings'].forEach(function(k){
+          if(Array.isArray(src[k]) || (key==='cattle' && k!=='breedings')) merged.livestock[key][k] = Array.isArray(src[k]) ? src[k] : [];
         });
       });
     })();
@@ -468,6 +473,11 @@
       // else: no existing data at all — leave the default (completed:false)
       // so a genuinely new farm document sees the setup screen.
     }
+    // Inventory (medicines, equipment, supplies) — only kept when the farm
+    // document already has it, so loading never adds a new field by itself.
+    if(data && Array.isArray(data.inventory)) merged.inventory = data.inventory; else delete merged.inventory;
+    if(merged.settings.customSpecies && !Array.isArray(merged.settings.customSpecies)) merged.settings.customSpecies = [];
+    syncCustomSpecies(merged.settings);
     purgeOldTrash(merged);
     backfillCustomers(merged);
     return merged;
@@ -1026,33 +1036,102 @@
   // reveals its own children as a second row of tabs (#mobile-subtabs)
   // rather than needing all 16 icons in one row. A leaf with no `children`
   // behaves exactly like a section always has.
+  // Clean, single-colour line icons for navigation and dashboard widgets
+  // (24×24, stroke = currentColor, so they follow the sidebar/text colour
+  // in light and dark mode). The illustrated PICS art is still used for
+  // page headers, animal cards and the sector chooser.
+  function lineIcon(paths){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths+'</svg>'; }
+  var NAV_ICONS = {
+    dashboard: lineIcon('<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'),
+    poultry: lineIcon('<path d="M15.5 6.5a3 3 0 1 0-5.6 1.5C6.6 8.6 4 11.4 4 15a5 5 0 0 0 5 5h5a6 6 0 0 0 6-6V11"/><path d="M15.5 6.5 19 8l-3 1.5"/><path d="M10 20l-1 2M14 20l1 2"/><circle cx="13.6" cy="6.2" r=".6" fill="currentColor"/>'),
+    flock: lineIcon('<path d="M8 13.5a4 4 0 1 1 6.5-3.1L18 9l-2.4 2.6A5 5 0 0 1 11 18H9a4 4 0 0 1-4-4"/><path d="M9 18l-1 3M12 18l1 3"/>'),
+    eggs: lineIcon('<path d="M12 3c3.6 0 6.5 5.3 6.5 10a6.5 6.5 0 0 1-13 0C5.5 8.3 8.4 3 12 3z"/><path d="M9 14.5a3 3 0 0 0 2.4 2.9"/>'),
+    sensors: lineIcon('<path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 11v6"/>'),
+    livestock: lineIcon('<path d="M5 6 3 4M19 6l2-2"/><path d="M6 7c0-1.7 2.7-3 6-3s6 1.3 6 3v5c0 3.9-2.7 7-6 7s-6-3.1-6-7z"/><ellipse cx="12" cy="15.5" rx="3.2" ry="2.2"/><path d="M10.8 15.5h.01M13.2 15.5h.01"/><path d="M9 9.5h.01M15 9.5h.01"/>'),
+    crops: lineIcon('<path d="M12 21v-9"/><path d="M12 12c0-4 3-7 7-7 0 4-3 7-7 7z"/><path d="M12 15c0-3-2.5-5.5-6-5.5 0 3.3 2.7 5.5 6 5.5z"/><path d="M6 21h12"/>'),
+    health: lineIcon('<path d="M19.5 12.6 12 20l-7.5-7.4A4.6 4.6 0 0 1 12 6.3a4.6 4.6 0 0 1 7.5 6.3z"/><path d="M4 13h4l2-3 3 5 2-2h5"/>'),
+    breeding: lineIcon('<circle cx="9" cy="9" r="4.5"/><circle cx="15" cy="15" r="4.5"/><path d="M12 6.5v0"/>'),
+    production: lineIcon('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><path d="M19 20v-4"/>'),
+    feed: lineIcon('<path d="M12 21V8"/><path d="M12 8c-1.5-1-2.5-2.7-2.5-5 2 .5 3.5 2 3.5 4"/><path d="M12 12c-2-1.2-4-1.2-5.5-.2 1 1.8 3.3 2.5 5.5 1.7M12 12c2-1.2 4-1.2 5.5-.2-1 1.8-3.3 2.5-5.5 1.7M12 16.5c-2-1.2-4-1.2-5.5-.2 1 1.8 3.3 2.5 5.5 1.7M12 16.5c2-1.2 4-1.2 5.5-.2-1 1.8-3.3 2.5-5.5 1.7"/>'),
+    inventory: lineIcon('<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>'),
+    sales: lineIcon('<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'),
+    money: lineIcon('<rect x="2.5" y="6" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/><path d="M16.5 14.5h2"/><path d="M5 6l9.5-3 1.5 3"/>'),
+    income: lineIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M8 12.5l4 4 4-4"/>'),
+    expenses: lineIcon('<circle cx="12" cy="12" r="9"/><path d="M12 16.5v-9M8 11.5l4-4 4 4"/>'),
+    finance: lineIcon('<path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>'),
+    reports: lineIcon('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 6-6"/><path d="M16 7h4v4"/>'),
+    team: lineIcon('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3.2-5.5 6.5-5.5s6 2 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.6 3 5.2"/>'),
+    directory: lineIcon('<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.8 3.5-2.8s2.9 1 3.5 2.8M15 9.5h3.5M15 13h3.5"/>'),
+    messages: lineIcon('<path d="M21 12a8 8 0 0 1-11.8 7L4 20l1.1-4.6A8 8 0 1 1 21 12z"/>'),
+    signoffs: lineIcon('<path d="M4 20h16"/><path d="M14.5 4.5l5 5L9 20H4v-5z"/>'),
+    about: lineIcon('<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>'),
+    settings: lineIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+    trash: lineIcon('<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>'),
+    more: lineIcon('<path d="M4 6h16M4 12h16M4 18h10"/>'),
+    close: lineIcon('<path d="M6 6l12 12M18 6 6 18"/>'),
+    alert: lineIcon('<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>'),
+    calendar: lineIcon('<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+    arrowRight: lineIcon('<path d="M5 12h14M13 6l6 6-6 6"/>'),
+    plus: lineIcon('<path d="M12 5v14M5 12h14"/>'),
+    drop: lineIcon('<path d="M12 3s6.5 7 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 10 12 3 12 3z"/>'),
+    skull: lineIcon('<path d="M12 3a8 8 0 0 0-5 14.2V20h10v-2.8A8 8 0 0 0 12 3z"/><circle cx="9" cy="11" r="1.4"/><circle cx="15" cy="11" r="1.4"/><path d="M11 20v-2M13 20v-2"/>'),
+    baby: lineIcon('<circle cx="12" cy="9" r="5"/><path d="M10 9h.01M14 9h.01M10.5 11.2a2 2 0 0 0 3 0"/><path d="M7 21c.5-3 2.5-5 5-5s4.5 2 5 5"/>'),
+    cart: lineIcon('<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L22 7H6"/>'),
+    syringe: lineIcon('<path d="M18 2l4 4M17 7l3-3M19 9 8.7 19.3a2.4 2.4 0 0 1-3.4 0l-.6-.6a2.4 2.4 0 0 1 0-3.4L15 5"/><path d="M9 11l4 4M5 19l-3 3M14 4l6 6"/>')
+  };
+
+  // Sidebar structure. Section keys are unchanged from before (so every
+  // saved preference, permission rule and deep link still works); only
+  // the grouping, labels and icons changed. `heading` rows are small
+  // captions that only show above at least one visible item.
   var NAV_GROUPS = [
-    {key:'overview', label:'Overview', icon:PICS.overview},
-    {key:'flock-group', label:'Farm Records', icon:PICS.flockNav, children:[
-      {key:'flock', label:'Flock', icon:PICS.flockNav},
-      {key:'eggs', label:'Eggs', icon:PICS.eggs},
-      {key:'feed', label:'Feed', icon:PICS.feed},
-      {key:'livestock', label:'Other Livestock', icon:PICS.livestockNav},
-      {key:'crops', label:'Crops', icon:PICS.cropsNav},
-      {key:'health', label:'Health', icon:PICS.health},
-      {key:'sensors', label:'Sensors', icon:PICS.sensors}
+    {key:'overview', label:'Dashboard', icon:NAV_ICONS.dashboard},
+    {heading:'Farm'},
+    {key:'poultry-group', label:'Poultry', icon:NAV_ICONS.poultry, children:[
+      {key:'flock', label:'Flock & batches', icon:NAV_ICONS.flock},
+      {key:'eggs', label:'Egg production', icon:NAV_ICONS.eggs},
+      {key:'sensors', label:'Poultry house', icon:NAV_ICONS.sensors}
     ]},
-    {key:'money-group', label:'Money', icon:PICS.finance, children:[
-      {key:'income', label:'Income', icon:PICS.income},
-      {key:'expenses', label:'Expenses', icon:PICS.expenses},
-      {key:'finance', label:'Finance', icon:PICS.finance},
-      {key:'reports', label:'Reports', icon:PICS.reports}
+    {key:'livestock', label:'Livestock', icon:NAV_ICONS.livestock},
+    {key:'crops', label:'Crops', icon:NAV_ICONS.crops},
+    {key:'health', label:'Animal Health', icon:NAV_ICONS.health},
+    {key:'breeding', label:'Breeding & Reproduction', icon:NAV_ICONS.breeding},
+    {key:'production', label:'Production', icon:NAV_ICONS.production},
+    {key:'stock-group', label:'Feed & Inventory', icon:NAV_ICONS.feed, children:[
+      {key:'feed', label:'Feed', icon:NAV_ICONS.feed},
+      {key:'inventory', label:'Inventory', icon:NAV_ICONS.inventory}
     ]},
-    {key:'customers', label:'Customers', icon:PICS.customers},
-    {key:'team-group', label:'Team', icon:PICS.team, children:[
-      {key:'team', label:'Manage Team', icon:PICS.team},
-      {key:'directory', label:'Team Directory', icon:PICS.directory},
-      {key:'messages', label:'Messages', icon:PICS.messages},
-      {key:'signoffs', label:'Pending signatures', icon:PICS.signoffs}
+    {heading:'Business'},
+    {key:'customers', label:'Sales & Customers', icon:NAV_ICONS.sales},
+    {key:'money-group', label:'Expenses & Income', icon:NAV_ICONS.money, children:[
+      {key:'income', label:'Income', icon:NAV_ICONS.income},
+      {key:'expenses', label:'Expenses', icon:NAV_ICONS.expenses},
+      {key:'finance', label:'Finance & M-Pesa', icon:NAV_ICONS.finance}
     ]},
-    {key:'about', label:'About', icon:PICS.about},
-    {key:'settings', label:'Settings', icon:PICS.settings}
+    {key:'reports', label:'Reports & Analytics', icon:NAV_ICONS.reports},
+    {heading:'Team'},
+    {key:'team-group', label:'Team', icon:NAV_ICONS.team, children:[
+      {key:'team', label:'Manage team', icon:NAV_ICONS.team},
+      {key:'directory', label:'Team directory', icon:NAV_ICONS.directory},
+      {key:'messages', label:'Messages', icon:NAV_ICONS.messages},
+      {key:'signoffs', label:'Pending signatures', icon:NAV_ICONS.signoffs}
+    ]},
+    {key:'about', label:'About the farm', icon:NAV_ICONS.about},
+    {key:'settings', label:'Settings', icon:NAV_ICONS.settings}
   ];
+  // Phone bottom bar: a short list of the most-used destinations plus
+  // "More", which slides the full sidebar in as a drawer.
+  function mobilePrimaryNav(){
+    var animals = sectionAllowed('livestock') && !sectionAllowed('flock') ? {key:'livestock', label:'Animals', icon:NAV_ICONS.livestock}
+      : (sectionAllowed('flock') ? {key:'poultry-group', label:'Poultry', icon:NAV_ICONS.poultry, group:true} : (sectionAllowed('livestock') ? {key:'livestock', label:'Animals', icon:NAV_ICONS.livestock} : null));
+    var money = (sectionAllowed('income')||sectionAllowed('expenses')||sectionAllowed('finance')) ? {key:'money-group', label:'Money', icon:NAV_ICONS.money, group:true}
+      : (sectionAllowed('production') ? {key:'production', label:'Production', icon:NAV_ICONS.production} : null);
+    var list = [{key:'overview', label:'Home', icon:NAV_ICONS.dashboard}, animals,
+      sectionAllowed('health') ? {key:'health', label:'Health', icon:NAV_ICONS.health} : null, money];
+    return list.filter(Boolean);
+  }
+  function openNavDrawer(){ document.body.classList.add('nav-open'); }
+  function closeNavDrawer(){ document.body.classList.remove('nav-open'); }
   var navOpenGroup = null, navLastSection = null;
   function renderNav(){
     var rail = document.getElementById('rail');
@@ -1064,55 +1143,49 @@
     function badgeHtml(n){ return n>0 ? '<span class="nav-badge">'+(n>99?'99+':n)+'</span>' : ''; }
 
     // Filtered through sectionAllowed() so the nav never shows a link to a
-    // page this account's role can't actually open — matches whatever
-    // render() would bounce them out of anyway if they got there some
-    // other way (a stale link, browser back button, etc.). A group with
-    // every child filtered out disappears entirely, same as a leaf would.
+    // page this account's role (or the farm's setup) can't open. A group
+    // with every child filtered out disappears entirely; a heading only
+    // shows when something visible follows it.
     var groups = NAV_GROUPS.map(function(g){
+      if(g.heading!==undefined) return g;
       if(!g.children) return sectionAllowed(g.key) ? g : null;
       var kids = g.children.filter(function(c){ return sectionAllowed(c.key); });
       return kids.length ? Object.assign({}, g, {children:kids}) : null;
-    }).filter(Boolean);
+    }).filter(Boolean).filter(function(g, i, arr){
+      if(g.heading===undefined) return true;
+      var next = arr[i+1];
+      return !!next && next.heading===undefined;
+    });
+    var navGroupsOnly = groups.filter(function(g){ return g.heading===undefined; });
 
-    // ---- Desktop sidebar: every section still listed, just organized
-    // under its group's header now instead of one long flat list. ----
     function navT(item){
-      // Special-cased so the sidebar/tab-bar label for "Other Livestock"
-      // follows the active sector — when a sign-in has specifically picked
-      // one species (ui.sector === 'livestock-cattle', etc.), that species'
-      // own name shows here instead of the generic group label, matching
-      // the dedicated portal they're actually inside. Every other item,
-      // and a farm that hasn't picked a species sector, is unaffected.
+      // The Livestock entry follows the active sector — inside one
+      // species' own portal it shows that species' name instead.
       if(item.key==='livestock'){
         var activeSp = activeLivestockSpecies();
         if(ui.sector && ui.sector.indexOf('livestock-')===0 && activeSp.length===1) return activeSp[0].label;
       }
+      if(item.key==='overview') return t('title.dashboard', item.label);
       return t('title.'+item.key, item.label);
     }
-    function navIcon(item){
-      if(item.key==='livestock'){
-        var activeSp = activeLivestockSpecies();
-        if(ui.sector && ui.sector.indexOf('livestock-')===0 && activeSp.length===1) return activeSp[0].icon;
-      }
-      return item.icon;
-    }
+    function navIcon(item){ return item.icon; }
     // Which group is open: the one holding the current page whenever the
     // page changes; otherwise whatever the person last opened or closed.
     if(navLastSection !== ui.section){
       navLastSection = ui.section;
-      var holder = groups.find(function(g){ return g.children && g.children.some(function(c){ return c.key===ui.section; }); });
+      var holder = navGroupsOnly.find(function(g){ return g.children && g.children.some(function(c){ return c.key===ui.section; }); });
       if(holder) navOpenGroup = holder.key;
     }
     var desktopHtml = groups.map(function(g){
+      if(g.heading!==undefined) return '<li class="nav-section-label">'+esc(t('nav.'+g.heading.toLowerCase(), g.heading))+'</li>';
       if(!g.children){
-        return '<li><button class="nav-item '+(ui.section===g.key?'active':'')+'" data-nav-section="'+g.key+'" data-action="nav:'+g.key+'"><span class="nav-ico">'+navIcon(g)+'</span>'+badgeHtml(badgeFor(g.key))+'<span class="nav-label">'+esc(navT(g))+'</span></button></li>';
+        return '<li><button class="nav-item '+(ui.section===g.key?'active':'')+'" data-nav-section="'+g.key+'" data-action="nav:'+g.key+'"'+(ui.section===g.key?' aria-current="page"':'')+'><span class="nav-ico">'+navIcon(g)+'</span>'+badgeHtml(badgeFor(g.key))+'<span class="nav-label">'+esc(navT(g))+'</span></button></li>';
       }
       var kidsHtml = g.children.map(function(c){
-        return '<li><button class="nav-item nav-item-sub '+(ui.section===c.key?'active':'')+'" data-nav-section="'+c.key+'" data-action="nav:'+c.key+'"><span class="nav-ico">'+navIcon(c)+'</span>'+badgeHtml(badgeFor(c.key))+'<span class="nav-label">'+esc(navT(c))+'</span></button></li>';
+        return '<li><button class="nav-item nav-item-sub '+(ui.section===c.key?'active':'')+'" data-nav-section="'+c.key+'" data-action="nav:'+c.key+'"'+(ui.section===c.key?' aria-current="page"':'')+'><span class="nav-ico">'+navIcon(c)+'</span>'+badgeHtml(badgeFor(c.key))+'<span class="nav-label">'+esc(navT(c))+'</span></button></li>';
       }).join('');
-      // Collapsible group ("drop-down"): only one open at a time. The
-      // group holding the page you're on opens by itself; tap a header
-      // to open or close it.
+      // Collapsible group: only one open at a time. The group holding
+      // the page you're on opens by itself; tap a header to toggle it.
       var hasActive = g.children.some(function(c){ return c.key===ui.section; });
       var open = navOpenGroup===g.key;
       var groupBadge = open ? 0 : g.children.reduce(function(a,c){ return a+badgeFor(c.key); }, 0);
@@ -1128,26 +1201,33 @@
       '<div class="brand">'+
         '<img class="brand-mark" src="icons/logo-mark.png" alt="'+esc(FARM_NAME)+'">'+
         '<div class="brand-text"><h1>'+esc(FARM_NAME)+'</h1><span>'+esc(brandTagline())+'</span></div>'+
+        '<button type="button" class="rail-close" data-action="close-nav-drawer" aria-label="Close menu">'+NAV_ICONS.close+'</button>'+
       '</div>'+
-      '<ul class="nav-list">'+desktopHtml+'</ul>'+
+      '<nav aria-label="Main"><ul class="nav-list">'+desktopHtml+'</ul></nav>'+
       '<div class="rail-foot">'+accountFootHTML()+'<div class="sync-chip" id="sync-chip">'+syncChipHTML()+'</div></div>';
 
-    // ---- Phone bottom tab bar: only the 7 top-level entries. Tapping a
-    // group jumps to whichever of its sections was open last (or its
-    // first one), and reveals that group's own sections as a second,
-    // horizontally-scrollable row of tabs right under the search bar. ----
+    // ---- Phone bottom tab bar: Home, the animals, Health, Money and
+    // "More" (opens the full sidebar as a drawer). Tapping a group jumps
+    // to whichever of its sections was open last, and shows that group's
+    // sections as a second row of tabs under the search bar. ----
     var activeGroup = null;
-    groups.forEach(function(g){
+    navGroupsOnly.forEach(function(g){
       if(g.children && g.children.some(function(c){ return c.key===ui.section; })) activeGroup = g;
     });
     if(tabbar){
-      tabbar.innerHTML = groups.map(function(g){
-        var isActive = g.children ? (activeGroup===g) : (ui.section===g.key);
-        var n = g.children ? g.children.reduce(function(a,c){ return a+badgeFor(c.key); },0) : badgeFor(g.key);
-        var action = g.children ? 'nav-group:'+g.key : 'nav:'+g.key;
+      var primary = mobilePrimaryNav();
+      var primaryKeys = primary.map(function(p){ return p.key; });
+      var inPrimary = primaryKeys.indexOf(ui.section)!==-1 || (activeGroup && primaryKeys.indexOf(activeGroup.key)!==-1);
+      tabbar.innerHTML = primary.map(function(p){
+        var g = navGroupsOnly.find(function(x){ return x.key===p.key; });
+        var isActive = p.group ? (activeGroup && activeGroup.key===p.key) : (ui.section===p.key);
+        var n = (g && g.children) ? g.children.reduce(function(a,c){ return a+badgeFor(c.key); },0) : badgeFor(p.key);
+        var action = p.group ? 'nav-group:'+p.key : 'nav:'+p.key;
         return '<button class="mobile-tab '+(isActive?'active':'')+'" data-action="'+action+'">'+
-          '<span class="mobile-tab-ico">'+g.icon+badgeHtml(n)+'</span><span class="mobile-tab-label">'+esc(navT(g))+'</span></button>';
-      }).join('');
+          '<span class="mobile-tab-ico">'+p.icon+badgeHtml(n)+'</span><span class="mobile-tab-label">'+esc(p.label)+'</span></button>';
+      }).join('') +
+      '<button class="mobile-tab '+(!inPrimary?'active':'')+'" data-action="open-nav-drawer" aria-label="Open the full menu">'+
+        '<span class="mobile-tab-ico">'+NAV_ICONS.more+badgeHtml(unread+pendingCount)+'</span><span class="mobile-tab-label">More</span></button>';
     }
     if(subtabsEl){
       if(activeGroup && activeGroup.children.length>1){
@@ -1300,13 +1380,15 @@
   // crops fresh green with wheat, money emerald with bright gold, the team
   // pages sage with bronze, and home (overview, about, settings, sign-in)
   // the plain green-gold. Overview follows whichever sector is open.
-  var ZONE_OF_SECTION = { flock:'poultry', eggs:'poultry', feed:'poultry', health:'poultry', sensors:'poultry',
+  var ZONE_OF_SECTION = { flock:'poultry', eggs:'poultry', feed:'poultry', health:'poultry', sensors:'poultry', breeding:'cattle', production:'poultry', inventory:'poultry',
     livestock:'cattle', crops:'crops',
     income:'money', expenses:'money', finance:'money', reports:'money', customers:'money',
     team:'team', directory:'team', messages:'team', signoffs:'team' };
+  // One consistent brand colour for the phone status bar on every page
+  // (forest green), matching the single palette in styles.css.
   var ZONE_STATUS_BAR = { // phone status-bar colour per zone: [light, dark]
-    home:['#2F5A2E','#13241A'], poultry:['#3E6A1F','#16260F'], cattle:['#1E5A3C','#0F2419'],
-    crops:['#4D7A1C','#1A2A0E'], money:['#14583F','#0C2219'], team:['#4E5A2C','#1C2112'] };
+    home:['#1B4332','#0E1813'], poultry:['#1B4332','#0E1813'], cattle:['#1B4332','#0E1813'],
+    crops:['#1B4332','#0E1813'], money:['#1B4332','#0E1813'], team:['#1B4332','#0E1813'] };
   function currentThemeZone(sectionKey){
     var z = ZONE_OF_SECTION[sectionKey];
     if(z) return z;
@@ -1524,7 +1606,10 @@
     'title.messages':'Ujumbe', 'sub.messages':'Ongea na timu',
     'title.signoffs':'Sahihi Zinazosubiri', 'sub.signoffs':'Nyaraka zinazosubiri sahihi yako',
     'title.directory':'Orodha ya Timu', 'sub.directory':'Kila mtu shambani, mahali pamoja',
-    'title.flock-group':'Kumbukumbu za Shamba', 'title.money-group':'Fedha', 'title.team-group':'Timu',
+    'title.flock-group':'Kumbukumbu za Shamba', 'title.money-group':'Mapato na Matumizi', 'title.team-group':'Timu',
+    'title.dashboard':'Dashibodi', 'title.poultry-group':'Kuku', 'title.livestock':'Mifugo', 'title.crops':'Mazao',
+    'title.breeding':'Uzalishaji wa Mifugo', 'title.production':'Uzalishaji', 'title.stock-group':'Chakula na Bidhaa',
+    'title.inventory':'Bidhaa', 'title.sensors':'Banda la Kuku', 'nav.farm':'Shamba', 'nav.business':'Biashara', 'nav.team':'Timu',
     'greet.morning':'Habari za asubuhi', 'greet.morning.note':'Ni wakati wa kuangalia kundi na kukusanya mayai ya asubuhi.',
     'greet.afternoon':'Habari za mchana', 'greet.afternoon.note':'Tunatumaini siku inaendelea vizuri shambani.',
     'greet.evening':'Habari za jioni', 'greet.evening.note':'Kumaliza siku — kundi limefanyaje?',
@@ -1554,15 +1639,6 @@
       if(!trimmed || !COMMON_SW.hasOwnProperty(trimmed)) return whole;
       return '>'+text.replace(trimmed, COMMON_SW[trimmed])+'<';
     });
-  }
-  function overviewGreetingHTML(){
-    var info = greetingTimeInfo();
-    var who = currentUser ? (currentUser.name || roleLabel(currentUser)) : (guestMode ? 'Guest' : '');
-    var todayLong = fmtDate(new Date(), {weekday:'long', day:'numeric', month:'long', year:'numeric'});
-    return '<div class="card" id="overview-greeting" style="background:linear-gradient(135deg, var(--accent-tint), transparent)">'+
-      '<div class="card-title"><h3>'+info.greeting+(who?', '+esc(who):'')+'</h3><span class="hint">'+todayLong+'</span></div>'+
-      '<p class="hint" style="margin:0">'+info.note+'</p>'+
-    '</div>';
   }
   // Converts the two "what's actually on the farm right now" figures —
   // eggs on hand and the current flock — into money, right on the
@@ -1595,63 +1671,6 @@
       '</div>'+
     '</div>';
   }
-  function overviewPanel(){
-    var isEmpty = state.flock.length===0 && state.eggs.length===0 && state.expenses.length===0 && state.incomes.length===0;
-    var period = ui.periods.overview;
-    var r = getRange(period);
-    var incomeCur = sumMoney(state.incomes, r.startISO, r.endISO), expenseCur = sumMoney(state.expenses, r.startISO, r.endISO);
-    var profitCur = incomeCur - expenseCur;
-    var incomePrev = sumMoney(state.incomes, r.prevStartISO, r.prevEndISO), expensePrev = sumMoney(state.expenses, r.prevStartISO, r.prevEndISO);
-    var profitPrev = incomePrev - expensePrev;
-    var eggsCur = sumEggs(r.startISO, r.endISO), eggsPrev = sumEggs(r.prevStartISO, r.prevEndISO);
-    var nc = netChange(r.startISO, r.endISO);
-    var totalNow = birdsAsOf(todayISO());
-    var lr = layRatePct(r.startISO, r.endISO);
-
-    var allTimeIncome = totalMoney(state.incomes), allTimeExpense = totalMoney(state.expenses);
-    var allTimeProfit = allTimeIncome - allTimeExpense;
-    var allTimeColor = allTimeProfit<0 ? 'var(--bad)' : (allTimeProfit>0 ? 'var(--good)' : 'var(--ink)');
-    var allTimeLabel = allTimeProfit<0 ? 'All-time deficit' : (allTimeProfit>0 ? 'All-time profit' : 'All-time — breaking even');
-    var since = earliestRecordISO();
-    // Profit/deficit is a finance-sensitive figure — only the administrator
-    // and Financial Staff see it here, same tier as the Finance tab itself.
-    // Everyone else can still add and view individual expenses/income (that
-    // hasn't changed), just not this combined bottom-line number.
-    var showProfit = canSeeFinance();
-
-    var last14 = [];
-    for(var i=13;i>=0;i--){ var iso = toISO(addDays(new Date(),-i)); last14.push(sumEggs(iso,iso)); }
-    var expBreak = breakdownByCategory(state.expenses, r.startISO, r.endISO).slice(0,5);
-    var activity = buildActivity().slice(0,7);
-
-    var overdueHealth = overdueHealthCount();
-
-    return overviewGreetingHTML() + sensorOverviewTileHTML() +
-    (isEmpty ? '<div class="banner">Welcome to your ledger — start in <strong>&nbsp;Flock&nbsp;</strong> to add your birds, then log eggs and expenses as you go.</div>' : '') +
-    (overdueHealth>0 ? '<div class="banner bad" style="cursor:pointer" data-action="nav:health">'+overdueHealth+' health reminder'+(overdueHealth===1?'':'s')+' overdue — tap to view in Health.</div>' : '') +
-    (showProfit ? '<div class="card">'+
-      '<div class="card-title"><h3>'+allTimeLabel+'</h3><span class="hint">'+(since?'Since '+fmtDate(parseISO(since)):'This never changes with the period filter below')+'</span></div>'+
-      '<div class="stat-value num" style="font-size:32px; color:'+allTimeColor+'">'+fmtMoney(Math.abs(allTimeProfit))+'</div>'+
-      '<div class="hint" style="margin-top:6px">Total income '+fmtMoney(allTimeIncome)+' · Total expenses '+fmtMoney(allTimeExpense)+'</div>'+
-    '</div>' : '')+
-    farmAssetsOverviewCardHTML()+
-    '<div class="grid stats">'+
-      (showProfit ? statTile('Profit · '+r.label, fmtMoney(profitCur), deltaBadge(profitCur,profitPrev)) : '')+
-      statTile('Expenses · '+r.label, fmtMoney(expenseCur), deltaBadge(expenseCur,expensePrev,true))+
-      statTile('Eggs produced', eggsCur.toLocaleString()+' eggs', deltaBadge(eggsCur,eggsPrev))+
-      statTile('Flock change', (nc.net>=0?'+':'')+nc.net+' birds', '<span class="hint">+'+nc.added+' added · −'+nc.removed+' lost/sold</span>')+
-      statTile('Total birds now', totalNow.toLocaleString(), lr!=null ? '<span class="hint">Lay rate ≈ '+lr.toFixed(0)+'%</span>' : '<span class="hint">&nbsp;</span>')+
-    '</div>'+
-    '<div class="grid two">'+
-      '<div class="card"><div class="card-title"><h3>Eggs, last 14 days</h3><span class="hint">'+last14.reduce(function(a,b){return a+b;},0)+' total</span></div>'+sparklineSVG(last14)+'</div>'+
-      '<div class="card"><div class="card-title"><h3>Spending by category · '+r.label+'</h3><span class="hint num">'+fmtMoney(expenseCur)+'</span></div>'+categoryBars(expBreak)+'</div>'+
-    '</div>'+
-    kemAiInsightsCardHTML()+
-    '<div class="card"><div class="card-title"><h3>Recent activity</h3></div>'+
-      (activity.length ? activity.map(activityRowHTML).join('') : '<div class="empty">'+ICONS.empty+'<div>Nothing recorded yet.</div></div>')+
-    '</div>';
-  }
-
   // Proactive, plain-language observations worked out fresh from whatever's
   // already in the app — no separate AI service, just the same numbers
   // Kem AI already answers questions about, checked for a notable change
@@ -1689,6 +1708,827 @@
       insights.map(function(i){ return '<div style="display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-top:1px solid var(--border, #eee)"><span style="font-size:18px; line-height:1.4">'+i.icon+'</span><span>'+esc(i.text)+'</span></div>'; }).join('')
         .replace('border-top:1px solid var(--border, #eee)','border-top:none') // first row gets no divider — cheap way without a separate template branch
     +'</div>';
+  }
+
+
+  /* ============================= FARM-WIDE FIGURES ============================= */
+  // Whole-farm counts used by the Dashboard, Breeding and Production pages.
+  // Everything here only READS state (it never creates missing arrays the
+  // way livestockData() does), so opening the dashboard can never add
+  // fields to the farm document by itself.
+  function lsRO(key){ var d = (state.livestock||{})[key]; return d || {herd:[], journal:[]}; }
+  function speciesPopulation(key){
+    var d = lsRO(key);
+    var n = (d.herd||[]).reduce(function(a,b){ return a+currentLivestockCount(b); }, 0);
+    (d.animals||[]).forEach(function(a){ if((a.status||'active')==='active') n++; });
+    return n;
+  }
+  function poultryPopulation(){ return state.flock.reduce(function(a,b){ return a+currentCount(b); }, 0); }
+  // Movements for one livestock species between two ISO dates (inclusive):
+  // sold, died, born, and other removals (culled / given away).
+  function speciesMovements(key, s, e){
+    var d = lsRO(key), out = {sold:0, died:0, born:0, other:0};
+    (d.herd||[]).forEach(function(b){
+      if(inRange(b.dateAdded, s, e) && /born|hatch/i.test(b.source||'')) out.born += b.count;
+      (b.removals||[]).forEach(function(r){
+        if(!inRange(r.date||'', s, e)) return;
+        if(r.reason==='sold') out.sold += r.count; else if(r.reason==='died') out.died += r.count; else out.other += r.count;
+      });
+    });
+    (d.animals||[]).forEach(function(a){
+      if(a.source==='born' && a.dob && inRange(a.dob, s, e)) out.born++;
+      var x = a.exit;
+      if(x && x.date && inRange(x.date, s, e)){
+        if(x.reason==='sold') out.sold++; else if(x.reason==='died') out.died++; else out.other++;
+      }
+    });
+    return out;
+  }
+  function poultryMovements(s, e){
+    var out = {sold:0, died:0, born:0, other:0};
+    state.flock.forEach(function(b){
+      if(!b.resex && inRange(b.dateAdded, s, e) && /hatch/i.test(b.source||'')) out.born += b.count;
+      (b.removals||[]).forEach(function(r){
+        if(r.reason==='resexed' || !inRange(r.date||'', s, e)) return;
+        if(r.reason==='sold') out.sold += r.count;
+        else if(r.reason==='died' || r.reason==='predator') out.died += r.count;
+        else out.other += r.count;
+      });
+    });
+    return out;
+  }
+  // One row per animal group the farm keeps (poultry first), each with
+  // its live head count — what the dashboard's animal cards are built from.
+  function farmAnimalGroups(){
+    var fs = (state.settings && state.settings.farmSetup) || {};
+    var species = fs.species || ['poultry'];
+    var keepsLivestock = !fs.categories || fs.categories.livestock!==false;
+    var rows = [];
+    if(keepsLivestock && (species.indexOf('poultry')!==-1 || state.flock.length)){
+      rows.push({key:'poultry', label:'Poultry', unit:'birds', icon:PICS.hen, count:poultryPopulation(), image:FARM_PHOTOS.banners.hens, nav:'flock'});
+    }
+    if(keepsLivestock){
+      LIVESTOCK_SPECIES.forEach(function(sp){
+        var count = speciesPopulation(sp.key);
+        if(species.indexOf(sp.key)===-1 && !count) return;
+        rows.push({key:sp.key, label:sp.label, unit:sp.plural, icon:sp.icon, count:count, image:null, nav:'livestock', species:sp});
+      });
+    }
+    return rows;
+  }
+  function farmMovements(s, e){
+    var tot = poultryMovements(s, e);
+    LIVESTOCK_SPECIES.forEach(function(sp){
+      var m = speciesMovements(sp.key, s, e);
+      tot.sold += m.sold; tot.died += m.died; tot.born += m.born; tot.other += m.other;
+    });
+    return tot;
+  }
+  function milkLitresInRange(s, e){
+    return (lsRO('cattle').journal||[]).filter(function(j){ return inRange(j.date, s, e); }).reduce(function(a,j){ return a+(Number(j.quantity)||0); }, 0);
+  }
+
+  /* ============================= CHARTS ============================= */
+  // Small dependency-free SVG charts. Hovering (or tapping) a bar or point
+  // shows a tooltip — see the delegated listener in bindChartTips().
+  function chartTipAttr(title, lines){ return ' data-tip-title="'+esc(title)+'" data-tip="'+esc(lines.join('\n'))+'"'; }
+  function niceMax(v){
+    if(v<=0) return 1;
+    var p = Math.pow(10, Math.floor(Math.log10(v))), n = v/p;
+    return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p;
+  }
+  function shortNum(v){
+    var a = Math.abs(v);
+    if(a>=1e6) return (v/1e6).toFixed(a>=1e7?0:1).replace(/\.0$/,'')+'M';
+    if(a>=1e3) return (v/1e3).toFixed(a>=1e4?0:1).replace(/\.0$/,'')+'k';
+    return String(Math.round(v));
+  }
+  // series: [{label, color, values:[…]}], labels: [...], fmt: value formatter for tooltips
+  function barChartSVG(labels, series, fmt){
+    var W = 640, H = 230, padL = 44, padB = 26, padT = 10, padR = 8;
+    var max = niceMax(Math.max.apply(null, [0].concat(series.reduce(function(a,s){ return a.concat(s.values); }, []))));
+    var plotW = W-padL-padR, plotH = H-padT-padB, slot = plotW/labels.length;
+    var barW = Math.min(26, (slot*0.7)/series.length), gap = 4;
+    var g = '';
+    for(var t=0;t<=4;t++){
+      var y = padT + plotH - (plotH*t/4);
+      g += '<line class="gridline" x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y+'" y2="'+y+'"/>'+
+        '<text class="axis-label" x="'+(padL-8)+'" y="'+(y+4)+'" text-anchor="end">'+shortNum(max*t/4)+'</text>';
+    }
+    labels.forEach(function(lab, i){
+      var cx = padL + slot*i + slot/2, groupW = series.length*barW + (series.length-1)*gap, x0 = cx - groupW/2;
+      var tipLines = series.map(function(s){ return s.label+': '+fmt(s.values[i]); });
+      g += '<g class="bar-group">';
+      series.forEach(function(s, k){
+        var v = s.values[i]||0, h = v>0 ? Math.max(2, plotH*v/max) : 0;
+        g += '<rect class="bar" x="'+(x0+k*(barW+gap)).toFixed(1)+'" y="'+(padT+plotH-h).toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="4" fill="'+s.color+'"/>';
+      });
+      g += '<rect class="hit" x="'+(padL+slot*i).toFixed(1)+'" y="'+padT+'" width="'+slot.toFixed(1)+'" height="'+plotH+'"'+chartTipAttr(lab, tipLines)+'/></g>';
+      g += '<text class="axis-label" x="'+cx.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(lab)+'</text>';
+    });
+    return '<div class="chart"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(series.map(function(s){return s.label;}).join(' and '))+' chart">'+g+'</svg></div>';
+  }
+  // points: [{label, value}]
+  function areaChartSVG(points, color, fmt, unitLabel){
+    var W = 640, H = 200, padL = 40, padB = 24, padT = 12, padR = 10;
+    var max = niceMax(Math.max.apply(null, [0].concat(points.map(function(p){ return p.value; }))));
+    var plotW = W-padL-padR, plotH = H-padT-padB, n = points.length;
+    function X(i){ return padL + (n<=1 ? plotW/2 : plotW*i/(n-1)); }
+    function Y(v){ return padT + plotH - plotH*v/max; }
+    var g = '', id = 'ag'+Math.random().toString(36).slice(2,7);
+    g += '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+color+'" stop-opacity=".28"/><stop offset="1" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>';
+    for(var t=0;t<=4;t++){
+      var y = padT + plotH - (plotH*t/4);
+      g += '<line class="gridline" x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y+'" y2="'+y+'"/><text class="axis-label" x="'+(padL-8)+'" y="'+(y+4)+'" text-anchor="end">'+shortNum(max*t/4)+'</text>';
+    }
+    if(n){
+      var line = points.map(function(p,i){ return (i?'L':'M')+X(i).toFixed(1)+' '+Y(p.value).toFixed(1); }).join(' ');
+      g += '<path d="'+line+' L'+X(n-1).toFixed(1)+' '+(padT+plotH)+' L'+X(0).toFixed(1)+' '+(padT+plotH)+' Z" fill="url(#'+id+')"/>';
+      g += '<path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      var every = Math.max(1, Math.ceil(n/7));
+      points.forEach(function(p,i){
+        var slot = n>1 ? plotW/(n-1) : plotW;
+        g += '<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(p.value).toFixed(1)+'" r="'+(i===n-1?4:0)+'" fill="'+color+'"/>';
+        g += '<rect class="hit" x="'+(X(i)-slot/2).toFixed(1)+'" y="'+padT+'" width="'+slot.toFixed(1)+'" height="'+plotH+'"'+chartTipAttr(p.label, [fmt(p.value)+(unitLabel?' '+unitLabel:'')])+'/>';
+        if(i%every===0 || i===n-1) g += '<text class="axis-label" x="'+X(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+esc(p.short||p.label)+'</text>';
+      });
+    }
+    return '<div class="chart"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Trend chart">'+g+'</svg></div>';
+  }
+  // slices: [{label, value, color}]
+  function donutSVG(slices, centerValue, centerLabel){
+    var total = slices.reduce(function(a,s){ return a+s.value; }, 0);
+    var r = 54, c = 2*Math.PI*r, off = 0, g = '<circle cx="75" cy="75" r="'+r+'" fill="none" stroke="var(--surface-2)" stroke-width="18"/>';
+    if(total>0) slices.forEach(function(s){
+      if(!s.value) return;
+      var len = c*s.value/total;
+      g += '<circle cx="75" cy="75" r="'+r+'" fill="none" stroke="'+s.color+'" stroke-width="18" stroke-dasharray="'+len.toFixed(2)+' '+(c-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 75 75)"'+chartTipAttr(s.label, [s.value.toLocaleString()+' ('+Math.round(100*s.value/total)+'%)'])+' style="cursor:default"/>';
+      off += len;
+    });
+    g += '<text x="75" y="74" text-anchor="middle" style="font-size:22px;font-weight:800;fill:var(--ink);font-family:var(--font-sans)">'+esc(centerValue)+'</text>'+
+      '<text x="75" y="93" text-anchor="middle" style="font-size:11px;fill:var(--ink-3);font-family:var(--font-sans)">'+esc(centerLabel)+'</text>';
+    return '<div class="chart" style="width:150px;flex:none"><svg viewBox="0 0 150 150" role="img" aria-label="'+esc(centerLabel)+'">'+g+'</svg></div>';
+  }
+  var chartTipsBound = false;
+  function bindChartTips(){
+    if(chartTipsBound) return;
+    chartTipsBound = true;
+    var tip = document.createElement('div');
+    tip.className = 'chart-tip';
+    document.body.appendChild(tip);
+    function show(el, clientX, clientY){
+      var lines = (el.getAttribute('data-tip')||'').split('\n').map(esc).join('<br>');
+      tip.innerHTML = '<strong>'+esc(el.getAttribute('data-tip-title')||'')+'</strong>'+lines;
+      tip.style.position = 'fixed';
+      tip.style.left = clientX+'px';
+      tip.style.top = clientY+'px';
+      tip.classList.add('show');
+    }
+    document.addEventListener('pointermove', function(e){
+      var el = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+      if(el && el.closest('.chart')) show(el, e.clientX, e.clientY); else tip.classList.remove('show');
+    });
+    document.addEventListener('pointerdown', function(e){
+      var el = e.target && e.target.closest ? e.target.closest('.chart [data-tip]') : null;
+      if(el) show(el, e.clientX, e.clientY); else tip.classList.remove('show');
+    });
+    window.addEventListener('scroll', function(){ tip.classList.remove('show'); }, true);
+  }
+
+  /* ============================= DASHBOARD ============================= */
+  function trendHTML(cur, prev, invert){
+    if(!prev && !cur) return '<span class="trend flat">—</span>';
+    if(!prev) return '<span class="trend '+(invert?'down':'up')+'">New</span>';
+    var pct = Math.round(((cur-prev)/Math.abs(prev))*100);
+    if(pct===0) return '<span class="trend flat">0%</span>';
+    var good = invert ? pct<0 : pct>0;
+    return '<span class="trend '+(good?'up':'down')+'">'+(pct>0?'▲':'▼')+' '+Math.abs(pct)+'%</span>';
+  }
+  function kpiHTML(o){
+    var tag = o.nav ? 'button type="button" data-action="nav:'+o.nav+'"' : 'div';
+    var close = o.nav ? 'button' : 'div';
+    return '<'+tag+' class="kpi">'+
+      '<div class="kpi-top"><span class="kpi-label">'+esc(o.label)+'</span><span class="kpi-ico '+(o.tone||'')+'">'+o.icon+'</span></div>'+
+      '<div class="kpi-value">'+o.value+(o.unit?'<small>'+esc(o.unit)+'</small>':'')+'</div>'+
+      '<div class="kpi-foot">'+(o.foot||'')+'</div>'+
+    '</'+close+'>';
+  }
+  // The current period so far, and the SAME number of days at the start of
+  // the previous period — so on a Wednesday, "this week" is compared with
+  // last Monday–Wednesday rather than all of last week.
+  function comparableRange(period){
+    var r = getRange(period), today = todayISO();
+    var end = r.endISO < today ? r.endISO : today;
+    var span = Math.max(0, daysBetween(parseISO(r.startISO), parseISO(end)));
+    var prevEnd = addDaysISO(r.prevStartISO, span);
+    if(prevEnd > r.prevEndISO) prevEnd = r.prevEndISO;
+    return Object.assign({}, r, {endISO:end, prevEndISO:prevEnd});
+  }
+  function dashDayLabel(iso){ return fmtDate(parseISO(iso), {day:'numeric', month:'short'}); }
+  function dashHeroHTML(){
+    var info = greetingTimeInfo();
+    var who = currentUser ? (currentUser.name || roleLabel(currentUser)) : (guestMode ? 'Guest' : '');
+    var todayLong = fmtDate(new Date(), {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    var actions = [];
+    if(!readOnly){
+      if(sectionAllowed('eggs')) actions.push('<button class="btn gold" data-action="open-add-egg">'+NAV_ICONS.eggs+'Log eggs</button>');
+      if(sectionAllowed('health')) actions.push('<button class="btn" data-action="open-add-health">'+NAV_ICONS.health+'Health record</button>');
+      if(sectionAllowed('feed')) actions.push('<button class="btn" data-action="open-add-feed">'+NAV_ICONS.feed+'Log feed</button>');
+    }
+    return '<section class="dash-hero" id="overview-greeting" style="--hero-img:url(\''+FARM_PHOTOS.heroHalf+'\')">'+
+      '<div><div class="dash-date">'+NAV_ICONS.calendar.replace('<svg','<svg width="14" height="14"')+esc(todayLong)+'</div>'+
+        '<h2>'+info.greeting+(who?', '+esc(who):'')+'</h2><p>'+info.note+'</p></div>'+
+      (actions.length ? '<div class="dash-hero-actions">'+actions.join('')+'</div>' : '')+
+    '</section>';
+  }
+  // Kept for the once-a-minute greeting refresh (see the setInterval near
+  // the bottom of this file): it swaps #overview-greeting in place.
+  function overviewGreetingHTML(){ return dashHeroHTML(); }
+  function dashAlertsHTML(){
+    var out = [];
+    var overdue = overdueHealthCount();
+    if(overdue>0) out.push('<button type="button" class="dash-alert bad" data-action="nav:health">'+NAV_ICONS.alert+'<span>'+overdue+' health task'+(overdue===1?' is':'s are')+' overdue</span><span class="dash-alert-go">Open Animal Health →</span></button>');
+    if(sectionAllowed('feed')){
+      var fs = feedStockInfo();
+      if(fs.started && fs.low) out.push('<button type="button" class="dash-alert warn" data-action="nav:feed">'+NAV_ICONS.feed+'<span>Feed stock is low — '+fs.onHandKg.toFixed(0)+' kg left'+(fs.daysLeft!=null?' (about '+Math.max(0,Math.round(fs.daysLeft))+' days)':'')+'</span><span class="dash-alert-go">Restock →</span></button>');
+    }
+    var lowInv = inventoryLowItems();
+    if(lowInv.length && sectionAllowed('inventory')) out.push('<button type="button" class="dash-alert warn" data-action="nav:inventory">'+NAV_ICONS.inventory+'<span>'+lowInv.length+' inventory item'+(lowInv.length===1?' is':'s are')+' running low</span><span class="dash-alert-go">Open Inventory →</span></button>');
+    return out.length ? '<div class="dash-alerts">'+out.join('')+'</div>' : '';
+  }
+  function dashAnimalsCardHTML(groups){
+    var total = groups.reduce(function(a,g){ return a+g.count; }, 0);
+    var cards = groups.map(function(g){
+      var sub = g.key==='poultry' ? eggsTodaySub() : speciesSubText(g);
+      var photo = g.image ? ' photo" style="--sp-img:url(\''+g.image+'\')' : '';
+      var action = g.key==='poultry' ? 'nav:flock' : 'open-species:'+g.key;
+      return '<button type="button" class="species-card'+photo+'" data-action="'+action+'">'+
+        (g.image ? '' : '<span class="species-ico">'+g.icon+'</span>')+
+        '<span class="species-count">'+g.count.toLocaleString()+'</span>'+
+        '<span class="species-name">'+esc(g.label)+'</span>'+
+        '<span class="species-sub">'+sub+'</span>'+
+      '</button>';
+    }).join('');
+    if(isAdminLevel() && !readOnly) cards += '<button type="button" class="species-card empty-sp" data-action="open-add-species">'+NAV_ICONS.plus+'<span class="species-name">Add animal type</span><span class="species-sub">Ducks, turkeys, bees…</span></button>';
+    return '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.livestock+'Animals on the farm</h3><span class="hint">'+total.toLocaleString()+' in total</span></div>'+
+      (groups.length ? '<div class="species-grid">'+cards+'</div>' : '<div class="empty">'+ICONS.empty+'<div>No animals recorded yet. Choose what your farm keeps in Settings → Farm Setup.</div></div>')+
+    '</div>';
+  }
+  function eggsTodaySub(){ var n = sumEggs(todayISO(), todayISO()); return n ? n.toLocaleString()+' eggs today' : 'Flock & egg records'; }
+  function speciesSubText(g){
+    if(g.key==='cattle'){
+      var milk = milkLitresInRange(todayISO(), todayISO());
+      var inCalf = (lsRO('cattle').services||[]).filter(function(sv){ return sv.status==='pregnant'; }).length;
+      return (milk ? milk.toLocaleString()+' L milk today' : 'Herd register') + (inCalf ? ' · '+inCalf+' in calf' : '');
+    }
+    var m = speciesMovements(g.key, toISO(addDays(new Date(),-29)), todayISO());
+    if(m.born) return m.born+' born in 30 days';
+    return g.count===1 ? '1 '+esc(g.species ? g.species.singular : 'animal') : esc(g.unit)+' on the farm';
+  }
+  function dashPopulationDonutHTML(groups){
+    var colors = ['var(--chart-1)','var(--chart-2)','var(--chart-3)','var(--chart-4)','var(--chart-5)','var(--chart-6)'];
+    var withCount = groups.filter(function(g){ return g.count>0; });
+    var total = withCount.reduce(function(a,g){ return a+g.count; }, 0);
+    var slices = withCount.map(function(g,i){ return {label:g.label, value:g.count, color:colors[i%colors.length]}; });
+    return '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.reports+'Population mix</h3></div>'+
+      (total ? '<div class="donut-wrap">'+donutSVG(slices, total.toLocaleString(), 'animals')+
+        '<div class="donut-legend">'+slices.map(function(s){ return '<div class="donut-legend-row"><i style="background:'+s.color+'"></i><span>'+esc(s.label)+'</span><strong>'+s.value.toLocaleString()+'</strong></div>'; }).join('')+'</div></div>'
+        : '<div class="empty">'+ICONS.empty+'<div>Add animals to see the mix here.</div></div>')+
+    '</div>';
+  }
+  function dashMoneyCardHTML(){
+    if(!canSeeFinance()) return '';
+    var labels = [], inc = [], exp = [], now = new Date();
+    for(var i=5;i>=0;i--){
+      var m0 = new Date(now.getFullYear(), now.getMonth()-i, 1), m1 = endOfMonth(m0);
+      labels.push(fmtDate(m0, {month:'short'}));
+      inc.push(sumMoney(state.incomes, toISO(m0), toISO(m1)));
+      exp.push(sumMoney(state.expenses, toISO(m0), toISO(m1)));
+    }
+    var r = getRange(ui.periods.overview||'week');
+    var ic = sumMoney(state.incomes, r.startISO, r.endISO), ec = sumMoney(state.expenses, r.startISO, r.endISO);
+    var net = ic-ec;
+    function fmtPlain(v){ return fmtMoney(v).replace(/&nbsp;/g,' '); }
+    return '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.money+'Income &amp; expenses</h3><div class="chart-legend"><span><i style="background:var(--chart-1)"></i>Income</span><span><i style="background:var(--chart-3)"></i>Expenses</span></div></div>'+
+      '<div class="mini-stats" style="margin-bottom:14px">'+
+        '<div class="mini-stat good"><span>Income · '+esc(r.label)+'</span><strong class="num">'+fmtMoney(ic)+'</strong></div>'+
+        '<div class="mini-stat bad"><span>Expenses · '+esc(r.label)+'</span><strong class="num">'+fmtMoney(ec)+'</strong></div>'+
+        '<div class="mini-stat '+(net>=0?'good':'bad')+'"><span>'+(net>=0?'Profit':'Loss')+'</span><strong class="num">'+fmtMoney(Math.abs(net))+'</strong></div>'+
+      '</div>'+
+      barChartSVG(labels, [{label:'Income', color:'var(--chart-1)', values:inc},{label:'Expenses', color:'var(--chart-3)', values:exp}], fmtPlain)+
+      '<div style="margin-top:10px; display:flex; justify-content:flex-end"><button class="link-more" data-action="nav:reports">Full reports '+NAV_ICONS.arrowRight+'</button></div>'+
+    '</div>';
+  }
+  function dashProductionCardHTML(){
+    var showEggs = sectionEnabledByFarmSetup('eggs') || state.eggs.length;
+    var showMilk = (lsRO('cattle').journal||[]).length>0;
+    if(!showEggs && !showMilk) return '';
+    var pts = [], mpts = [];
+    for(var i=13;i>=0;i--){
+      var iso = toISO(addDays(new Date(),-i));
+      pts.push({label:fmtDate(parseISO(iso), {weekday:'short', day:'numeric', month:'short'}), short:dashDayLabel(iso), value:sumEggs(iso,iso)});
+      mpts.push({label:fmtDate(parseISO(iso), {weekday:'short', day:'numeric', month:'short'}), short:dashDayLabel(iso), value:milkLitresInRange(iso,iso)});
+    }
+    var eggTotal = pts.reduce(function(a,p){ return a+p.value; }, 0), milkTotal = mpts.reduce(function(a,p){ return a+p.value; }, 0);
+    var useMilk = !showEggs || (!eggTotal && milkTotal);
+    var title = useMilk ? 'Milk, last 14 days' : 'Eggs, last 14 days';
+    var body = useMilk ? areaChartSVG(mpts, 'var(--chart-2)', function(v){ return v.toLocaleString(); }, 'litres') : areaChartSVG(pts, 'var(--chart-1)', function(v){ return v.toLocaleString(); }, 'eggs');
+    return '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.production+title+'</h3><span class="hint">'+(useMilk ? milkTotal.toLocaleString()+' L' : eggTotal.toLocaleString()+' eggs')+'</span></div>'+body+
+      '<div style="margin-top:10px; display:flex; justify-content:flex-end"><button class="link-more" data-action="nav:production">All production '+NAV_ICONS.arrowRight+'</button></div></div>';
+  }
+  function dashFeedCardHTML(){
+    if(!sectionAllowed('feed')) return '';
+    var fs = feedStockInfo();
+    var r = getRange('week');
+    var kgWeek = totalFeedKg(r.startISO, r.endISO), kgPrev = totalFeedKg(r.prevStartISO, r.prevEndISO);
+    var pct = fs.lowStockKg>0 ? Math.max(0, Math.min(100, (fs.onHandKg/(fs.lowStockKg*3))*100)) : (fs.onHandKg>0?100:0);
+    var tone = fs.low ? 'bad' : (fs.daysLeft!=null && fs.daysLeft<14 ? 'warn' : '');
+    return '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.feed+'Feed</h3>'+(fs.started ? '<span class="status '+(fs.low?'bad':(tone==='warn'?'warn':'good'))+'">'+(fs.low?'Low stock':(tone==='warn'?'Order soon':'In stock'))+'</span>' : '')+'</div>'+
+      (fs.started ?
+        '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:8px"><div class="kpi-value">'+fs.onHandKg.toFixed(0)+'<small>kg on hand</small></div>'+
+          '<span class="hint">'+(fs.daysLeft!=null ? '≈ '+Math.max(0,Math.round(fs.daysLeft))+' days left' : 'No recent use')+'</span></div>'+
+        '<div class="meter '+tone+'"><span style="width:'+pct.toFixed(0)+'%"></span></div>'
+        : '<p class="hint" style="margin:0 0 6px">Record your first feed purchase to track stock levels.</p>')+
+      '<div class="mini-stats" style="margin-top:14px">'+
+        '<div class="mini-stat"><span>Used this week</span><strong>'+kgWeek.toFixed(0)+' kg</strong></div>'+
+        '<div class="mini-stat"><span>Last week</span><strong>'+kgPrev.toFixed(0)+' kg</strong></div>'+
+        '<div class="mini-stat"><span>Daily average</span><strong>'+fs.avgDaily.toFixed(1)+' kg</strong></div>'+
+      '</div>'+
+      '<div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; gap:8px">'+
+        (readOnly ? '<span></span>' : '<button class="btn sm" data-action="open-restock-feed">'+NAV_ICONS.plus+'Restock</button>')+
+        '<button class="link-more" data-action="nav:feed">Feed records '+NAV_ICONS.arrowRight+'</button></div>'+
+    '</div>';
+  }
+  function dashTasksCardHTML(){
+    var today = todayISO();
+    var items = upcomingHealthReminders().filter(function(r){ return r.nextDueDate <= addDaysISO(today, 30); }).slice(0, 6).map(function(r){
+      return {date:r.nextDueDate, title:r.title, sub:healthTypeLabel(r.type)+' · '+healthTargetLabel(r), status: r.overdue ? ['bad','Overdue'] : (r.dueSoon ? ['warn','Due soon'] : ['info','Upcoming']), action:'edit-health:'+r.id};
+    });
+    breedingUpcoming(30).slice(0, 4).forEach(function(b){
+      items.push({date:b.date, title:b.title, sub:b.sub, status: b.date<today ? ['bad','Overdue'] : ['info','Breeding'], action:'nav:breeding'});
+    });
+    items.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:0); });
+    items = items.slice(0, 7);
+    var rows = items.map(function(it){
+      var d = parseISO(it.date);
+      return '<div class="task"><div class="task-date"><b>'+d.getDate()+'</b><span>'+fmtDate(d,{month:'short'})+'</span></div>'+
+        '<div class="task-body"><div class="task-title">'+esc(it.title)+'</div><div class="task-sub">'+esc(it.sub)+'</div></div>'+
+        '<span class="status '+it.status[0]+'">'+it.status[1]+'</span></div>';
+    }).join('');
+    return '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.calendar+'Upcoming care &amp; events</h3><button class="link-more" data-action="nav:health">View all '+NAV_ICONS.arrowRight+'</button></div>'+
+      (rows ? '<div class="task-list">'+rows+'</div>' : '<div class="empty">'+ICONS.empty+'<div>Nothing due in the next 30 days. Add a “next due” date to a health record to schedule reminders.</div></div>')+
+    '</div>';
+  }
+  function farmActivity(){
+    var items = buildActivity();
+    LIVESTOCK_SPECIES.forEach(function(sp){
+      var d = lsRO(sp.key);
+      (d.herd||[]).forEach(function(b){
+        items.push({date:b.dateAdded, type:'flock', text:'Added '+b.count+' '+(b.count===1?sp.singular:sp.plural)+' ('+sp.label+')'});
+        (b.removals||[]).forEach(function(r){ items.push({date:r.date, type: r.reason==='sold'?'income':'flock', text:livestockReasonLabel(r.reason)+' '+r.count+' '+(r.count===1?sp.singular:sp.plural)+' ('+sp.label+')'}); });
+      });
+      (d.calvings||[]).forEach(function(c){ var dam = (d.animals||[]).find(function(a){ return a.id===c.damId; }); items.push({date:c.date, type:'flock', text:(dam?cattleName(dam):'A cow')+' calved'}); });
+      (d.breedings||[]).forEach(function(b){ items.push({date:b.date, type:'flock', text:'Mating recorded — '+(b.female||sp.label)}); if(b.outcome==='born' && b.bornDate) items.push({date:b.bornDate, type:'flock', text:(b.bornCount||0)+' '+sp.plural+' born'}); });
+      (d.journal||[]).slice(-20).forEach(function(j){ if(sp.hasJournal) items.push({date:j.date, type:'egg', text:'Logged '+(j.quantity||0).toLocaleString()+' '+sp.journalUnit.toLowerCase()+' of '+sp.journalLabel.toLowerCase()}); });
+    });
+    (state.inventory||[]).forEach(function(it){ (it.movements||[]).slice(-5).forEach(function(mv){ items.push({date:mv.date, type: mv.delta<0?'expense':'income', text:(mv.delta<0?'Used ':'Stocked ')+Math.abs(mv.delta)+' '+(it.unit||'')+' of '+it.name}); }); });
+    items = items.filter(function(i){ return i.date && i.date<=todayISO(); });
+    items.sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:0); });
+    return items;
+  }
+  function dashActivityCardHTML(){
+    var items = farmActivity().slice(0, 8);
+    var iconFor = { income:[NAV_ICONS.income,''], expense:[NAV_ICONS.expenses,'out'], egg:[NAV_ICONS.eggs,'gold'], flock:[NAV_ICONS.livestock,''] };
+    var rows = items.map(function(it){
+      var ic = iconFor[it.type] || iconFor.flock;
+      return '<div class="feed-item"><span class="feed-ico '+ic[1]+'">'+ic[0]+'</span><div><div class="feed-text">'+esc(it.text)+'</div><div class="feed-when">'+fmtDate(parseISO(it.date))+'</div></div></div>';
+    }).join('');
+    return '<div class="card"><div class="card-title"><h3>'+ICONS.history+'Recent farm activity</h3></div>'+
+      (rows ? '<div class="feed-list">'+rows+'</div>' : '<div class="empty">'+ICONS.empty+'<div>Nothing recorded yet — your latest entries will appear here.</div></div>')+'</div>';
+  }
+  function dashRowHTML(cards){
+    cards = cards.filter(Boolean);
+    if(!cards.length) return '';
+    var cls = cards.length===1 ? '' : (cards.length===2 ? ' even' : ' three');
+    return cards.length===1 ? cards[0] : '<div class="dash-row'+cls+'">'+cards.join('')+'</div>';
+  }
+  function overviewPanel(){
+    var period = ui.periods.overview || 'week';
+    var r = comparableRange(period);
+    var groups = farmAnimalGroups();
+    var totalAnimals = groups.reduce(function(a,g){ return a+g.count; }, 0);
+    var poultryNow = poultryPopulation();
+    var livestockNow = totalAnimals - (groups.some(function(g){ return g.key==='poultry'; }) ? poultryNow : 0);
+    var mv = farmMovements(r.startISO, r.endISO), mvPrev = farmMovements(r.prevStartISO, r.prevEndISO);
+    var eggsToday = sumEggs(todayISO(), todayISO()), eggsYesterday = sumEggs(addDaysISO(todayISO(),-1), addDaysISO(todayISO(),-1));
+    var mortality = (totalAnimals+mv.died)>0 ? (100*mv.died/(totalAnimals+mv.died)) : 0;
+    var plabel = {day:'today', week:'this week', month:'this month', year:'this year'}[period] || r.label;
+    var cmpLabel = {day:'vs yesterday', week:'vs same days last week', month:'vs same days last month', year:'vs same days last year'}[period] || 'vs previous';
+    var kpis = [
+      kpiHTML({label:'Total animals', icon:NAV_ICONS.livestock, value:totalAnimals.toLocaleString(), nav: sectionAllowed('livestock') ? 'livestock' : (sectionAllowed('flock')?'flock':null),
+        foot: (groups.some(function(g){return g.key==='poultry';}) ? poultryNow.toLocaleString()+' poultry · ' : '')+livestockNow.toLocaleString()+' livestock'}),
+      kpiHTML({label:'Eggs collected today', icon:NAV_ICONS.eggs, tone:'gold', value:eggsToday.toLocaleString(), nav: sectionAllowed('eggs')?'eggs':null,
+        foot: trendHTML(eggsToday, eggsYesterday)+'<span>vs yesterday ('+eggsYesterday.toLocaleString()+')</span>'}),
+      kpiHTML({label:'Born '+plabel, icon:NAV_ICONS.baby, value:mv.born.toLocaleString(), nav: sectionAllowed('breeding')?'breeding':null,
+        foot: trendHTML(mv.born, mvPrev.born)+'<span>hatched &amp; born</span>'}),
+      kpiHTML({label:'Sold '+plabel, icon:NAV_ICONS.cart, tone:'earth', value:mv.sold.toLocaleString(), nav: sectionAllowed('customers')?'customers':null,
+        foot: trendHTML(mv.sold, mvPrev.sold)+'<span>animals &amp; birds</span>'}),
+      kpiHTML({label:'Deaths '+plabel, icon:NAV_ICONS.skull, tone: mv.died ? 'bad' : '', value:mv.died.toLocaleString(), nav: sectionAllowed('health')?'health':null,
+        foot: trendHTML(mv.died, mvPrev.died, true)+'<span>mortality '+mortality.toFixed(1)+'%</span>'})
+    ];
+    if(canSeeFinance()){
+      var ic = sumMoney(state.incomes, r.startISO, r.endISO), ec = sumMoney(state.expenses, r.startISO, r.endISO);
+      var ip = sumMoney(state.incomes, r.prevStartISO, r.prevEndISO), ep = sumMoney(state.expenses, r.prevStartISO, r.prevEndISO);
+      kpis.push(kpiHTML({label:'Income '+plabel, icon:NAV_ICONS.income, value:fmtMoney(ic), nav:'income', foot: trendHTML(ic, ip)+'<span>'+cmpLabel+'</span>'}));
+      kpis.push(kpiHTML({label:'Expenses '+plabel, icon:NAV_ICONS.expenses, tone:'earth', value:fmtMoney(ec), nav:'expenses', foot: trendHTML(ec, ep, true)+'<span>'+cmpLabel+'</span>'}));
+      kpis.push(kpiHTML({label:(ic-ec)>=0?'Profit '+plabel:'Loss '+plabel, icon:NAV_ICONS.reports, tone:(ic-ec)>=0?'':'bad', value:fmtMoney(Math.abs(ic-ec)), nav:'reports', foot: trendHTML(ic-ec, ip-ep)+'<span>income − expenses</span>'}));
+    } else {
+      var hr = upcomingHealthReminders().filter(function(x){ return x.nextDueDate<=addDaysISO(todayISO(),7); }).length;
+      kpis.push(kpiHTML({label:'Health tasks this week', icon:NAV_ICONS.health, tone:'info', value:hr.toLocaleString(), nav: sectionAllowed('health')?'health':null, foot:'<span>due within 7 days</span>'}));
+    }
+    // Lay the remaining cards out in rows, skipping any that don't apply
+    // to this farm or this person's role.
+    var money = dashMoneyCardHTML(), production = dashProductionCardHTML(), feed = dashFeedCardHTML();
+    var row2 = money ? [money, production] : [production, feed];
+    var row3 = money ? [feed, dashTasksCardHTML(), dashActivityCardHTML()] : [dashTasksCardHTML(), dashActivityCardHTML()];
+    var isEmpty = totalAnimals===0 && state.eggs.length===0 && state.expenses.length===0 && state.incomes.length===0;
+    return dashHeroHTML() +
+      (isEmpty ? '<div class="banner good">Welcome! Start by adding your animals — open <strong>&nbsp;Poultry&nbsp;</strong> or <strong>&nbsp;Livestock&nbsp;</strong> in the menu — then log production, feed and money as you go.</div>' : '') +
+      dashAlertsHTML() +
+      sensorOverviewTileHTML() +
+      '<div class="kpi-grid">'+kpis.join('')+'</div>'+
+      '<div class="dash-row">'+dashAnimalsCardHTML(groups)+dashPopulationDonutHTML(groups)+'</div>'+
+      dashRowHTML(row2)+dashRowHTML(row3)+
+      farmAssetsOverviewCardHTML()+
+      kemAiInsightsCardHTML();
+  }
+
+  // Opens one animal group's own page from anywhere (Dashboard cards,
+  // Animal Health). If this session is focused on a different sector, it
+  // switches to that animal's sector first so the page is reachable.
+  function openSpeciesPage(key, view){
+    var sp = livestockSpecies(key);
+    if(!sp){ goToSection('livestock'); return; }
+    if(ui.sector){
+      var target = 'livestock-'+key;
+      if(availableSectors().some(function(x){ return x.key===target; })) ui.sector = target;
+    }
+    setView('livestock', view || (key==='cattle' ? 'cattle-register' : key+'-herd'));
+    goToSection('livestock');
+  }
+  function addSpeciesFormHtml(){
+    var enabled = ((state.settings.farmSetup||{}).species)||[];
+    var builtins = LIVESTOCK_SPECIES.filter(function(sp){ return enabled.indexOf(sp.key)===-1; });
+    var customs = LIVESTOCK_SPECIES.filter(function(sp){ return sp.custom; });
+    return '<div class="modal-head"><h3>Add an animal type</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+      '<p class="hint" style="margin:0">Each animal type gets its own herd register, sales &amp; losses, health records and breeding log.</p>'+
+      '<form data-form="add-species">'+
+        '<div class="field-row"><label>Animal type</label><select class="field" name="kind" data-change="new-species-kind">'+
+          builtins.map(function(sp){ return '<option value="'+sp.key+'">'+esc(sp.label)+'</option>'; }).join('')+
+          '<option value="__custom" '+(builtins.length?'':'selected')+'>Something else…</option>'+
+        '</select></div>'+
+        '<div id="custom-species-fields" style="display:'+(builtins.length?'none':'block')+'">'+
+          '<div class="field-row" style="margin-top:12px"><label>Name</label><input class="field" type="text" name="label" maxlength="30" placeholder="e.g. Bees, Quails, Camels"></div>'+
+          '<div class="field-grid" style="margin-top:12px">'+
+            '<div class="field-row"><label>One animal is a…</label><input class="field" type="text" name="singular" maxlength="20" placeholder="e.g. hive, quail"></div>'+
+            '<div class="field-row"><label>Several are…</label><input class="field" type="text" name="plural" maxlength="20" placeholder="e.g. hives, quails"></div>'+
+          '</div>'+
+          '<div class="field-grid" style="margin-top:12px">'+
+            '<div class="field-row"><label>Daily production log</label><select class="field" name="journal"><option value="">None</option><option value="eggs">Eggs</option><option value="milk">Milk (litres)</option><option value="honey">Honey (kg)</option><option value="wool">Wool (kg)</option></select></div>'+
+            '<div class="field-row"><label>Gestation / incubation (days)</label><input class="field" type="number" name="gestationDays" min="1" max="500" placeholder="Optional"></div>'+
+          '</div>'+
+        '</div>'+
+        (customs.length ? '<div style="margin-top:16px"><div class="hint" style="font-weight:700; margin-bottom:4px">Your own animal types</div>'+customs.map(function(sp){ return '<div class="kv-row"><span>'+esc(sp.label)+'</span><button type="button" class="btn sm ghost" data-action="remove-custom-species:'+sp.key+'">Remove</button></div>'; }).join('')+'</div>' : '')+
+        '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Add</button></div>'+
+      '</form>';
+  }
+
+  /* ============================= INVENTORY ============================= */
+  // Medicines & vaccines, equipment and supplies — everything stored on
+  // the farm apart from the main feed stock, which keeps its own tracker
+  // (feedStock, shown on this page too). Items live in state.inventory,
+  // created the first time someone adds one; each stock change is kept as
+  // a dated movement so the history stays auditable.
+  var INVENTORY_CATEGORIES = [
+    ['medication','Medicines & vaccines', 'Vaccines & Medication'],
+    ['feed','Feed supplements', 'Feed'],
+    ['equipment','Equipment & tools', 'Equipment & Housing'],
+    ['supplies','Farm supplies', 'Other'],
+    ['other','Other', 'Other']
+  ];
+  function inventoryCategoryLabel(k){ var c = INVENTORY_CATEGORIES.find(function(x){ return x[0]===k; }); return c ? c[1] : 'Other'; }
+  function inventoryExpenseCategory(k){
+    var c = INVENTORY_CATEGORIES.find(function(x){ return x[0]===k; });
+    var cat = c ? c[2] : 'Other';
+    return state.settings.expenseCategories.indexOf(cat)!==-1 ? cat : 'Other';
+  }
+  function inventoryItems(){ return Array.isArray(state.inventory) ? state.inventory : []; }
+  function inventoryIsLow(it){ return it.lowAt!=null && it.lowAt!=='' && Number(it.quantity||0) <= Number(it.lowAt); }
+  function inventoryLowItems(){ return inventoryItems().filter(inventoryIsLow); }
+  function inventoryExpiringSoon(it){ return !!it.expiry && it.expiry <= addDaysISO(todayISO(), 30); }
+  function fmtQty(n){ var v = Number(n||0); return (Math.round(v*100)/100).toLocaleString(); }
+  function inventoryStatus(it){
+    if(it.expiry && it.expiry < todayISO()) return ['bad','Expired'];
+    if(Number(it.quantity||0)<=0) return ['bad','Out of stock'];
+    if(inventoryIsLow(it)) return ['warn','Low stock'];
+    if(inventoryExpiringSoon(it)) return ['warn','Expires soon'];
+    return ['good','In stock'];
+  }
+  function inventoryPanel(){
+    var items = inventoryItems();
+    var f = ui.invFilter || {};
+    var q = (f.q||'').toLowerCase();
+    var list = items.filter(function(it){
+      if(f.cat && it.category!==f.cat) return false;
+      if(f.status==='low' && !(inventoryIsLow(it) || Number(it.quantity||0)<=0)) return false;
+      if(q && ((it.name||'')+' '+(it.note||'')+' '+(it.location||'')).toLowerCase().indexOf(q)===-1) return false;
+      return true;
+    });
+    var sort = f.sort || 'name';
+    list.sort(function(a,b){
+      if(sort==='qty') return Number(a.quantity||0)-Number(b.quantity||0);
+      if(sort==='status'){ var r = {bad:0, warn:1, good:2}; return r[inventoryStatus(a)[0]]-r[inventoryStatus(b)[0]] || (a.name||'').localeCompare(b.name||''); }
+      if(sort==='expiry') return (a.expiry||'9999') < (b.expiry||'9999') ? -1 : 1;
+      return (a.name||'').localeCompare(b.name||'');
+    });
+    var page = paginate('inventory', list);
+    var rows = page.items.map(function(it){
+      var st = inventoryStatus(it);
+      var cap = Math.max(Number(it.lowAt||0)*3, Number(it.quantity||0), 1);
+      var pct = Math.max(0, Math.min(100, 100*Number(it.quantity||0)/cap));
+      return '<tr><td><strong>'+esc(it.name)+'</strong>'+(it.location?'<div class="hint">'+esc(it.location)+'</div>':'')+'</td>'+
+        '<td>'+esc(inventoryCategoryLabel(it.category))+'</td>'+
+        '<td class="num" style="min-width:130px"><div>'+fmtQty(it.quantity)+' '+esc(it.unit||'')+'</div><div class="meter '+(st[0]==='good'?'':st[0])+'" style="height:6px; margin-top:6px"><span style="width:'+pct.toFixed(0)+'%"></span></div></td>'+
+        '<td class="num">'+(it.lowAt!=null && it.lowAt!=='' ? fmtQty(it.lowAt)+' '+esc(it.unit||'') : '—')+'</td>'+
+        '<td>'+(it.expiry ? fmtDate(parseISO(it.expiry)) : '—')+'</td>'+
+        '<td><span class="status '+st[0]+'">'+st[1]+'</span></td>'+
+        '<td><div class="row-actions">'+
+          '<button class="btn sm" data-action="adjust-inventory:'+it.id+'" '+(readOnly?'disabled':'')+'>Use / restock</button>'+
+          '<button class="icon-btn" data-action="edit-inventory:'+it.id+'" '+(readOnly?'disabled':'')+' title="Edit">'+ICONS.edit+'</button>'+
+          '<button class="icon-btn" data-action="delete-inventory:'+it.id+'" '+(readOnly?'disabled':'')+' title="Delete">'+ICONS.trash+'</button>'+
+        '</div></td></tr>';
+    }).join('');
+    var low = items.filter(function(it){ return inventoryIsLow(it) || Number(it.quantity||0)<=0; }).length;
+    var expiring = items.filter(function(it){ return inventoryExpiringSoon(it); }).length;
+    var meds = items.filter(function(it){ return it.category==='medication'; }).length;
+    var fs = feedStockInfo();
+    var catOpts = '<option value="">All categories</option>'+INVENTORY_CATEGORIES.map(function(c){ return '<option value="'+c[0]+'" '+(f.cat===c[0]?'selected':'')+'>'+esc(c[1])+'</option>'; }).join('');
+    return '<div class="kpi-grid">'+
+        kpiHTML({label:'Items tracked', icon:NAV_ICONS.inventory, value:items.length.toLocaleString(), foot:'<span>'+meds+' medicines &amp; vaccines</span>'})+
+        kpiHTML({label:'Low or out of stock', icon:NAV_ICONS.alert, tone: low?'bad':'', value:low.toLocaleString(), foot:'<span>at or below the alert level</span>'})+
+        kpiHTML({label:'Expiring within 30 days', icon:NAV_ICONS.calendar, tone: expiring?'gold':'', value:expiring.toLocaleString(), foot:'<span>check dates before use</span>'})+
+        kpiHTML({label:'Feed on hand', icon:NAV_ICONS.feed, tone: fs.low?'bad':'', value: fs.started ? fs.onHandKg.toFixed(0) : '—', unit: fs.started ? 'kg' : '', nav:'feed', foot:'<span>'+(fs.daysLeft!=null ? '≈ '+Math.max(0,Math.round(fs.daysLeft))+' days at current use' : 'see Feed')+'</span>'})+
+      '</div>'+
+      '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.inventory+'Stock items</h3><span class="hint">'+list.length+' of '+items.length+'</span></div>'+
+        '<div class="toolbar" style="margin-bottom:14px">'+
+          '<input class="field" type="search" placeholder="Search items…" value="'+esc(f.q||'')+'" data-change="inv-filter:q" aria-label="Search inventory">'+
+          '<select class="field" data-change="inv-filter:cat" aria-label="Filter by category">'+catOpts+'</select>'+
+          '<select class="field" data-change="inv-filter:status" aria-label="Filter by stock"><option value="">Any stock level</option><option value="low" '+(f.status==='low'?'selected':'')+'>Low or out of stock</option></select>'+
+          '<select class="field" data-change="inv-filter:sort" aria-label="Sort">'+
+            [['name','Sort: name'],['status','Sort: needs attention'],['qty','Sort: quantity'],['expiry','Sort: expiry date']].map(function(o){ return '<option value="'+o[0]+'" '+(sort===o[0]?'selected':'')+'>'+o[1]+'</option>'; }).join('')+
+          '</select>'+
+        '</div>'+
+        '<div class="table-wrap">'+
+          (list.length ? '<table><thead><tr><th>Item</th><th>Category</th><th class="num">On hand</th><th class="num">Alert at</th><th>Expiry</th><th>Status</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+            : '<div class="empty">'+ICONS.empty+'<div>'+(items.length ? 'No items match these filters.' : 'No items yet. Add medicines, vaccines, equipment and supplies to get low-stock and expiry alerts.')+'</div>'+
+              (items.length||readOnly ? '' : '<button class="btn primary" style="margin-top:14px" data-action="open-add-inventory">'+NAV_ICONS.plus+'Add your first item</button>')+'</div>')+
+        '</div>'+pagerHtml('inventory', page.pageCount, page.page)+
+      '</div>';
+  }
+  function inventoryFormHtml(id){
+    var it = id ? inventoryItems().find(function(x){ return x.id===id; }) : null;
+    return '<div class="modal-head"><h3>'+(it?'Edit item':'Add inventory item')+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<form data-form="inventory">'+
+      '<input type="hidden" name="id" value="'+(it?it.id:'')+'">'+
+      '<div class="field-row"><label>Item name</label><input class="field" type="text" name="name" maxlength="80" required autofocus value="'+(it?esc(it.name):'')+'" placeholder="e.g. Newcastle vaccine (Lasota), Drinkers, Disinfectant"></div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
+        '<div class="field-row"><label>Category</label><select class="field" name="category">'+INVENTORY_CATEGORIES.map(function(c){ return '<option value="'+c[0]+'" '+(it&&it.category===c[0]?'selected':'')+'>'+esc(c[1])+'</option>'; }).join('')+'</select></div>'+
+        '<div class="field-row"><label>Unit</label><input class="field" type="text" name="unit" maxlength="20" value="'+(it?esc(it.unit||''):'')+'" placeholder="doses, bottles, pcs, kg"></div>'+
+      '</div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
+        (it ? '' : '<div class="field-row"><label>Quantity on hand</label><input class="field" type="number" name="quantity" min="0" step="any" value="0" required></div>')+
+        '<div class="field-row"><label>Low-stock alert at</label><input class="field" type="number" name="lowAt" min="0" step="any" value="'+(it&&it.lowAt!=null?esc(it.lowAt):'')+'" placeholder="Optional"></div>'+
+        '<div class="field-row"><label>Expiry date</label><input class="field" type="date" name="expiry" value="'+(it?esc(it.expiry||''):'')+'"></div>'+
+      '</div>'+
+      '<div class="field-row" style="margin-top:12px"><label>Storage location</label><input class="field" type="text" name="location" maxlength="60" value="'+(it?esc(it.location||''):'')+'" placeholder="Optional — e.g. store room, fridge"></div>'+
+      '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" maxlength="200" value="'+(it?esc(it.note||''):'')+'" placeholder="Optional"></div>'+
+      (it ? '<p class="hint" style="margin:10px 0 0">To change the quantity, use “Use / restock” so the change is kept in the item’s history.</p>' : '')+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(it?'Save changes':'Add item')+'</button></div>'+
+    '</form>';
+  }
+  function inventoryAdjustFormHtml(id){
+    var it = inventoryItems().find(function(x){ return x.id===id; });
+    if(!it) return '';
+    var showCost = !isVetUser();
+    var hist = (it.movements||[]).slice(-6).reverse().map(function(m){
+      return '<div class="kv-row"><span>'+fmtDate(parseISO(m.date))+' · '+esc(m.note||(m.delta<0?'Used':'Restocked'))+'</span><strong class="num" style="color:'+(m.delta<0?'var(--bad)':'var(--good)')+'">'+(m.delta>0?'+':'')+fmtQty(m.delta)+' '+esc(it.unit||'')+'</strong></div>';
+    }).join('');
+    return '<div class="modal-head"><h3>'+esc(it.name)+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<p class="hint" style="margin:0">On hand now: <strong>'+fmtQty(it.quantity)+' '+esc(it.unit||'')+'</strong></p>'+
+    '<form data-form="inventory-adjust">'+
+      '<input type="hidden" name="id" value="'+it.id+'">'+
+      '<div class="field-grid">'+
+        '<div class="field-row"><label>Change</label><select class="field" name="direction"><option value="use">Used / removed</option><option value="add">Restocked / bought</option></select></div>'+
+        '<div class="field-row"><label>Quantity'+(it.unit?' ('+esc(it.unit)+')':'')+'</label><input class="field" type="number" name="amount" min="0.01" step="any" required autofocus></div>'+
+        '<div class="field-row"><label>Date</label><input class="field" type="date" name="date" value="'+todayISO()+'" max="'+todayISO()+'" required></div>'+
+      '</div>'+
+      (showCost ? '<div class="field-grid" style="margin-top:12px"><div class="field-row"><label>Cost if bought (optional)</label><input class="field" type="number" name="cost" min="0" step="0.01" placeholder="0"></div><div class="field-row"><label>Currency</label><select class="field" name="currency">'+currencyOptions()+'</select></div></div>'+
+        '<p class="hint" style="margin:6px 0 0">A cost on a restock is added to Expenses under “'+esc(inventoryExpenseCategory(it.category))+'”.</p>' : '')+
+      '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" maxlength="120" placeholder="e.g. Vaccinated grower batch, Bought from agrovet"></div>'+
+      (hist ? '<div style="margin-top:14px"><div class="hint" style="margin-bottom:4px; font-weight:700">Recent changes</div>'+hist+'</div>' : '')+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save</button></div>'+
+    '</form>';
+  }
+
+  /* ============================= BREEDING & REPRODUCTION ============================= */
+  // One place for everything to do with mating, pregnancy, hatching and
+  // births across the farm. Dairy cattle keep their detailed per-cow
+  // service/calving records and poultry keep their brooding records (both
+  // linked from here); every other species gets a simple mating → birth
+  // log stored with that species (state.livestock[key].breedings).
+  var GESTATION_DAYS = { goatsheep:150, pigs:114, rabbits:31, horses:340, ducks:28, turkeys:28, geese:30 };
+  function gestationDaysFor(key){
+    var sp = livestockSpecies(key);
+    if(sp && sp.gestationDays) return Number(sp.gestationDays);
+    return GESTATION_DAYS[key] || null;
+  }
+  function breedingSpecies(){ return activeBreedingSpecies().filter(function(sp){ return sp.key!=='cattle'; }); }
+  function activeBreedingSpecies(){
+    var fs = (state.settings && state.settings.farmSetup) || {};
+    var sel = fs.species || [];
+    return LIVESTOCK_SPECIES.filter(function(sp){ return sel.indexOf(sp.key)!==-1 || speciesPopulation(sp.key)>0 || (lsRO(sp.key).breedings||[]).length; });
+  }
+  function allGenericBreedings(){
+    var out = [];
+    LIVESTOCK_SPECIES.forEach(function(sp){
+      (lsRO(sp.key).breedings||[]).forEach(function(b){ out.push(Object.assign({spKey:sp.key, spLabel:sp.label}, b)); });
+    });
+    return out;
+  }
+  // Upcoming births/hatches within `days` (including overdue ones), for the
+  // Dashboard and this page: [{date, title, sub, kind}]
+  function breedingUpcoming(days){
+    var today = todayISO(), horizon = addDaysISO(today, days||30), out = [];
+    var cd = lsRO('cattle');
+    (cd.animals||[]).forEach(function(a){
+      if((a.status||'active')!=='active' || a.sex==='male') return;
+      var svs = (cd.services||[]).filter(function(s){ return s.animalId===a.id; }).sort(function(x,y){ return x.date<y.date?1:-1; });
+      var s = svs[0];
+      if(!s || (s.status!=='served' && s.status!=='pregnant')) return;
+      var calved = (cd.calvings||[]).some(function(c){ return c.damId===a.id && c.date>=s.date; });
+      if(calved) return;
+      var due = addDaysISO(s.date, CATTLE_GESTATION_DAYS);
+      if(due<=horizon) out.push({date:due, title:cattleName(a)+' due to calve', sub:'Dairy cattle · '+(s.status==='pregnant'?'confirmed in calf':'served '+fmtDate(parseISO(s.date))), kind:'cattle'});
+    });
+    (state.broodings||[]).forEach(function(b){
+      if(b.status==='hatched') return;
+      var hatch = broodingHatchDateISO(b);
+      if(hatch<=horizon) out.push({date:hatch, title:b.eggsGiven+' '+speciesLabel(broodSpecies(b)).toLowerCase()+' eggs due to hatch', sub:'Poultry · brooding started '+fmtDate(parseISO(b.dateStarted)), kind:'brooding'});
+    });
+    allGenericBreedings().forEach(function(b){
+      if(b.outcome && b.outcome!=='pending') return;
+      if(b.expectedDate && b.expectedDate<=horizon) out.push({date:b.expectedDate, title:(b.female||b.spLabel)+' due to give birth', sub:b.spLabel+' · mated '+fmtDate(parseISO(b.date)), kind:'generic'});
+    });
+    out.sort(function(x,y){ return x.date<y.date?-1:(x.date>y.date?1:0); });
+    return out;
+  }
+  function breedingOutcomeStatus(b){
+    if(b.outcome==='born') return ['good','Born'];
+    if(b.outcome==='failed') return ['bad','Not pregnant'];
+    if(b.outcome==='pregnant') return ['info','Pregnant'];
+    if(b.expectedDate && b.expectedDate < todayISO()) return ['warn','Overdue'];
+    return ['info','Mated'];
+  }
+  function breedingPanel(){
+    var today = todayISO();
+    var upcoming = breedingUpcoming(60);
+    var cd = lsRO('cattle');
+    var inCalf = (cd.services||[]).filter(function(s){ return s.status==='pregnant'; }).length;
+    var generic = allGenericBreedings();
+    var pendingGeneric = generic.filter(function(b){ return !b.outcome || b.outcome==='pending' || b.outcome==='pregnant'; }).length;
+    var activeBroods = (state.broodings||[]).filter(function(b){ return b.status!=='hatched'; }).length;
+    var rm = getRange('month');
+    var bornMonth = farmMovements(rm.startISO, rm.endISO).born;
+    var upHtml = upcoming.length ? '<div class="task-list">'+upcoming.map(function(u){
+      var d = parseISO(u.date);
+      var st = u.date<today ? ['bad','Overdue'] : (u.date<=addDaysISO(today,7) ? ['warn','This week'] : ['info','Upcoming']);
+      return '<div class="task"><div class="task-date"><b>'+d.getDate()+'</b><span>'+fmtDate(d,{month:'short'})+'</span></div><div class="task-body"><div class="task-title">'+esc(u.title)+'</div><div class="task-sub">'+esc(u.sub)+'</div></div><span class="status '+st[0]+'">'+st[1]+'</span></div>';
+    }).join('')+'</div>' : '<div class="empty">'+ICONS.empty+'<div>No births or hatches expected in the next 60 days.</div></div>';
+    var list = generic.slice().sort(function(a,b){ return a.date<b.date?1:-1; });
+    var page = paginate('breeding-log', list);
+    var rows = page.items.map(function(b){
+      var st = breedingOutcomeStatus(b);
+      return '<tr><td>'+fmtDate(parseISO(b.date))+'</td><td>'+esc(b.spLabel)+'</td><td>'+esc(b.female||'—')+'</td><td>'+esc(b.male||'—')+(b.method==='ai'?' <span class="pill">AI</span>':'')+'</td>'+
+        '<td>'+(b.outcome==='born' ? fmtDate(parseISO(b.bornDate))+' · '+(b.bornCount||0)+' born' : (b.expectedDate ? fmtDate(parseISO(b.expectedDate)) : '—'))+'</td>'+
+        '<td><span class="status '+st[0]+'">'+st[1]+'</span></td>'+
+        '<td><div class="row-actions">'+
+          (b.outcome==='born'||b.outcome==='failed'||readOnly ? '' : '<button class="btn sm" data-action="open-breeding-birth:'+b.spKey+':'+b.id+'">Record birth</button>')+
+          '<button class="icon-btn" data-action="edit-breeding:'+b.spKey+':'+b.id+'" '+(readOnly?'disabled':'')+' title="Edit">'+ICONS.edit+'</button>'+
+          '<button class="icon-btn" data-action="delete-breeding:'+b.spKey+':'+b.id+'" '+(readOnly?'disabled':'')+' title="Delete">'+ICONS.trash+'</button>'+
+        '</div></td></tr>';
+    }).join('');
+    var links = [];
+    if(sectionAllowed('livestock') && (cd.animals||[]).length) links.push('<button class="btn" data-action="open-species-view:cattle:cattle-breeding">'+NAV_ICONS.livestock+'Cattle breeding &amp; calving</button>');
+    if(sectionAllowed('flock')) links.push('<button class="btn" data-action="open-flock-view:brooding">'+NAV_ICONS.eggs+'Poultry brooding</button>');
+    var canLog = breedingSpecies().length>0;
+    return '<div class="kpi-grid">'+
+        kpiHTML({label:'Pregnant / in calf', icon:NAV_ICONS.breeding, value:(inCalf+generic.filter(function(b){ return b.outcome==='pregnant'; }).length).toLocaleString(), foot:'<span>confirmed pregnancies</span>'})+
+        kpiHTML({label:'Mated, awaiting result', icon:NAV_ICONS.calendar, tone:'gold', value:pendingGeneric.toLocaleString(), foot:'<span>goats, sheep, pigs, rabbits…</span>'})+
+        kpiHTML({label:'Eggs being brooded', icon:NAV_ICONS.eggs, tone:'earth', value:activeBroods.toLocaleString(), foot:'<span>active brooding batches</span>'})+
+        kpiHTML({label:'Born this month', icon:NAV_ICONS.baby, value:bornMonth.toLocaleString(), foot:'<span>'+esc(rm.label)+'</span>'})+
+      '</div>'+
+      (links.length ? '<div class="toolbar">'+links.join('')+'</div>' : '')+
+      '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.calendar+'Expected births &amp; hatches</h3><span class="hint">next 60 days</span></div>'+upHtml+'</div>'+
+      '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.breeding+'Mating records</h3>'+
+        (canLog && !readOnly ? '<button class="btn sm primary" data-action="open-add-breeding">'+NAV_ICONS.plus+'Record mating</button>' : '')+'</div>'+
+        '<div class="table-wrap">'+
+        (list.length ? '<table><thead><tr><th>Mated</th><th>Animals</th><th>Female</th><th>Male / sire</th><th>Birth</th><th>Status</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+          : '<div class="empty">'+ICONS.empty+'<div>'+(canLog ? 'Record matings for goats, sheep, pigs, rabbits and other animals to get expected birth dates and reminders.' : 'Add goats, sheep, pigs, rabbits or other animals in Farm Setup to keep mating records here. Dairy cattle use their own breeding page.')+'</div></div>')+
+        '</div>'+pagerHtml('breeding-log', page.pageCount, page.page)+'</div>';
+  }
+  function breedingFormHtml(spKey, id){
+    var spList = breedingSpecies();
+    var b = (spKey && id) ? (lsRO(spKey).breedings||[]).find(function(x){ return x.id===id; }) : null;
+    var cur = spKey || (spList[0] && spList[0].key) || '';
+    return '<div class="modal-head"><h3>'+(b?'Edit mating record':'Record mating')+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<form data-form="breeding">'+
+      '<input type="hidden" name="id" value="'+(b?b.id:'')+'"><input type="hidden" name="origSpecies" value="'+esc(spKey||'')+'">'+
+      '<div class="field-grid">'+
+        '<div class="field-row"><label>Animals</label><select class="field" name="species" '+(b?'disabled':'')+'>'+spList.map(function(sp){ return '<option value="'+sp.key+'" '+(cur===sp.key?'selected':'')+'>'+esc(sp.label)+(gestationDaysFor(sp.key)?' · '+gestationDaysFor(sp.key)+' days':'')+'</option>'; }).join('')+'</select></div>'+
+        '<div class="field-row"><label>Date mated</label><input class="field" type="date" name="date" value="'+(b?b.date:todayISO())+'" max="'+todayISO()+'" required></div>'+
+      '</div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
+        '<div class="field-row"><label>Female (name or tag)</label><input class="field" type="text" name="female" maxlength="60" value="'+(b?esc(b.female||''):'')+'" placeholder="e.g. Doe 12" required></div>'+
+        '<div class="field-row"><label>Male / sire</label><input class="field" type="text" name="male" maxlength="60" value="'+(b?esc(b.male||''):'')+'" placeholder="Optional"></div>'+
+      '</div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
+        '<div class="field-row"><label>Method</label><select class="field" name="method"><option value="natural">Natural mating</option><option value="ai" '+(b&&b.method==='ai'?'selected':'')+'>Artificial insemination</option></select></div>'+
+        '<div class="field-row"><label>Status</label><select class="field" name="outcome">'+
+          [['pending','Mated — awaiting result'],['pregnant','Confirmed pregnant'],['failed','Not pregnant']].map(function(o){ return '<option value="'+o[0]+'" '+((b?(b.outcome||'pending'):'pending')===o[0]?'selected':'')+'>'+o[1]+'</option>'; }).join('')+
+          (b&&b.outcome==='born' ? '<option value="born" selected>Born</option>' : '')+
+        '</select></div>'+
+        '<div class="field-row"><label>Expected birth</label><input class="field" type="date" name="expectedDate" value="'+(b?esc(b.expectedDate||''):'')+'"></div>'+
+      '</div>'+
+      '<p class="hint" style="margin:6px 0 0">Leave “Expected birth” empty to work it out from the usual gestation for these animals.</p>'+
+      '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" maxlength="200" value="'+(b?esc(b.note||''):'')+'" placeholder="Optional"></div>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(b?'Save changes':'Save')+'</button></div>'+
+    '</form>';
+  }
+  function breedingBirthFormHtml(spKey, id){
+    var sp = livestockSpecies(spKey);
+    var b = (lsRO(spKey).breedings||[]).find(function(x){ return x.id===id; });
+    if(!sp || !b) return '';
+    return '<div class="modal-head"><h3>Record birth — '+esc(b.female||sp.label)+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<form data-form="breeding-birth">'+
+      '<input type="hidden" name="species" value="'+sp.key+'"><input type="hidden" name="id" value="'+b.id+'">'+
+      '<div class="field-grid">'+
+        '<div class="field-row"><label>Date of birth</label><input class="field" type="date" name="bornDate" value="'+todayISO()+'" max="'+todayISO()+'" min="'+b.date+'" required></div>'+
+        '<div class="field-row"><label>Born alive</label><input class="field" type="number" name="alive" min="0" step="1" value="1" required autofocus></div>'+
+        '<div class="field-row"><label>Born dead</label><input class="field" type="number" name="dead" min="0" step="1" value="0"></div>'+
+      '</div>'+
+      '<label class="check-row" style="margin-top:12px"><input type="checkbox" name="addToHerd" checked> Add the live young to the '+esc(sp.label)+' herd</label>'+
+      '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" maxlength="200" placeholder="Optional — e.g. 2 males, 1 female"></div>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save birth</button></div>'+
+    '</form>';
+  }
+
+  /* ============================= PRODUCTION ============================= */
+  // Eggs, milk and every other logged yield in one place, with trends.
+  function journalSpecies(){ return LIVESTOCK_SPECIES.filter(function(sp){ return sp.hasJournal && ((lsRO(sp.key).journal||[]).length || ((state.settings.farmSetup||{}).species||[]).indexOf(sp.key)!==-1); }); }
+  function journalSum(key, s, e){ return (lsRO(key).journal||[]).filter(function(j){ return inRange(j.date, s, e); }).reduce(function(a,j){ return a+(Number(j.quantity)||0); }, 0); }
+  function productionPanel(){
+    var today = todayISO(), w = comparableRange('week'), m = getRange('month');
+    var tiles = [];
+    var hasPoultry = sectionEnabledByFarmSetup('eggs') || state.eggs.length;
+    if(hasPoultry){
+      var eToday = sumEggs(today,today), eWeek = sumEggs(w.startISO,w.endISO), ePrevWeek = sumEggs(w.prevStartISO,w.prevEndISO);
+      var lr = layRatePct(m.startISO, m.endISO);
+      tiles.push(kpiHTML({label:'Eggs today', icon:NAV_ICONS.eggs, tone:'gold', value:eToday.toLocaleString(), nav: sectionAllowed('eggs')?'eggs':null, foot:'<span>'+Math.floor(eToday/(state.settings.traySize||30))+' trays</span>'}));
+      tiles.push(kpiHTML({label:'Eggs this week', icon:NAV_ICONS.eggs, tone:'gold', value:eWeek.toLocaleString(), foot:trendHTML(eWeek, ePrevWeek)+'<span>vs same days last week</span>'}));
+      tiles.push(kpiHTML({label:'Laying rate this month', icon:NAV_ICONS.reports, value: lr!=null ? lr.toFixed(0)+'%' : '—', foot:'<span>eggs per hen per day</span>'}));
+    }
+    journalSpecies().forEach(function(sp){
+      var td = journalSum(sp.key, today, today), wk = journalSum(sp.key, w.startISO, w.endISO), pw = journalSum(sp.key, w.prevStartISO, w.prevEndISO);
+      var pwLabel = 'vs same days last week';
+      tiles.push(kpiHTML({label:sp.label+' — '+sp.journalLabel.toLowerCase()+' today', icon: sp.journalLabel==='Milk' ? NAV_ICONS.drop : NAV_ICONS.production, value:td.toLocaleString(), unit:sp.journalUnit.toLowerCase(), foot:trendHTML(wk, pw)+'<span>'+wk.toLocaleString()+' this week, '+pwLabel+'</span>'}));
+    });
+    var crops = (state.crops && state.crops.entries) || [];
+    if(sectionEnabledByFarmSetup('crops') || crops.length){
+      var harvests = crops.filter(function(c){ return c.type==='harvested' && inRange(c.date, m.startISO, m.endISO); });
+      tiles.push(kpiHTML({label:'Harvests this month', icon:NAV_ICONS.crops, tone:'earth', value:harvests.length.toLocaleString(), nav: sectionAllowed('crops')?'crops':null, foot:'<span>'+esc(m.label)+'</span>'}));
+    }
+    var charts = '';
+    function series(fn){ var pts = []; for(var i=29;i>=0;i--){ var iso = toISO(addDays(new Date(),-i)); pts.push({label:fmtDate(parseISO(iso),{weekday:'short',day:'numeric',month:'short'}), short:dashDayLabel(iso), value:fn(iso)}); } return pts; }
+    if(hasPoultry){
+      var ep = series(function(iso){ return sumEggs(iso,iso); });
+      charts += '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.eggs+'Egg production — last 30 days</h3>'+(sectionAllowed('eggs')&&!readOnly?'<button class="btn sm primary" data-action="open-add-egg">'+NAV_ICONS.plus+'Log eggs</button>':'')+'</div>'+areaChartSVG(ep, 'var(--chart-3)', function(v){ return v.toLocaleString(); }, 'eggs')+'</div>';
+    }
+    journalSpecies().forEach(function(sp){
+      var pts = series(function(iso){ return journalSum(sp.key, iso, iso); });
+      charts += '<div class="card"><div class="card-title"><h3>'+(sp.journalLabel==='Milk'?NAV_ICONS.drop:NAV_ICONS.production)+esc(sp.label)+' — '+esc(sp.journalLabel.toLowerCase())+', last 30 days</h3>'+(sectionAllowed('livestock')&&!readOnly?'<button class="btn sm primary" data-action="open-add-livestock-journal:'+sp.key+'">'+NAV_ICONS.plus+'Log '+esc(sp.journalLabel.toLowerCase())+'</button>':'')+'</div>'+areaChartSVG(pts, sp.journalLabel==='Milk' ? 'var(--chart-2)' : 'var(--chart-1)', function(v){ return v.toLocaleString(); }, sp.journalUnit.toLowerCase())+'</div>';
+    });
+    if(!tiles.length) return '<div class="card"><div class="empty">'+ICONS.empty+'<div>Production appears here once the farm keeps poultry, dairy animals or crops. Set this up in Settings → Farm Setup.</div></div></div>';
+    return '<div class="kpi-grid">'+tiles.join('')+'</div>'+charts;
   }
 
   /* ============================= ABOUT ============================= */
@@ -1873,7 +2713,7 @@
     var inv = guineaFowlInventory();
     var titleHtml = '<h3 style="cursor:pointer" data-action="view-select:flock:guineafowl" title="Open the Guinea Fowl page">Guinea Fowl</h3>';
     return '<div class="card"><div class="card-title"><div class="card-title-lead"><div class="pic-badge clickable" data-action="view-select:flock:guineafowl">'+PICS.guineafowl+'</div>'+titleHtml+'</div><span class="hint">'+inv.total+' birds</span></div>'+
-      '<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+
+      '<div class="grid gender-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+
         genderTile('Chicks',inv.chick)+
         genderTile('Growers',inv.grower)+
         genderTile('Adults',inv.layer)+
@@ -1900,7 +2740,7 @@
         : '<h3>'+label+'</h3>';
       return '<div class="card"><div class="card-title"><div class="card-title-lead">'+(icon?'<div class="pic-badge clickable">'+icon+'</div>':'')+titleHtml+'</div><div style="display:flex; align-items:center; gap:8px"><span class="hint">'+sub+' · '+subtotal+' birds</span>'+
         '<button class="icon-btn" data-action="open-add-flock:'+key+'" title="Add '+label.toLowerCase()+'" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'</button></div></div>'+
-        '<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+
+        '<div class="grid gender-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+
           genderTile('Hens',g.female,henIcon, key==='layer'?'view-select:flock:hens':null)+
           genderTile('Roosters',g.male,cockIcon, key==='layer'?'view-select:flock:cocks':null)+
           genderTile('Unsexed',g.unsexed)+
@@ -2424,11 +3264,13 @@
   }
 
   /* ============================= FEED ============================= */
-  var FEED_TYPES = ['Chick mash','Grower mash','Layer mash','Kienyeji / free-range mix','Supplements','Other'];
+  var FEED_TYPES = ['Chick mash','Grower mash','Layer mash','Kienyeji / free-range mix','Dairy meal','Calf pellets','Hay','Silage','Napier / fodder','Pig feed','Rabbit pellets','Mineral lick / salt','Supplements','Other'];
   function totalFeedKg(s,e){ return (state.feedLogs||[]).filter(function(x){return inRange(x.date,s,e);}).reduce(function(a,x){return a+(x.quantityKg||0);},0); }
   function totalFeedCost(s,e){ return (state.feedLogs||[]).filter(function(x){return inRange(x.date,s,e);}).reduce(function(a,x){return a+(x.cost||0);},0); }
+  function feedForLabel(x){ return (!x.species || x.species==='poultry') ? 'Poultry' : healthGroupLabel(x.species); }
+  function poultryFeedKg(s,e){ return (state.feedLogs||[]).filter(function(x){ return inRange(x.date,s,e) && (!x.species || x.species==='poultry'); }).reduce(function(a,x){return a+(x.quantityKg||0);},0); }
   function feedPerEgg(s,e){
-    var kg = totalFeedKg(s,e), eggsCount = sumEggs(s,e);
+    var kg = poultryFeedKg(s,e), eggsCount = sumEggs(s,e);
     return eggsCount>0 ? (kg/eggsCount) : null;
   }
   // Average kg used per day over the trailing N days — the basis for the
@@ -2500,7 +3342,7 @@
     var entries = (state.feedLogs||[]).slice().sort(function(a,b){ return a.date<b.date?1:-1; });
     var feedPage = paginate('feed-log', entries);
     var rows = feedPage.items.map(function(x){
-      return '<tr><td>'+fmtDate(parseISO(x.date))+'</td><td>'+esc(x.feedType)+'</td><td class="num">'+(x.quantityKg||0).toFixed(1)+' kg</td><td class="num">'+fmtMoney(x.cost||0)+'</td><td>'+esc(x.note||'—')+'</td>'+
+      return '<tr><td>'+fmtDate(parseISO(x.date))+'</td><td>'+esc(x.feedType)+'</td><td>'+esc(feedForLabel(x))+'</td><td class="num">'+(x.quantityKg||0).toFixed(1)+' kg</td><td class="num">'+fmtMoney(x.cost||0)+'</td><td>'+esc(x.note||'—')+'</td>'+
       '<td><div class="row-actions">'+
         '<button class="icon-btn" data-action="view-feed-receipt:'+x.id+'" title="View receipt">'+ICONS.receipt+'</button>'+
         '<button class="icon-btn" data-action="edit-feed:'+x.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'</button>'+
@@ -2513,9 +3355,16 @@
     '<div class="grid four">'+cards+'</div>'+
     '<div class="card"><div class="card-title"><h3>Feed log</h3><span class="hint">'+entries.length+' records</span></div>'+
       '<div class="table-wrap">'+
-      (entries.length ? '<table><thead><tr><th>Date</th><th>Feed type</th><th class="num">Quantity</th><th class="num">Cost</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+      (entries.length ? '<table><thead><tr><th>Date</th><th>Feed type</th><th>Fed to</th><th class="num">Quantity</th><th class="num">Cost</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty">'+ICONS.empty+'<div>No feed logged yet — track what you buy and use to see feed-per-egg, and spot waste early.</div></div>')+
       '</div>'+pagerHtml('feed-log', feedPage.pageCount, feedPage.page)+'</div>';
+  }
+  function feedForOptionsHTML(x){
+    var cur = (x && x.species) || 'poultry';
+    var groups = farmAnimalGroups();
+    if(!groups.some(function(g){ return g.key==='poultry'; })) groups.unshift({key:'poultry', label:'Poultry'});
+    if(x && x.species && !groups.some(function(g){ return g.key===x.species; })) groups.push({key:x.species, label:healthGroupLabel(x.species)});
+    return groups.map(function(g){ return '<option value="'+g.key+'" '+(cur===g.key?'selected':'')+'>'+esc(g.label)+'</option>'; }).join('');
   }
   function feedFormHtml(id){
     var x = id ? (state.feedLogs||[]).find(function(i){return i.id===id;}) : null;
@@ -2529,10 +3378,13 @@
         '<div class="field-row"><label>Date</label><input class="field" type="date" name="date" value="'+(x?x.date:todayISO())+'" max="'+todayISO()+'" required></div>'+
       '</div>'+
       '<div class="field-grid" style="margin-top:12px">'+
-        '<div class="field-row"><label>Quantity (kg)</label><input class="field" type="number" min="0" step="0.1" name="quantityKg" value="'+(x?x.quantityKg:'')+'" required autofocus></div>'+
+        '<div class="field-row"><label>Quantity (kg)</label><input class="field" type="number" min="0.1" step="0.1" name="quantityKg" value="'+(x?x.quantityKg:'')+'" required autofocus></div>'+
         '<div class="field-row"><label>Cost (optional)</label><input class="field" type="number" min="0" step="0.01" name="cost" value="'+curCost+'" placeholder="0"></div>'+
       '</div>'+
-      '<div class="field-row" style="margin-top:12px"><label>Currency</label><select class="field" name="currency">'+currencyOptions()+'</select></div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
+        '<div class="field-row"><label>Fed to</label><select class="field" name="feedFor">'+feedForOptionsHTML(x)+'</select></div>'+
+        '<div class="field-row"><label>Currency</label><select class="field" name="currency">'+currencyOptions()+'</select></div>'+
+      '</div>'+
       '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" value="'+(x?esc(x.note||''):'')+'" placeholder="Optional"></div>'+
       '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(x?'Save changes':'Log feed')+'</button></div>'+
     '</form>';
@@ -2546,6 +3398,12 @@
   // arrays from the poultry ones above, so none of this touches existing
   // data. Adding a fifth species later (e.g. bees) means adding one entry
   // here, not writing a new section from scratch.
+  var EXTRA_PICS = {
+    duck:'<svg viewBox="0 0 48 48"><ellipse cx="22" cy="31" rx="15" ry="10" fill="#F4F1E8"/><path d="M8 29 Q4 24 9 22 Q12 27 14 28 Z" fill="#E6E0D0"/><circle cx="33" cy="17" r="7" fill="#2F6B3A"/><path d="M29 21 Q31 27 26 28 L36 28 Q38 23 35 21 Z" fill="#F4F1E8"/><path d="M39 16 L46 17.5 L39 20 Z" fill="#F2A93D"/><circle cx="35" cy="15.5" r="1.2" fill="#1a1a1a"/><path d="M26 30 Q30 34 36 31" stroke="#DAD3C2" stroke-width="1.6" fill="none"/><path d="M18 41 l-2 4 h5 M27 41 l-2 4 h5" stroke="#F2A93D" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+    turkey:'<svg viewBox="0 0 48 48"><path d="M24 30 m-17 0 a17 15 0 0 1 34 0" fill="#8B5A2B"/><path d="M24 30 m-13 0 a13 11 0 0 1 26 0" fill="#B07A3E"/><path d="M24 30 m-9 0 a9 7 0 0 1 18 0" fill="#D9A55B"/><ellipse cx="24" cy="33" rx="9" ry="8" fill="#5C3A21"/><circle cx="24" cy="21" r="4.5" fill="#7A8A99"/><path d="M24 24 Q22 29 24 31" stroke="#C8323C" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M27 20.5 L31 21.5 L27 23 Z" fill="#E8B04A"/><circle cx="25.5" cy="20" r="1" fill="#1a1a1a"/><path d="M20 40 l-1 5 M28 40 l1 5" stroke="#C98A3B" stroke-width="2" stroke-linecap="round"/></svg>',
+    goose:'<svg viewBox="0 0 48 48"><ellipse cx="20" cy="33" rx="15" ry="9" fill="#F7F7F4"/><path d="M6 31 Q2 27 7 25 Q10 29 12 30 Z" fill="#E4E4DE"/><path d="M28 30 Q32 22 31 13" stroke="#F7F7F4" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="32" cy="11" r="5" fill="#F7F7F4"/><path d="M36 10 L44 12 L36 14 Z" fill="#EE8A2A"/><circle cx="33.5" cy="9.5" r="1.1" fill="#1a1a1a"/><path d="M14 33 Q20 37 27 34" stroke="#DCDCD4" stroke-width="1.6" fill="none"/><path d="M16 42 l-2 4 h5 M24 42 l-2 4 h5" stroke="#EE8A2A" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+    custom:'<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#E4F2EA"/><ellipse cx="24" cy="29" rx="8" ry="7" fill="#40916C"/><circle cx="14" cy="21" r="3.6" fill="#40916C"/><circle cx="34" cy="21" r="3.6" fill="#40916C"/><circle cx="19" cy="14" r="3.4" fill="#40916C"/><circle cx="29" cy="14" r="3.4" fill="#40916C"/></svg>'
+  };
   var LIVESTOCK_SPECIES = [
     { key:'cattle', label:'Dairy Cattle', singular:'cow', plural:'cows', icon:PICS.cattle,
       hasJournal:true, journalLabel:'Milk', journalUnit:'Litres',
@@ -2561,8 +3419,20 @@
       incomeCategory:'Rabbit Sales', expenseCategory:'Livestock Purchase' },
     { key:'horses', label:'Horses', singular:'horse', plural:'horses', icon:PICS.horses,
       hasJournal:false,
-      incomeCategory:'Horse Sales', expenseCategory:'Livestock Purchase' }
+      incomeCategory:'Horse Sales', expenseCategory:'Livestock Purchase' },
+    // Other poultry kept in groups, each with an optional egg log. Chickens
+    // and Guinea Fowl keep their dedicated Flock & Eggs pages.
+    { key:'ducks', label:'Ducks', singular:'duck', plural:'ducks', icon:EXTRA_PICS.duck, group:'poultry',
+      hasJournal:true, journalLabel:'Egg', journalUnit:'Eggs',
+      incomeCategory:'Bird Sales', expenseCategory:'Livestock Purchase' },
+    { key:'turkeys', label:'Turkeys', singular:'turkey', plural:'turkeys', icon:EXTRA_PICS.turkey, group:'poultry',
+      hasJournal:true, journalLabel:'Egg', journalUnit:'Eggs',
+      incomeCategory:'Bird Sales', expenseCategory:'Livestock Purchase' },
+    { key:'geese', label:'Geese', singular:'goose', plural:'geese', icon:EXTRA_PICS.goose, group:'poultry',
+      hasJournal:true, journalLabel:'Egg', journalUnit:'Eggs',
+      incomeCategory:'Bird Sales', expenseCategory:'Livestock Purchase' }
   ];
+  var BUILTIN_SPECIES_COUNT = LIVESTOCK_SPECIES.length;
   // All selectable farm-setup livestock options, including Poultry — which,
   // unlike the five above, is handled by the existing bespoke Flock/Eggs/
   // Feed/Health sections rather than this generic module. Only used to
@@ -2572,6 +3442,22 @@
   var ALL_LIVESTOCK_OPTIONS = [
     { key:'poultry', label:'Poultry (Chickens)', icon:PICS.hen }
   ].concat(LIVESTOCK_SPECIES.map(function(sp){ return {key:sp.key, label:sp.label, icon:sp.icon}; }));
+  // Animal types the farm registered itself (Settings → Farm Setup, or
+  // "Add animal type" on the Dashboard). Stored in settings.customSpecies
+  // and merged into LIVESTOCK_SPECIES every time the farm data loads, so
+  // they get the same herd, sales, health, breeding and log pages.
+  function syncCustomSpecies(settings){
+    LIVESTOCK_SPECIES.length = BUILTIN_SPECIES_COUNT;
+    ((settings && settings.customSpecies) || []).forEach(function(c){
+      if(!c || !c.key || !c.label || livestockSpecies(c.key)) return;
+      LIVESTOCK_SPECIES.push({ key:c.key, label:c.label, singular:c.singular||'animal', plural:c.plural||'animals', icon:EXTRA_PICS.custom, custom:true,
+        hasJournal:!!c.journalLabel, journalLabel:c.journalLabel||'', journalUnit:c.journalUnit||'',
+        gestationDays: c.gestationDays ? Number(c.gestationDays) : null,
+        incomeCategory:'Other', expenseCategory:'Livestock Purchase' });
+    });
+    ALL_LIVESTOCK_OPTIONS.length = 1;
+    LIVESTOCK_SPECIES.forEach(function(sp){ ALL_LIVESTOCK_OPTIONS.push({key:sp.key, label:sp.label, icon:sp.icon}); });
+  }
   function livestockSpecies(key){ return LIVESTOCK_SPECIES.find(function(s){ return s.key===key; }); }
   // Only the species this farm actually ticked in Farm Setup — used
   // everywhere the Other Livestock section lists species (the overview
@@ -4655,7 +5541,9 @@
   // keys — sectionVisibleForCurrentSector below is what actually matches
   // on the prefix.
   function sectorForSection(key){
-    if(key==='flock'||key==='eggs'||key==='feed'||key==='health'||key==='sensors') return 'poultry';
+    // Feed, Animal Health, Breeding, Production and Inventory are farm-wide
+    // (every species), so they stay visible whichever sector is open.
+    if(key==='flock'||key==='eggs'||key==='sensors') return 'poultry';
     if(key==='livestock') return 'livestock';
     if(key==='crops') return 'crops';
     return null;
@@ -4726,7 +5614,16 @@
   }
 
   /* ============================= HEALTH ============================= */
-  var HEALTH_TYPE_LABELS = {vaccination:'Vaccination', treatment:'Treatment / medication', checkup:'Checkup', illness:'Illness / diagnosis', other:'Other'};
+  // Animal Health covers every animal group on the farm. A record targets
+  // one group (poultry, or any livestock species), optionally narrowed to
+  // a single poultry batch, herd batch or individual animal. Records saved
+  // before this existed have no `species` and are treated as poultry, so
+  // nothing already recorded changes meaning.
+  var HEALTH_TYPE_LABELS = {
+    vaccination:'Vaccination', deworming:'Deworming', treatment:'Treatment / medication',
+    vetvisit:'Veterinary visit', checkup:'Routine check', illness:'Symptoms observed', other:'Other'
+  };
+  var HEALTH_TYPE_ORDER = ['vaccination','deworming','treatment','vetvisit','checkup','illness','other'];
   // A standard poultry vaccination schedule, commonly used by smallholder
   // farms in Kenya — offered as a sensible starting point, not veterinary
   // advice specific to this farm's own disease risk. "days" is age since
@@ -4752,17 +5649,70 @@
     VACCINATION_SCHEDULE.forEach(function(item){
       var dueISO = toISO(addDays(parseISO(birthDateISO), item.days));
       s.healthRecords.push({
-        id:uid('health'), date:dueISO, type:'vaccination', title:item.title, batchId:batchId,
+        id:uid('health'), date:dueISO, type:'vaccination', title:item.title, species:'poultry', batchId:batchId,
         nextDueDate:dueISO, note:(item.note||'')+(item.note?' ':'')+'(Added from the standard vaccination schedule.)',
         recordedByRole: roleLabel(currentUser)
       });
     });
   }
   function healthTypeLabel(t){ return HEALTH_TYPE_LABELS[t] || 'Other'; }
+  function healthSpecies(r){ return (r && r.species) || 'poultry'; }
+  function healthGroupLabel(key){
+    if(key==='poultry') return 'Poultry';
+    var sp = livestockSpecies(key);
+    return sp ? sp.label : 'Other animals';
+  }
+  function poultryBatchLabel(b){ return genderLabel(b.gender)+(b.gender!=='unsexed'?'s':'')+' · added '+fmtDate(parseISO(b.dateAdded)); }
+  // Kept under its old name for the receipt and search code that call it.
   function healthBatchLabel(batchId){
     if(!batchId) return 'Whole flock';
     var b = state.flock.find(function(x){return x.id===batchId;});
-    return b ? (genderLabel(b.gender)+(b.gender!=='unsexed'?'s':'')+' · added '+fmtDate(parseISO(b.dateAdded))) : 'Batch no longer listed';
+    return b ? poultryBatchLabel(b) : 'Batch no longer listed';
+  }
+  function healthTargetLabel(r){
+    var sp = healthSpecies(r);
+    if(sp==='poultry') return r.batchId ? 'Poultry · '+healthBatchLabel(r.batchId) : 'Poultry · whole flock';
+    var d = lsRO(sp), label = healthGroupLabel(sp);
+    if(r.animalId){
+      var a = (d.animals||[]).find(function(x){ return x.id===r.animalId; });
+      return label+' · '+(a ? cattleName(a) : 'animal no longer listed');
+    }
+    if(r.herdId){
+      var h = (d.herd||[]).find(function(x){ return x.id===r.herdId; });
+      return label+' · '+(h ? (h.label || 'batch added '+fmtDate(parseISO(h.dateAdded))) : 'batch no longer listed');
+    }
+    return label+' · whole group';
+  }
+  // Every animal group a health record can be filed under.
+  function healthGroups(){
+    return farmAnimalGroups().map(function(g){ return {key:g.key, label:g.label, icon:g.icon, count:g.count}; });
+  }
+  function healthTargetOptionsHTML(r){
+    var cur = r ? (healthSpecies(r)+'|'+(r.animalId ? 'a:'+r.animalId : (r.herdId ? 'h:'+r.herdId : (r.batchId ? 'b:'+r.batchId : '')))) : '';
+    function opt(v, label){ return '<option value="'+esc(v)+'" '+(cur===v?'selected':'')+'>'+esc(label)+'</option>'; }
+    var groups = healthGroups();
+    if(!groups.length) groups = [{key:'poultry', label:'Poultry'}];
+    return groups.map(function(g){
+      var html = '<optgroup label="'+esc(g.label)+'">';
+      if(g.key==='poultry'){
+        html += opt('poultry|', 'Poultry — whole flock');
+        state.flock.filter(function(b){ return currentCount(b)>0 || (r && r.batchId===b.id); }).forEach(function(b){ html += opt('poultry|b:'+b.id, '  '+poultryBatchLabel(b)); });
+      } else {
+        var d = lsRO(g.key);
+        html += opt(g.key+'|', g.label+' — whole group');
+        (d.animals||[]).filter(function(a){ return (a.status||'active')==='active' || (r && r.animalId===a.id); }).forEach(function(a){ html += opt(g.key+'|a:'+a.id, '  '+cattleName(a)+(a.tag?' ('+a.tag+')':'')); });
+        (d.herd||[]).filter(function(h){ return currentLivestockCount(h)>0 || (r && r.herdId===h.id); }).forEach(function(h){ html += opt(g.key+'|h:'+h.id, '  '+(h.label||'Batch')+' · added '+fmtDate(parseISO(h.dateAdded))); });
+      }
+      return html+'</optgroup>';
+    }).join('');
+  }
+  function parseHealthTarget(v){
+    var parts = String(v||'poultry|').split('|'), sp = parts[0] || 'poultry', ref = parts[1] || '';
+    var out = {species:sp, batchId:null, animalId:null, herdId:null};
+    if(ref.indexOf('b:')===0) out.batchId = ref.slice(2);
+    else if(ref.indexOf('a:')===0) out.animalId = ref.slice(2);
+    else if(ref.indexOf('h:')===0) out.herdId = ref.slice(2);
+    return out;
   }
   function upcomingHealthReminders(){
     var today = todayISO();
@@ -4771,44 +5721,119 @@
       .map(function(x){
         return Object.assign({}, x, {
           overdue: x.nextDueDate < today,
-          dueSoon: x.nextDueDate >= today && daysBetween(new Date(), parseISO(x.nextDueDate)) <= 7
+          dueSoon: x.nextDueDate >= today && daysBetween(parseISO(today), parseISO(x.nextDueDate)) <= 7
         });
       });
   }
   function overdueHealthCount(){ return upcomingHealthReminders().filter(function(r){ return r.overdue; }).length; }
-  // ---- Health: "Overview + dropdown" restructuring -------------------
-  // Overview keeps just the reminders (what used to be the top half of
-  // this page); the full log — which can get long — moved to its own
-  // "All Records" page.
-  var HEALTH_VIEWS = [['overview','Overview'],['records','All Records']];
+  function openHealthIssues(){
+    return (state.healthRecords||[]).filter(function(x){ return x.type==='illness' && !x.resolved; })
+      .slice().sort(function(a,b){ return a.date<b.date?1:-1; });
+  }
+  // Per-group status: Overdue (care is late) → Needs attention (symptoms
+  // being watched, or care due within a week) → Healthy (nothing open).
+  function healthGroupStatus(key){
+    var rem = upcomingHealthReminders().filter(function(r){ return healthSpecies(r)===key; });
+    var overdue = rem.filter(function(r){ return r.overdue; }).length;
+    var soon = rem.filter(function(r){ return r.dueSoon; }).length;
+    var issues = openHealthIssues().filter(function(r){ return healthSpecies(r)===key; }).length;
+    if(overdue) return {tone:'bad', label:'Overdue care', overdue:overdue, soon:soon, issues:issues};
+    if(issues || soon) return {tone:'warn', label:'Needs attention', overdue:overdue, soon:soon, issues:issues};
+    return {tone:'good', label:'Healthy', overdue:0, soon:0, issues:0};
+  }
+  function healthDisclaimerHTML(){
+    return '<div class="notice">'+ICONS.info+'<div><strong>For planning and record-keeping only.</strong> Reminders and status labels here help you organise routine care; they are not a diagnosis. If an animal looks unwell, separate it from the group, check it closely and contact a veterinarian.</div></div>';
+  }
+  var HEALTH_VIEWS = [['overview','Overview'],['records','All records']];
+  function healthReminderRowHTML(r){
+    var st = r.overdue ? ['bad','Overdue'] : (r.dueSoon ? ['warn','Due soon'] : ['info','Upcoming']);
+    var d = parseISO(r.nextDueDate);
+    return '<div class="task"><div class="task-date"><b>'+d.getDate()+'</b><span>'+fmtDate(d,{month:'short'})+'</span></div>'+
+      '<div class="task-body"><div class="task-title">'+esc(r.title)+'</div><div class="task-sub">'+healthTypeLabel(r.type)+' · '+esc(healthTargetLabel(r))+'</div></div>'+
+      '<span class="status '+st[0]+'">'+st[1]+'</span>'+
+      '<div class="row-actions">'+
+        (readOnly ? '' : '<button class="btn sm" data-action="health-done:'+r.id+'" title="Mark this as done today">'+ICONS.check+'Done</button>')+
+        '<button class="icon-btn" data-action="edit-health:'+r.id+'" '+(readOnly?'disabled':'')+' title="Edit">'+ICONS.edit+'</button>'+
+      '</div></div>';
+  }
   function healthOverviewPanel(){
     var reminders = upcomingHealthReminders();
-    var remindersHtml = reminders.length ? reminders.map(function(r){
-      var pillStyle = r.overdue ? 'style="background:var(--bad-tint); color:var(--bad)"' : (r.dueSoon ? 'style="background:var(--accent-tint); color:var(--accent-strong)"' : '');
-      var pillText = r.overdue ? 'Overdue' : (r.dueSoon ? 'Due soon' : 'Upcoming');
-      return '<div class="kv-row"><div><div>'+esc(r.title)+' — '+healthTypeLabel(r.type)+' <span class="pill" '+pillStyle+'>'+pillText+'</span></div>'+
-        '<div class="hint">'+esc(healthBatchLabel(r.batchId))+' · due '+fmtDate(parseISO(r.nextDueDate))+'</div></div>'+
-        '<button class="icon-btn" data-action="edit-health:'+r.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'</button></div>';
-    }).join('') : '<div class="empty">'+ICONS.empty+'<div>Nothing due — set a "next due" date on a record to see reminders here.</div></div>';
-    return '<div class="card"><div class="card-title"><h3>Upcoming &amp; due</h3></div>'+remindersHtml+'</div>'+
-      '<div class="card" style="text-align:center"><button type="button" class="btn" data-action="view-select:health:records">Open the full Health Log →</button></div>';
+    var overdue = reminders.filter(function(r){ return r.overdue; }).length;
+    var soon = reminders.filter(function(r){ return r.dueSoon; }).length;
+    var issues = openHealthIssues();
+    var rm = getRange('month');
+    var thisMonth = (state.healthRecords||[]).filter(function(x){ return inRange(x.date, rm.startISO, rm.endISO) && x.date<=todayISO(); }).length;
+    var groups = healthGroups();
+    var groupCards = groups.map(function(g){
+      var st = healthGroupStatus(g.key);
+      var bits = [];
+      if(st.overdue) bits.push(st.overdue+' overdue');
+      if(st.soon) bits.push(st.soon+' due this week');
+      if(st.issues) bits.push(st.issues+' being watched');
+      return '<button type="button" class="species-card" data-action="health-filter-group:'+g.key+'">'+
+        '<span style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:auto"><span class="species-ico">'+g.icon+'</span><span class="status '+st.tone+'">'+st.label+'</span></span>'+
+        '<span class="species-name" style="margin-top:10px">'+esc(g.label)+'</span>'+
+        '<span class="species-sub">'+(bits.length ? bits.join(' · ') : g.count.toLocaleString()+' animals · no open issues')+'</span></button>';
+    }).join('');
+    var remindersHtml = reminders.length ? '<div class="task-list">'+reminders.slice(0, 12).map(healthReminderRowHTML).join('')+'</div>'+
+        (reminders.length>12 ? '<p class="hint" style="margin:10px 0 0">'+(reminders.length-12)+' more in All records.</p>' : '')
+      : '<div class="empty">'+ICONS.empty+'<div>Nothing scheduled. Add a “next due” date when you record a vaccination, deworming or treatment, and it will be listed here.</div></div>';
+    var issuesHtml = issues.length ? '<div class="task-list">'+issues.map(function(r){
+        return '<div class="task"><div class="task-body"><div class="task-title">'+esc(r.title)+'</div><div class="task-sub">'+esc(healthTargetLabel(r))+' · seen '+fmtDate(parseISO(r.date))+(r.note?' · '+esc(r.note):'')+'</div></div>'+
+          '<span class="status warn">Watching</span>'+
+          '<div class="row-actions">'+(readOnly?'':'<button class="btn sm" data-action="health-resolve:'+r.id+'">'+ICONS.check+'Resolved</button>')+
+          '<button class="icon-btn" data-action="edit-health:'+r.id+'" '+(readOnly?'disabled':'')+' title="Edit">'+ICONS.edit+'</button></div></div>';
+      }).join('')+'</div>'
+      : '<div class="empty">'+ICONS.empty+'<div>No symptoms are being watched. Use “Add record → Symptoms observed” when an animal looks unwell.</div></div>';
+    return healthDisclaimerHTML()+
+      '<div class="kpi-grid">'+
+        kpiHTML({label:'Overdue care', icon:NAV_ICONS.alert, tone: overdue?'bad':'', value:overdue.toLocaleString(), foot:'<span>vaccinations, deworming &amp; treatments</span>'})+
+        kpiHTML({label:'Due in the next 7 days', icon:NAV_ICONS.calendar, tone:'gold', value:soon.toLocaleString(), foot:'<span>plan ahead</span>'})+
+        kpiHTML({label:'Symptoms being watched', icon:NAV_ICONS.health, tone: issues.length?'bad':'info', value:issues.length.toLocaleString(), foot:'<span>open observations</span>'})+
+        kpiHTML({label:'Records this month', icon:NAV_ICONS.syringe, value:thisMonth.toLocaleString(), foot:'<span>'+esc(rm.label)+'</span>'})+
+      '</div>'+
+      (groups.length ? '<div class="species-grid">'+groupCards+'</div>' : '')+
+      '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.calendar+'Upcoming &amp; due</h3><span class="hint">'+reminders.length+' scheduled</span></div>'+remindersHtml+'</div>'+
+      '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.health+'Symptoms being watched</h3></div>'+issuesHtml+'</div>';
+  }
+  function healthFilteredRecords(){
+    var f = ui.healthFilter || {};
+    var q = (f.q||'').toLowerCase();
+    return (state.healthRecords||[]).filter(function(x){
+      if(f.type && x.type!==f.type) return false;
+      if(f.group && healthSpecies(x)!==f.group) return false;
+      if(q && ((x.title||'')+' '+(x.note||'')+' '+healthTargetLabel(x)).toLowerCase().indexOf(q)===-1) return false;
+      return true;
+    }).sort(function(a,b){ return (f.sort==='oldest') ? (a.date<b.date?-1:1) : (a.date<b.date?1:-1); });
   }
   function healthRecordsPageHTML(){
-    var entries = (state.healthRecords||[]).slice().sort(function(a,b){ return a.date<b.date?1:-1; });
+    var f = ui.healthFilter || {};
+    var entries = healthFilteredRecords();
     var healthPage = paginate('health-log', entries);
+    var today = todayISO();
     var rows = healthPage.items.map(function(x){
-      return '<tr><td>'+fmtDate(parseISO(x.date))+'</td><td><span class="pill">'+healthTypeLabel(x.type)+'</span></td><td>'+esc(x.title)+(x.photoURL?' 📷':'')+'</td><td>'+esc(healthBatchLabel(x.batchId))+'</td>'+
-      '<td>'+(x.nextDueDate ? fmtDate(parseISO(x.nextDueDate)) : '—')+'</td><td>'+esc(x.note||'—')+'</td>'+
+      var st = x.type==='illness' ? (x.resolved ? ['good','Resolved'] : ['warn','Watching'])
+        : (x.nextDueDate ? (x.nextDueDate<today ? ['bad','Overdue'] : ['info','Next '+fmtDate(parseISO(x.nextDueDate),{day:'numeric',month:'short'})]) : ['good','Done']);
+      return '<tr><td>'+fmtDate(parseISO(x.date))+'</td><td><span class="pill">'+healthTypeLabel(x.type)+'</span></td><td>'+esc(x.title)+(x.photoURL?' 📷':'')+(x.vet?'<div class="hint">Vet: '+esc(x.vet)+'</div>':'')+'</td><td>'+esc(healthTargetLabel(x))+'</td>'+
+      '<td><span class="status '+st[0]+'">'+st[1]+'</span></td><td>'+esc(x.note||'—')+'</td>'+
       '<td><div class="row-actions">'+
         '<button class="icon-btn" data-action="view-health-receipt:'+x.id+'" title="View receipt">'+ICONS.receipt+'</button>'+
-        '<button class="icon-btn" data-action="edit-health:'+x.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'</button>'+
-        '<button class="icon-btn" data-action="delete-health:'+x.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.trash+'</button>'+
+        '<button class="icon-btn" data-action="edit-health:'+x.id+'" '+(readOnly?'disabled':'')+' title="Edit">'+ICONS.edit+'</button>'+
+        '<button class="icon-btn" data-action="delete-health:'+x.id+'" '+(readOnly?'disabled':'')+' title="Delete">'+ICONS.trash+'</button>'+
       '</div></td></tr>';
     }).join('');
-    return '<div class="card"><div class="card-title"><h3>Health log</h3><span class="hint">'+entries.length+' records</span></div>'+
+    var groupOpts = '<option value="">All animals</option>'+healthGroups().map(function(g){ return '<option value="'+g.key+'" '+(f.group===g.key?'selected':'')+'>'+esc(g.label)+'</option>'; }).join('');
+    var typeOpts = '<option value="">All types</option>'+HEALTH_TYPE_ORDER.map(function(t){ return '<option value="'+t+'" '+(f.type===t?'selected':'')+'>'+healthTypeLabel(t)+'</option>'; }).join('');
+    return '<div class="card"><div class="card-title"><h3>'+NAV_ICONS.health+'Health records</h3><span class="hint">'+entries.length+' of '+(state.healthRecords||[]).length+'</span></div>'+
+      '<div class="toolbar" style="margin-bottom:14px">'+
+        '<input class="field" type="search" placeholder="Search records…" value="'+esc(f.q||'')+'" data-change="health-filter:q" aria-label="Search health records">'+
+        '<select class="field" data-change="health-filter:group" aria-label="Filter by animal">'+groupOpts+'</select>'+
+        '<select class="field" data-change="health-filter:type" aria-label="Filter by type">'+typeOpts+'</select>'+
+        '<select class="field" data-change="health-filter:sort" aria-label="Sort"><option value="newest">Newest first</option><option value="oldest" '+(f.sort==='oldest'?'selected':'')+'>Oldest first</option></select>'+
+      '</div>'+
       '<div class="table-wrap">'+
-      (entries.length ? '<table><thead><tr><th>Date</th><th>Type</th><th>What</th><th>Batch</th><th>Next due</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
-        : '<div class="empty">'+ICONS.empty+'<div>No health records yet.</div></div>')+
+      (entries.length ? '<table><thead><tr><th>Date</th><th>Type</th><th>What</th><th>Animals</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+        : '<div class="empty">'+ICONS.empty+'<div>'+((state.healthRecords||[]).length ? 'No records match these filters.' : 'No health records yet. Tap “Add record” to log a vaccination, deworming, treatment or vet visit.')+'</div></div>')+
       '</div>'+pagerHtml('health-log', healthPage.pageCount, healthPage.page)+'</div>';
   }
   function healthPanel(){
@@ -4816,26 +5841,28 @@
     var body = view==='records' ? healthRecordsPageHTML() : healthOverviewPanel();
     return sectionViewSwitcherHTML('health', HEALTH_VIEWS) + body;
   }
-  function healthFormHtml(id){
+  function healthFormHtml(id, preset){
     var x = id ? (state.healthRecords||[]).find(function(i){return i.id===id;}) : null;
-    var typeOptions = ['vaccination','treatment','checkup','illness','other'];
+    var seed = x || preset || null;
+    var curType = x ? x.type : ((preset && preset.type) || 'vaccination');
     return '<div class="modal-head"><h3>'+(x?'Edit health record':'Add health record')+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
     '<form data-form="health">'+
       '<input type="hidden" name="id" value="'+(x?x.id:'')+'">'+
       '<div class="field-grid">'+
         '<div class="field-row"><label>Type</label><select class="field" name="type">'+
-          typeOptions.map(function(t){ return '<option value="'+t+'" '+((x?x.type===t:t==='vaccination')?'selected':'')+'>'+healthTypeLabel(t)+'</option>'; }).join('')+
+          HEALTH_TYPE_ORDER.map(function(t){ return '<option value="'+t+'" '+(curType===t?'selected':'')+'>'+healthTypeLabel(t)+'</option>'; }).join('')+
         '</select></div>'+
-        '<div class="field-row"><label>Date</label><input class="field" type="date" name="date" value="'+(x?x.date:todayISO())+'" max="'+todayISO()+'" required></div>'+
+        '<div class="field-row"><label>Date</label><input class="field" type="date" name="date" value="'+(x?x.date:todayISO())+'" required></div>'+
       '</div>'+
-      '<div class="field-row" style="margin-top:12px"><label>What (e.g. Newcastle Disease vaccine)</label><input class="field" type="text" name="title" maxlength="100" value="'+(x?esc(x.title||''):'')+'" required autofocus></div>'+
+      '<div class="field-row" style="margin-top:12px"><label>What (e.g. Newcastle disease vaccine, deworming with albendazole)</label><input class="field" type="text" name="title" maxlength="100" value="'+(x?esc(x.title||''):'')+'" required autofocus></div>'+
+      '<div class="field-row" style="margin-top:12px"><label>Which animals</label><select class="field" name="target">'+healthTargetOptionsHTML(seed)+'</select></div>'+
       '<div class="field-grid" style="margin-top:12px">'+
-        '<div class="field-row"><label>Which batch</label><select class="field" name="batchId"><option value="">Whole flock</option>'+
-          state.flock.map(function(b){ return '<option value="'+b.id+'" '+(x&&x.batchId===b.id?'selected':'')+'>'+genderLabel(b.gender)+(b.gender!=='unsexed'?'s':'')+' · added '+fmtDate(parseISO(b.dateAdded))+'</option>'; }).join('')+
-        '</select></div>'+
         '<div class="field-row"><label>Next due (optional)</label><input class="field" type="date" name="nextDueDate" value="'+(x&&x.nextDueDate?x.nextDueDate:'')+'"></div>'+
+        '<div class="field-row"><label>Vet or person (optional)</label><input class="field" type="text" name="vet" maxlength="80" value="'+(x?esc(x.vet||''):'')+'" placeholder="e.g. Dr. Wanjiku"></div>'+
       '</div>'+
-      '<div class="field-row" style="margin-top:12px"><label>Note</label><input class="field" type="text" name="note" value="'+(x?esc(x.note||''):'')+'" placeholder="Optional"></div>'+
+      '<div class="field-row" style="margin-top:12px"><label>Notes — dose, symptoms seen, advice given</label><input class="field" type="text" name="note" value="'+(x?esc(x.note||''):'')+'" placeholder="Optional"></div>'+
+      (x && x.type==='illness' ? '<label class="check-row" style="margin-top:12px"><input type="checkbox" name="resolved" '+(x.resolved?'checked':'')+'> Resolved — the animals have recovered</label>' : '')+
+      '<p class="hint" style="margin:10px 0 0">Symptoms you record are for follow-up only. For a sick animal, contact a veterinarian.</p>'+
       attachPhotoBlockHtml('health', x?x.id:null, x&&x.photoURL)+
       '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(x?'Save changes':'Add record')+'</button></div>'+
     '</form>';
@@ -6349,9 +7376,13 @@
     var fs = (state.settings && state.settings.farmSetup) || {};
     var cats = fs.categories || {livestock:true, crops:false};
     var species = fs.species || ['poultry'];
-    if(key==='flock' || key==='eggs' || key==='feed' || key==='health' || key==='sensors'){
+    if(key==='flock' || key==='eggs' || key==='sensors'){
       return !!cats.livestock && species.indexOf('poultry')!==-1;
     }
+    // Feed, Animal Health and Breeding cover every kind of animal on the
+    // farm, so they show whenever the farm keeps any livestock at all.
+    if(key==='feed' || key==='health' || key==='breeding') return !!cats.livestock && species.length>0;
+    if(key==='production') return (!!cats.livestock && species.length>0) || !!cats.crops;
     if(key==='livestock'){
       return !!cats.livestock && species.some(function(s){ return s!=='poultry'; });
     }
@@ -6376,6 +7407,12 @@
         return isSupervisorUser() || isFarmhandUser();
       case 'health':
         return isSupervisorUser() || isVetUser();
+      case 'breeding':
+        return isSupervisorUser() || isFarmhandUser() || isVetUser();
+      case 'production':
+        return isSupervisorUser() || isFarmhandUser();
+      case 'inventory':
+        return isSupervisorUser() || isFarmhandUser() || isVetUser();
       case 'sensors':
         return isSupervisorUser() || isFarmhandUser() || isVetUser();
       case 'customers':
@@ -9066,11 +10103,15 @@
   }
 
   var SECTIONS = {
-    overview:{ topbar:function(){ return topbarHTML(t('title.overview','Overview'),t('sub.overview','How the farm is doing'), periodSegment('overview')+currencySelectHTML(), PICS.overview); }, panel:overviewPanel },
+    overview:{ topbar:function(){ return topbarHTML(t('title.dashboard','Dashboard'),t('sub.overview','Your whole farm at a glance'), periodSegment('overview')+currencySelectHTML(), NAV_ICONS.dashboard); }, panel:overviewPanel },
+    breeding:{ topbar:function(){ return topbarHTML(t('title.breeding','Breeding & Reproduction'),'Matings, pregnancies, hatching and births across the farm', (breedingSpecies().length ? addBtn('open-add-breeding','Record mating') : ''), NAV_ICONS.breeding); }, panel:breedingPanel },
+    production:{ topbar:function(){ return topbarHTML(t('title.production','Production'),'Eggs, milk and other yields, with trends', (sectionAllowed('eggs') ? addBtn('open-add-egg','Log eggs') : ''), NAV_ICONS.production); }, panel:productionPanel },
+    inventory:{ topbar:function(){ return topbarHTML(t('title.inventory','Inventory'),'Medicines, vaccines, equipment and supplies', addBtn('open-add-inventory','Add item'), NAV_ICONS.inventory); }, panel:inventoryPanel },
     flock:{ topbar:function(){ return topbarHTML(t('title.flock','Flock'),t('sub.flock','Current inventory by age and gender'), '<button class="btn" data-action="open-record-loss" '+(readOnly?'disabled':'')+'>Record loss</button>'+addBtn('open-add-flock','Add birds'), flockPhotoIcon('flockIcon')); }, panel:flockPanel },
     eggs:{ topbar:function(){ return topbarHTML(t('title.eggs','Eggs'),t('sub.eggs','Daily production, tallied up'), addBtn('open-add-egg','Log eggs'), eggsPhotoIcon()); }, panel:eggsPanel },
     feed:{ topbar:function(){ return topbarHTML(t('title.feed','Feed'),t('sub.feed','Consumption, cost, and feed-per-egg'), addBtn('open-add-feed','Log feed'), flockPhotoIcon('feedIcon')); }, panel:feedPanel },
     livestock:{ topbar:function(){
+      var addType = (isAdminLevel() && !readOnly) ? '<button class="btn" data-action="open-add-species">'+NAV_ICONS.plus+'Add animal type</button>' : '';
       // When a species-specific sector is active (ui.sector ===
       // 'livestock-cattle', etc.) this reads as that species' own page —
       // "Dairy Cattle" / "Herd, sales, and milk log" — rather than the
@@ -9083,15 +10124,15 @@
         var one = sp[0];
         return topbarHTML(esc(one.label), one.key==='cattle' ? 'Herd register, breeding &amp; calving, calf feeding and the milk log' : 'Herd, sales &amp; losses'+(one.hasJournal?', and the '+esc(one.journalLabel.toLowerCase())+' log':''), '', one.icon);
       }
-      return topbarHTML(t('title.livestock','Other Livestock'),t('sub.livestock','Dairy cattle, goats & sheep, pigs, rabbits, and horses'), '', PICS.livestockNav);
+      return topbarHTML(t('title.livestock','Livestock'),t('sub.livestock','Cattle, goats, sheep, pigs, rabbits, ducks, turkeys and more'), addType, PICS.livestockNav);
     }, panel:livestockPanel },
     crops:{ topbar:function(){ return topbarHTML(t('title.crops','Crops'),t('sub.crops','Planting, harvest, and sales — the basics'), '', PICS.cropsNav); }, panel:cropsPanel },
     sensors:{ topbar:function(){ return topbarHTML('Sensors','Live readings from the poultry house', '', PICS.sensors); }, panel:sensorsPanel },
-    health:{ topbar:function(){ return topbarHTML(t('title.health','Health'),t('sub.health','Vaccinations, treatments &amp; reminders'), addBtn('open-add-health','Add record'), PICS.health); }, panel:healthPanel },
-    reports:{ topbar:function(){ return topbarHTML(t('title.reports','Reports'),t('sub.reports','Print or export a period summary'), '', PICS.reports); }, panel:reportsPanel },
+    health:{ topbar:function(){ return topbarHTML(t('title.health','Animal Health'),t('sub.health','Vaccinations, deworming, treatments &amp; vet visits for every animal'), addBtn('open-add-health','Add record'), NAV_ICONS.health); }, panel:healthPanel },
+    reports:{ topbar:function(){ return topbarHTML(t('title.reports','Reports & Analytics'),t('sub.reports','Profit and loss, performance charts and printable summaries'), '', PICS.reports); }, panel:reportsPanel },
     expenses:{ topbar:function(){ return topbarHTML(t('title.expenses','Expenses'),t('sub.expenses','What you’re spending, by category'), currencySelectHTML()+addBtn('open-add-expense','Add expense'), PICS.expenses); }, panel:function(){ return moneyBreakdownPanel(state.expenses, state.settings.expenseCategories, 'expense'); } },
     income:{ topbar:function(){ return topbarHTML(t('title.income','Income'),t('sub.income','Money coming in, by category'), currencySelectHTML()+addBtn('open-add-income','Add income'), PICS.income); }, panel:function(){ return moneyBreakdownPanel(state.incomes, state.settings.incomeCategories, 'income'); } },
-    customers:{ topbar:function(){ return topbarHTML(t('title.customers','Customers'),t('sub.customers','Buyers, repeat and one-off'), addBtn('open-add-customer','Add customer'), PICS.customers); }, panel:customersPanel },
+    customers:{ topbar:function(){ return topbarHTML(t('title.customers','Sales & Customers'),t('sub.customers','Buyers, repeat and one-off, and what they bought'), addBtn('open-add-customer','Add customer'), PICS.customers); }, panel:customersPanel },
     finance:{ topbar:function(){ return topbarHTML(t('title.finance','Finance'),t('sub.finance','Your poultry-only bank account'), financeTopbarActions(), PICS.finance); }, panel:financePanel },
     about:{ topbar:function(){ return topbarHTML(t('title.about','About'),t('sub.about','The story behind Kenokip Farm'), isAdminLevel() ? '<button class="btn" data-action="open-edit-about">'+ICONS.edit+'Edit</button>' : '', PICS.about); }, panel:aboutPanel },
     settings:{ topbar:function(){ return topbarHTML(t('title.settings','Settings'),t('sub.settings','Currencies, categories & backup'), readOnlyBadge(), PICS.settings); }, panel:settingsPanel },
@@ -9105,7 +10146,8 @@
   // confirmation toast ("Opened Flock.") since SECTIONS[key] only holds
   // functions, not a label string.
   var SECTION_LABELS = {
-    overview:'Overview', flock:'Flock', eggs:'Eggs', feed:'Feed', livestock:'Other Livestock', crops:'Crops', health:'Health', sensors:'Sensors',
+    overview:'Dashboard', flock:'Flock', eggs:'Eggs', feed:'Feed', livestock:'Livestock', crops:'Crops', health:'Animal Health', sensors:'Sensors',
+    breeding:'Breeding & Reproduction', production:'Production', inventory:'Inventory',
     reports:'Reports', expenses:'Expenses', income:'Income', customers:'Customers',
     finance:'Finance', about:'About', settings:'Settings', team:'Team', messages:'Messages', signoffs:'Pending signatures'
   };
@@ -9831,7 +10873,9 @@
     var parts = action.split(':');
     var verb = parts[0], a1 = parts[1], a2 = parts[2], a3 = parts[3];
     switch(verb){
-      case 'nav': goToSection(a1); break;
+      case 'nav': closeNavDrawer(); goToSection(a1); break;
+      case 'open-nav-drawer': openNavDrawer(); break;
+      case 'close-nav-drawer': closeNavDrawer(); break;
       case 'view-photo': openPhotoLightbox(a1); break;
       case 'close-photo-lightbox': closePhotoLightbox(); break;
       case 'push-app-update': pushAppUpdateToEveryone(); break;
@@ -9847,6 +10891,7 @@
       // group, ui.section is always a real leaf section either way.
       case 'nav-toggle-group': navOpenGroup = (navOpenGroup===a1) ? '__none__' : a1; renderNav(); break;
       case 'nav-group': {
+        closeNavDrawer();
         var navGroup = NAV_GROUPS.find(function(g){ return g.key===a1 && g.children; });
         if(navGroup){
           var navKids = navGroup.children.filter(function(c){ return sectionAllowed(c.key); });
@@ -10232,6 +11277,65 @@
         });
         break;
       case 'open-add-health': openModal(healthFormHtml()); break;
+      case 'health-done': {
+        mutate(function(s){
+          var hx = (s.healthRecords||[]).find(function(x){ return x.id===a1; });
+          if(!hx) return;
+          if(hx.date > todayISO()) hx.date = todayISO();
+          hx.doneDate = todayISO();
+          hx.nextDueDate = null;
+        });
+        toast('Marked as done. Add a new next-due date if this needs repeating.');
+        break;
+      }
+      case 'health-resolve': {
+        mutate(function(s){ var hx = (s.healthRecords||[]).find(function(x){ return x.id===a1; }); if(hx){ hx.resolved = true; hx.resolvedDate = todayISO(); } });
+        toast('Marked as resolved.');
+        break;
+      }
+      case 'health-filter-group': ui.healthFilter = Object.assign({}, ui.healthFilter||{}, {group:a1}); setView('health','records'); render(); break;
+      case 'open-species': openSpeciesPage(a1); break;
+      case 'open-species-view': openSpeciesPage(a1, a2); break;
+      case 'open-flock-view': {
+        if(ui.sector && ui.sector!=='poultry' && availableSectors().some(function(x){ return x.key==='poultry'; })) ui.sector = 'poultry';
+        setView('flock', a1); goToSection('flock'); break;
+      }
+      case 'open-add-species': openModal(addSpeciesFormHtml()); break;
+      case 'remove-custom-species': {
+        var rcSp = livestockSpecies(a1);
+        if(!rcSp || !rcSp.custom) break;
+        var rcHas = speciesPopulation(a1)>0 || (lsRO(a1).journal||[]).length || (lsRO(a1).breedings||[]).length;
+        confirmModal(rcHas ? 'Hide “'+rcSp.label+'” from the farm? Its records are kept and come back if you add it again.' : 'Remove the animal type “'+rcSp.label+'”?', function(){
+          mutate(function(s){
+            s.settings.customSpecies = (s.settings.customSpecies||[]).filter(function(c){ return c.key!==a1; });
+            if(s.settings.farmSetup && s.settings.farmSetup.species) s.settings.farmSetup.species = s.settings.farmSetup.species.filter(function(k){ return k!==a1; });
+            if(!rcHas && s.livestock) delete s.livestock[a1];
+            syncCustomSpecies(s.settings);
+          });
+          toast('Removed.');
+        });
+        break;
+      }
+      case 'open-add-inventory': openModal(inventoryFormHtml()); break;
+      case 'edit-inventory': openModal(inventoryFormHtml(a1)); break;
+      case 'adjust-inventory': openModal(inventoryAdjustFormHtml(a1)); break;
+      case 'delete-inventory':
+        confirmModal('Delete this item and its history? You can restore it from Trash for 30 days.', function(){
+          mutate(function(s){
+            var it = (s.inventory||[]).find(function(x){ return x.id===a1; });
+            if(it) trashPush(s, 'inventory', it);
+            s.inventory = (s.inventory||[]).filter(function(x){ return x.id!==a1; });
+          });
+        });
+        break;
+      case 'open-add-breeding': openModal(breedingFormHtml()); break;
+      case 'edit-breeding': openModal(breedingFormHtml(a1, a2)); break;
+      case 'open-breeding-birth': openModal(breedingBirthFormHtml(a1, a2)); break;
+      case 'delete-breeding':
+        confirmModal('Delete this mating record? Animals already added to the herd from it stay in the herd.', function(){
+          mutate(function(s){ var d = s.livestock && s.livestock[a1]; if(d && Array.isArray(d.breedings)) d.breedings = d.breedings.filter(function(x){ return x.id!==a2; }); });
+        });
+        break;
       case 'edit-health': openModal(healthFormHtml(a1)); break;
       case 'delete-health':
         confirmModal('Delete this health record? You can restore it from Trash for 30 days.', function(){ mutate(function(s){ var x=(s.healthRecords||[]).find(function(i){return i.id===a1;}); if(x) trashPush(s,'health',x); s.healthRecords = (s.healthRecords||[]).filter(function(x){return x.id!==a1;}); }); });
@@ -10695,6 +11799,19 @@
   }
   function handleChange(name, el){
     if(name==='money-nav'){ goToSection(el.value); return; }
+    if(name.indexOf('health-filter:')===0){
+      ui.healthFilter = Object.assign({}, ui.healthFilter||{}); ui.healthFilter[name.split(':')[1]] = el.value;
+      setPageFor('health-log', 1); render(); return;
+    }
+    if(name.indexOf('inv-filter:')===0){
+      ui.invFilter = Object.assign({}, ui.invFilter||{}); ui.invFilter[name.split(':')[1]] = el.value;
+      setPageFor('inventory', 1); render(); return;
+    }
+    if(name==='new-species-kind'){
+      var cf = document.getElementById('custom-species-fields');
+      if(cf) cf.style.display = el.value==='__custom' ? 'block' : 'none';
+      return;
+    }
     if(name.indexOf('view-select:')===0){
       // Overview + dropdown sub-pages (Flock: Chicks/Growers/Hens/Cocks/
       // Brooding; same pattern used for Eggs, Money and Health) — see
@@ -11491,6 +12608,9 @@
       var fcurrency = val('currency');
       var fcostRaw = Number(val('cost')||0);
       var fnote = val('note') || '';
+      var ffor = val('feedFor') || 'poultry';
+      if(!fdate){ toast('Pick a date.'); return; }
+      if(!(qtyKg>0)){ toast('Enter how many kg were used.'); return; }
       mutate(function(s){
         var fcost = fcostRaw>0 ? fromCurrency(fcostRaw, fcurrency) : 0;
         s.feedLogs = s.feedLogs || [];
@@ -11504,6 +12624,9 @@
         } else {
           entry.feedType = feedType; entry.date = fdate; entry.quantityKg = qtyKg; entry.cost = fcost; entry.note = fnote;
         }
+        // Which animals ate it — poultry entries (and every entry saved
+        // before this existed) are the ones used for feed-per-egg.
+        if(ffor==='poultry') delete entry.species; else entry.species = ffor;
         // Usage draws down stock on hand — a new entry subtracts its full
         // quantity, editing one only subtracts the change since last save,
         // so re-saving the same entry twice never double-counts.
@@ -11551,18 +12674,140 @@
     }
     if(name==='health'){
       var hid = val('id') || null, hdate = val('date'), htype = val('type') || 'other';
-      var htitle = (val('title')||'').trim(), hbatchId = val('batchId') || null, hnextDue = val('nextDueDate') || null, hnote = val('note') || '';
+      var htitle = (val('title')||'').trim(), hnextDue = val('nextDueDate') || null, hnote = (val('note')||'').trim(), hvet = (val('vet')||'').trim();
+      var htarget = parseHealthTarget(val('target'));
       if(!htitle){ toast('Enter what this record is for.'); return; }
+      if(!hdate){ toast('Pick a date.'); return; }
+      // A future date with no next-due date is a planned task: schedule it.
+      if(hdate > todayISO() && !hnextDue) hnextDue = hdate;
+      if(hnextDue && hnextDue < hdate){ toast('The next due date can\'t be before the record date.'); return; }
+      var hresolved = !!val('resolved');
       mutate(function(s){
         s.healthRecords = s.healthRecords || [];
-        if(hid){
-          var hx = s.healthRecords.find(function(x){return x.id===hid;});
-          if(hx){ hx.date=hdate; hx.type=htype; hx.title=htitle; hx.batchId=hbatchId||null; hx.nextDueDate=hnextDue||null; hx.note=hnote; }
-        } else {
-          s.healthRecords.push({id:uid('health'), date:hdate, type:htype, title:htitle, batchId:hbatchId||null, nextDueDate:hnextDue||null, note:hnote, recordedByRole: roleLabel(currentUser)});
-        }
+        var hx = hid ? s.healthRecords.find(function(x){return x.id===hid;}) : null;
+        if(!hx){ hx = {id:uid('health'), recordedByRole: roleLabel(currentUser)}; s.healthRecords.push(hx); }
+        hx.date = hdate; hx.type = htype; hx.title = htitle; hx.note = hnote; hx.vet = hvet || null;
+        hx.species = htarget.species; hx.batchId = htarget.batchId; hx.animalId = htarget.animalId; hx.herdId = htarget.herdId;
+        hx.nextDueDate = hnextDue || null;
+        if(htype==='illness'){ if(hresolved && !hx.resolved) hx.resolvedDate = todayISO(); hx.resolved = hresolved; }
       });
       closeModal(); toast(hid ? 'Health record updated.' : 'Health record added.');
+      return;
+    }
+    if(name==='inventory'){
+      var ivId = val('id') || null, ivName = (val('name')||'').trim();
+      if(!ivName){ toast('Give the item a name.'); return; }
+      var ivLowRaw = val('lowAt'), ivQty = Number(val('quantity')||0);
+      if(!ivId && (!isFinite(ivQty) || ivQty<0)){ toast('Quantity can\'t be negative.'); return; }
+      mutate(function(s){
+        s.inventory = Array.isArray(s.inventory) ? s.inventory : [];
+        var it = ivId ? s.inventory.find(function(x){ return x.id===ivId; }) : null;
+        if(!it){
+          it = {id:uid('inv'), quantity:ivQty, createdAt:todayISO(), movements: ivQty>0 ? [{id:uid('mv'), date:todayISO(), delta:ivQty, note:'Opening stock'}] : []};
+          s.inventory.push(it);
+        }
+        it.name = ivName; it.category = val('category') || 'other'; it.unit = (val('unit')||'').trim();
+        it.lowAt = (ivLowRaw===null || ivLowRaw==='') ? null : Math.max(0, Number(ivLowRaw));
+        it.expiry = val('expiry') || null; it.location = (val('location')||'').trim(); it.note = (val('note')||'').trim();
+      });
+      closeModal(); toast(ivId ? 'Item updated.' : 'Item added to inventory.');
+      return;
+    }
+    if(name==='inventory-adjust'){
+      var iaId = val('id'), iaDir = val('direction'), iaAmt = Number(val('amount')||0), iaDate = val('date') || todayISO();
+      var iaCostRaw = Number(val('cost')||0), iaCur = val('currency');
+      var iaItem = inventoryItems().find(function(x){ return x.id===iaId; });
+      if(!iaItem){ toast('That item is no longer listed.'); closeModal(); return; }
+      if(!(iaAmt>0)){ toast('Enter a quantity above zero.'); return; }
+      if(iaDir==='use' && iaAmt > Number(iaItem.quantity||0)){ toast('Only '+fmtQty(iaItem.quantity)+' '+(iaItem.unit||'')+' on hand — check the quantity.'); return; }
+      var iaDelta = iaDir==='use' ? -iaAmt : iaAmt;
+      mutate(function(s){
+        var it = (s.inventory||[]).find(function(x){ return x.id===iaId; }); if(!it) return;
+        var mv = {id:uid('mv'), date:iaDate, delta:iaDelta, note:(val('note')||'').trim() || (iaDelta<0?'Used':'Restocked')};
+        if(iaDelta>0 && iaCostRaw>0){
+          var exp = {id:uid('exp'), date:iaDate, category:inventoryExpenseCategory(it.category), amount:fromCurrency(iaCostRaw, iaCur), note:'Bought '+fmtQty(iaAmt)+' '+(it.unit||'')+' '+it.name, recordedByRole: roleLabel(currentUser)};
+          s.expenses.push(exp); mv.expenseId = exp.id;
+        }
+        it.movements = (it.movements||[]).concat([mv]).slice(-200);
+        it.quantity = Math.round((Number(it.quantity||0) + iaDelta)*100)/100;
+      });
+      closeModal(); toast(iaDelta<0 ? 'Stock updated.' : 'Restocked.');
+      return;
+    }
+    if(name==='breeding'){
+      var brId = val('id') || null, brSp = val('origSpecies') || val('species');
+      var brSpecies = livestockSpecies(brSp);
+      if(!brSpecies){ toast('Pick the animals.'); return; }
+      var brDate = val('date'), brFemale = (val('female')||'').trim();
+      if(!brDate || !brFemale){ toast('Enter the date and the female.'); return; }
+      var brExpected = val('expectedDate') || (gestationDaysFor(brSp) ? addDaysISO(brDate, gestationDaysFor(brSp)) : null);
+      if(brExpected && brExpected < brDate){ toast('The expected birth can\'t be before the mating date.'); return; }
+      mutate(function(s){
+        s.livestock = s.livestock || {};
+        var d = s.livestock[brSp] = s.livestock[brSp] || {herd:[], journal:[]};
+        d.breedings = Array.isArray(d.breedings) ? d.breedings : [];
+        var b = brId ? d.breedings.find(function(x){ return x.id===brId; }) : null;
+        if(!b){ b = {id:uid('brd'), outcome:'pending'}; d.breedings.push(b); }
+        b.date = brDate; b.female = brFemale; b.male = (val('male')||'').trim(); b.method = val('method')||'natural';
+        b.expectedDate = brExpected; b.note = (val('note')||'').trim();
+        var oc = val('outcome'); if(oc && b.outcome!=='born') b.outcome = oc;
+      });
+      closeModal(); toast(brId ? 'Saved.' : 'Mating recorded'+(brExpected ? ' — expected around '+fmtDate(parseISO(brExpected))+'.' : '.'));
+      return;
+    }
+    if(name==='breeding-birth'){
+      var bbSp = val('species'), bbId = val('id'), bbDate = val('bornDate');
+      var bbAlive = Math.max(0, Math.floor(Number(val('alive')||0))), bbDead = Math.max(0, Math.floor(Number(val('dead')||0)));
+      var bbSpecies = livestockSpecies(bbSp);
+      if(!bbSpecies || !bbDate){ toast('Pick the date of birth.'); return; }
+      if(!bbAlive && !bbDead){ toast('Enter how many were born.'); return; }
+      var bbAdd = !!val('addToHerd');
+      mutate(function(s){
+        var d = s.livestock && s.livestock[bbSp]; if(!d || !Array.isArray(d.breedings)) return;
+        var b = d.breedings.find(function(x){ return x.id===bbId; }); if(!b) return;
+        b.outcome = 'born'; b.bornDate = bbDate; b.bornCount = bbAlive; b.bornDead = bbDead;
+        if(val('note')) b.note = ((b.note?b.note+' · ':'')+val('note')).slice(0, 300);
+        if(bbAdd && bbAlive>0){
+          d.herd = Array.isArray(d.herd) ? d.herd : [];
+          var hb = {id:uid('herd'), dateAdded:bbDate, label:'Born to '+(b.female||bbSpecies.label), count:bbAlive, source:'Born on the farm', removals:[]};
+          d.herd.push(hb); b.herdId = hb.id;
+        }
+      });
+      closeModal();
+      if(bbAlive) celebrate({ title:'🎉 '+bbAlive+' '+(bbAlive===1?bbSpecies.singular:bbSpecies.plural)+' born!', subtitle: bbAdd ? 'Added to the '+bbSpecies.label+' herd.' : 'Birth recorded.' });
+      else toast('Birth recorded.');
+      return;
+    }
+    if(name==='add-species'){
+      if(!isAdminLevel()){ toast('Only the administrator can add animal types.'); return; }
+      var nsKind = val('kind');
+      var nsKey = nsKind;
+      var nsLabel = '';
+      if(nsKind==='__custom'){
+        nsLabel = (val('label')||'').trim();
+        if(!nsLabel){ toast('Give the animal type a name.'); return; }
+        if(LIVESTOCK_SPECIES.some(function(x){ return x.label.toLowerCase()===nsLabel.toLowerCase(); }) || /^(poultry|chickens?)$/i.test(nsLabel)){ toast('“'+nsLabel+'” already exists — pick it from the list instead.'); return; }
+        nsKey = 'custom_'+nsLabel.toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,16)+'_'+Math.random().toString(36).slice(2,5);
+      } else if(!livestockSpecies(nsKind)){ toast('Pick an animal type.'); return; }
+      var nsJournal = val('journal') || '';
+      mutate(function(s){
+        if(nsKind==='__custom'){
+          var units = {eggs:['Egg','Eggs'], milk:['Milk','Litres'], wool:['Wool','Kg'], honey:['Honey','Kg']};
+          var j = units[nsJournal] || null;
+          s.settings.customSpecies = (s.settings.customSpecies||[]).concat([{ key:nsKey, label:nsLabel,
+            singular:(val('singular')||'').trim() || 'animal', plural:(val('plural')||'').trim() || 'animals',
+            journalLabel: j ? j[0] : '', journalUnit: j ? j[1] : '',
+            gestationDays: Number(val('gestationDays')||0) || null }]);
+          syncCustomSpecies(s.settings);
+        }
+        var fs = s.settings.farmSetup = s.settings.farmSetup || {completed:true, categories:{livestock:true, crops:false}, species:[]};
+        fs.categories = fs.categories || {livestock:true, crops:false};
+        fs.categories.livestock = true;
+        fs.species = (fs.species||[]).filter(function(k){ return k!==nsKey; }).concat([nsKey]);
+      });
+      closeModal();
+      var nsSp = livestockSpecies(nsKey);
+      toast((nsSp ? nsSp.label : 'Animal type')+' added — find it under Livestock.');
       return;
     }
     if(name==='expense' || name==='income'){
@@ -12227,7 +13472,7 @@
     if(!el) return;
     handleChange(el.dataset.change, el);
   });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeModal(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeModal(); closeNavDrawer(); } });
 
   // Keeps the Overview greeting's "morning"/"afternoon"/etc. correct if the
   // app is just left open across that boundary, without needing a full
