@@ -1407,15 +1407,32 @@
 .kemai-chip:hover{ background:color-mix(in srgb, #E9B949 22%, var(--surface-2)); color:var(--ink); border-color:#E9B949; }
 .kemai-send{ background:linear-gradient(135deg, #E9B949, #D49A22); color:#173A27; }
 
-.cattle-photo-banner{ position:relative; border-radius:16px; overflow:hidden; margin-bottom:16px; cursor:zoom-in; aspect-ratio:1100/344; max-height:300px; width:100%;
+.farm-photo-banner{ position:relative; border-radius:16px; overflow:hidden; margin-bottom:16px; cursor:zoom-in; aspect-ratio:var(--ar, 1100/344); max-height:300px; width:100%; background:color-mix(in srgb, #3F8F4E 12%, var(--surface-2));
   box-shadow:0 6px 18px rgba(0,0,0,.08); }
-.cattle-photo-banner img{ display:block; width:100%; height:100%; object-fit:cover; }
-.cattle-photo-cap{ position:absolute; left:0; bottom:0; right:0; padding:30px 18px 14px; display:flex; flex-direction:column; gap:2px;
+.farm-photo-banner img{ display:block; width:100%; height:100%; object-fit:cover; object-position:var(--pos, center); }
+.farm-photo-cap{ position:absolute; left:0; bottom:0; right:0; padding:30px 18px 14px; display:flex; flex-direction:column; gap:2px;
   background:linear-gradient(to top, rgba(14,40,26,.82), rgba(14,40,26,0)); color:#fff; }
-.cattle-photo-cap strong{ font-size:17px; letter-spacing:-.01em; }
-.cattle-photo-cap span{ font-size:12.5px; color:rgba(255,255,255,.85); }
-@media (max-width:640px){ .cattle-photo-banner{ aspect-ratio:16/7; } .cattle-photo-cap strong{ font-size:15px; } }
+.farm-photo-cap strong{ font-size:17px; letter-spacing:-.01em; }
+.farm-photo-cap span{ font-size:12.5px; color:rgba(255,255,255,.85); }
+@media (max-width:640px){ .farm-photo-banner{ aspect-ratio:16/7; } .farm-photo-cap strong{ font-size:15px; } }
 .cattle-avatar.photo{ position:relative; padding:0; overflow:visible; background:none; cursor:zoom-in; }
 .cattle-avatar.photo img{ width:100%; height:100%; object-fit:cover; border-radius:18px; display:block; box-shadow:0 0 0 3px var(--surface), 0 0 0 5px color-mix(in srgb, #3F8F4E 45%, transparent); }
 .cattle-avatar.photo i{ position:absolute; right:-6px; bottom:-6px; font-style:normal; font-size:16px; width:26px; height:26px; display:grid; place-items:center; border-radius:50%;
   background:var(--surface); box-shadow:0 1px 4px rgba(0,0,0,.18); }
+
+/* ---- Farm profile (About) + farmhouse hero ---- */
+.dash-hero{ background-position:center, 70% 50%, center; }
+.farm-profile{ display:grid; grid-template-columns:minmax(0, 1.15fr) minmax(0, 1fr); gap:20px; align-items:center; padding:14px; }
+.farm-profile-photo{ border-radius:14px; overflow:hidden; aspect-ratio:879/400; cursor:zoom-in; background:color-mix(in srgb, #3F8F4E 12%, var(--surface-2)); }
+.farm-profile-photo img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .3s ease; }
+.farm-profile-photo:hover img{ transform:scale(1.02); }
+.farm-profile-body{ padding:4px 8px 4px 0; min-width:0; }
+.farm-profile-kicker{ font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#B07F00; }
+.farm-profile-body h3{ margin:4px 0 12px; font-size:22px; letter-spacing:-.01em; }
+.farm-profile-facts{ margin:0; display:flex; flex-direction:column; gap:10px; }
+.farm-profile-facts > div{ display:flex; flex-direction:column; gap:1px; padding-left:12px; border-left:3px solid color-mix(in srgb, #3F8F4E 55%, transparent); }
+.farm-profile-facts dt{ font-size:11.5px; color:var(--ink-2); text-transform:uppercase; letter-spacing:.04em; }
+.farm-profile-facts dd{ margin:0; font-weight:600; font-size:14px; }
+:root[data-theme="dark"] .farm-profile-kicker{ color:#E9B949; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .farm-profile-kicker{ color:#E9B949; } }
+@media (max-width:720px){ .farm-profile{ grid-template-columns:minmax(0,1fr); gap:14px; } .farm-profile-body{ padding:0 4px 4px; } }
