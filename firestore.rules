@@ -37,10 +37,15 @@ service cloud.firestore {
       // add a new row to 'customers' in that same write — Supervisor
       // already had this key, but Farmhand didn't, so a Farmhand-recorded
       // sale with a new buyer name hit the identical rejection.
+      //
+      // 'feedStock', 'livestock', 'crops' and 'inventory' match pages these
+      // jobs can already open in the app (Feed's Restock button, Livestock,
+      // Crops, Breeding and Inventory — see sectionAllowed() in app.js).
+      // The vet gets 'inventory' for medicines and vaccines.
       return jobTitle == 'financial' ? ['expenses', 'incomes'] :
-             jobTitle == 'supervisor' ? ['flock', 'broodings', 'eggs', 'eggLosses', 'feedLogs', 'healthRecords', 'customers', 'expenses', 'incomes'] :
-             jobTitle == 'vet' ? ['healthRecords'] :
-             jobTitle == 'farmhand' ? ['flock', 'broodings', 'eggs', 'eggLosses', 'feedLogs', 'expenses', 'incomes', 'customers'] :
+             jobTitle == 'supervisor' ? ['flock', 'broodings', 'eggs', 'eggLosses', 'feedLogs', 'feedStock', 'healthRecords', 'customers', 'expenses', 'incomes', 'livestock', 'crops', 'inventory'] :
+             jobTitle == 'vet' ? ['healthRecords', 'inventory', 'livestock'] :
+             jobTitle == 'farmhand' ? ['flock', 'broodings', 'eggs', 'eggLosses', 'feedLogs', 'feedStock', 'expenses', 'incomes', 'customers', 'livestock', 'crops', 'inventory'] :
              [];
     }
     // 'settings' (currencies/categories/the About text) and 'version' (a
