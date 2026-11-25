@@ -1,46 +1,138 @@
-# Kenokip Farm - Poultry Keeping — installable app package
+<div align="center">
 
-This folder is your whole app: `index.html`, `manifest.webmanifest`, `sw.js`, and an `icons/` folder. Upload it as-is and it becomes a real, installable app in Chrome — no app store account, backend, or ongoing cost required.
+<img src="icons/logo-mark.png" alt="Kenokip Farm logo" width="96">
 
-## What you need to provide
+# Kenokip Farm
 
-Just a GitHub account — free. GitHub Pages hosts this for you at no cost, with HTTPS already handled. No Play Store account, no backend server, no database.
+**A farm-management app for poultry, livestock and crops — with M-Pesa built in.**
 
-## Deploy with GitHub Pages (no git/command line needed)
+Installable on any phone or computer · Works offline · Syncs across devices
 
-1. Go to [github.com/new](https://github.com/new) and create a new repository. Any name works (e.g. `kenokip-farm`); it must be **Public** for free GitHub Pages. Don't add a README/license — leave it empty.
-2. On the new repo's page, click **Add file → Upload files**.
-3. From this folder, drag in `index.html`, `manifest.webmanifest`, `sw.js`, and the whole `icons` folder (drag the folder itself — GitHub preserves the folder structure). Wait for all uploads to finish, then click **Commit changes**.
-4. Go to the repo's **Settings → Pages** (left sidebar, under "Code and automation").
-5. Under **Build and deployment → Source**, choose **Deploy from a branch**. Under **Branch**, choose `main` and folder `/ (root)`, then **Save**.
-6. GitHub shows a message "Your site is live at ..." after a minute or two (refresh the Pages settings page if it doesn't appear right away). The URL will look like:
-   `https://<your-github-username>.github.io/<repo-name>/`
-7. Open that URL in Chrome — the app loads from a sub-path, which it's built to handle correctly.
+</div>
 
-**Updating later:** to push a fix (like a new `index.html` after we make changes), go back to the repo, open the file, click the pencil (edit) icon, or use **Add file → Upload files** again to overwrite it — GitHub Pages redeploys automatically within a minute or two. If you update `index.html`, also bump the `CACHE_NAME` version string in `sw.js` (it's `kenokip-farm-v1` — change it to `v2`, etc.) so devices that already installed the app pick up the change instead of serving their offline copy.
+---
 
-## Alternative: your own domain/hosting
+## Contents
 
-If you get hosting again later, the same files work with any static host — just make sure HTTPS is on and upload `index.html`, `manifest.webmanifest`, `sw.js`, and `icons/` (keeping the folder structure) into your site's web root, or a sub-folder if you want it at a sub-path.
+- [What it does](#what-it-does)
+- [Screenshots](#screenshots)
+- [How it works](#how-it-works)
+- [Project structure](#project-structure)
+- [Getting started](#getting-started)
+- [Deploying](#deploying)
+- [Documentation](#documentation)
+- [License](#license)
 
-## How you (and anyone else) install it
+## What it does
 
-Once it's live at your URL over HTTPS:
+Kenokip Farm keeps a farm's day-to-day records, money and team in one place.
 
-**Android (Chrome):** Open the site → tap the **⋮** menu → **Add to Home screen** / **Install app**. It installs like a native app, gets its own icon, and opens full-screen without browser chrome.
+| Area | Highlights |
+| --- | --- |
+| 📊 **Dashboard** | Whole-farm overview: animals by type, eggs today, births, sales, deaths and mortality, feed stock, upcoming care, income vs expenses chart, recent activity |
+| 🐔 **Poultry** | Flock batches (hens, cocks, growers, chicks), Guinea Fowl, brooding, daily egg collection, batch profitability, poultry-house sensors |
+| 🐄 **Livestock** | Dairy cattle register with breeding, calving, calf feeding and milk log; goats & sheep, pigs, rabbits, horses, ducks, turkeys, geese, plus any animal type the farm adds |
+| 🩺 **Animal Health** | Vaccinations, deworming, treatments, vet visits and symptom notes for every animal, with Healthy / Needs attention / Overdue status and reminders |
+| 💞 **Breeding & Reproduction** | Expected births and hatches, mating records with gestation-based due dates, births added straight to the herd |
+| 🥚 **Production** | Eggs, milk and other yields with 30-day trend charts |
+| 🌾 **Feed & Inventory** | Feed use per animal group, stock on hand and days left; medicines, vaccines, equipment and supplies with low-stock and expiry alerts |
+| 🌱 **Crops** | Planting, harvest and sales |
+| 💰 **Money** | Income, expenses, profit and loss, reports, and a Finance portal with a live balance |
+| 📱 **M-Pesa** | STK Push deposits, automatic detection of Till and Paybill payments, payouts (B2C), account balance, transaction status and payment QR codes; bank payouts through IntaSend |
+| 👥 **Team** | Logins with roles and permissions, approvals, messages, signed receipts, birthdays and kudos |
+| 🔒 **Security** | Authenticator-app (TOTP) codes, fingerprint/Face unlock, PIN lockout and alerts |
+| 🔔 **Notifications** | Push notifications even when the app is closed, plus a weekly digest |
+| 🛒 **Installations** | A public order page and an admin page for selling and licensing the app to other farms |
 
-**Desktop (Chrome or Edge):** Open the site → look for the **install icon** (a small monitor-with-arrow) at the right end of the address bar → click **Install**. It becomes a normal-looking app in your Start Menu/Applications folder / Dock.
+The interface uses one nature-inspired palette (forest green, fresh green, golden yellow, warm cream, earth brown) with light and dark modes, and works on phones, tablets and desktops.
 
-**iPhone/iPad (Safari):** Open the site → tap the **Share** icon → **Add to Home Screen**. (iOS doesn't use Chrome's install prompt, but this produces the same result — a home-screen icon that opens full-screen.)
+## Screenshots
 
-## About your data
+<p align="center">
+  <img src="docs/screenshots/sector-chooser.png" alt="Choosing a sector: Poultry, Dairy Cattle, Goats & Sheep, Pigs, Crops" width="48%">
+  &nbsp;
+  <img src="docs/screenshots/dairy-cattle.png" alt="Dairy Cattle herd page with the sidebar menu" width="48%">
+</p>
 
-This build stores everything **only in the browser it's used in**, via the browser's local storage — there is no server, sync, or account. That means:
+## How it works
 
-- Data stays on the one device/browser where you enter it. Opening the same URL on a different phone or a different browser will start with an empty ledger.
-- Clearing that browser's site data/cache for this app will erase your records, so **use the Backup button in Settings regularly** — it downloads a `.json` file you can keep safe and restore from later (via the same Settings screen, on any device).
-- If down the line you want your data to follow you across devices automatically, that's a separate step (a small backend or sync service) — this package intentionally doesn't include one, since you asked to start with on-device storage only.
+```
+ ┌──────────────────────────────┐        ┌──────────────────────────────┐
+ │  Web app (PWA)               │        │  Firebase                    │
+ │  index.html · app.js         │ ─────▶ │  Auth · Firestore · Storage  │
+ │  styles.css · sw.js          │        │  Cloud Functions (functions/)│
+ │  Static hosting, offline     │        └──────────────┬───────────────┘
+ └──────────────────────────────┘                       │
+                                                        ▼
+                                  Safaricom Daraja (M-Pesa) · IntaSend
+                                  Push (FCM) · SMS / email · ESP32 sensors
+```
 
-## Looking ahead: Google Play Store
+- **Frontend:** plain HTML, CSS and JavaScript, with no build step. A service worker (`sw.js`) caches the app so it opens and records data with no signal.
+- **Data:** Firebase Authentication and Cloud Firestore, so records sync across every signed-in device. Access is controlled by `firestore.rules` and `storage.rules`.
+- **Backend:** Firebase Cloud Functions (Node.js 20) in `functions/` hold everything that needs a secret: M-Pesa, payouts, receipt signing, push, sensors and licensing.
 
-You originally asked about the Play Store too. This Chrome-installable app is actually the right foundation for that: Google's **Trusted Web Activity (TWA)** tooling can wrap an installable web app like this one into a real Play Store listing with only a small amount of extra packaging work, once this version is live at a permanent HTTPS URL. Worth doing as a later step if you decide you want a Play Store presence — just say the word and we can pick that up from here.
+## Project structure
+
+```
+.
+├── index.html             App entry page
+├── app.js                 App logic (all pages and features)
+├── styles.css             App styles
+├── farm.config.js         Farm name and database id (the one file to edit for a new farm)
+├── roles.js               Roles and permissions (front end)
+├── sw.js                  Service worker: offline cache and push
+├── manifest.webmanifest   PWA install settings
+├── order.html             Public "get this app for your farm" order page
+├── order-admin.html       Admin page for installation orders
+├── js/                    Third-party browser libraries (QR codes)
+├── icons/                 App icons and logo
+├── images/                Farm photos and banners
+├── videos/                Farm story video for the About page
+│
+├── functions/             Firebase Cloud Functions (backend) → see functions/README.md
+├── hosting-stub/          Placeholder page for Firebase Hosting (serves webhook URLs only)
+├── firebase.json          Firebase deploy settings
+├── firestore.rules        Database security rules
+├── storage.rules          File-storage security rules
+│
+└── docs/                  Setup and how-to guides → see docs/README.md
+```
+
+## Getting started
+
+You need [Node.js 20](https://nodejs.org/) and the Firebase CLI.
+
+```bash
+npm install -g firebase-tools
+firebase login
+
+# Install backend dependencies
+cd functions && npm install && cd ..
+```
+
+To run the web app locally, serve the root folder with any static server and open it in a browser:
+
+```bash
+npx serve .
+```
+
+The app connects to the Firebase project named in `.firebaserc`.
+
+## Deploying
+
+| Part | How |
+| --- | --- |
+| **Web app** | Upload the root folder to any static HTTPS host (GitHub Pages, Netlify, etc.). After changing `app.js`, `index.html` or `styles.css`, bump `CACHE_NAME` in `sw.js` so installed copies update. |
+| **Backend** | `firebase deploy --only functions,firestore,storage,hosting` (needs the Blaze plan). Redeploy `firestore` whenever `firestore.rules` changes. Secrets are set with `firebase functions:secrets:set NAME`. See [`docs/setup/SETUP-MPESA.md`](docs/setup/SETUP-MPESA.md). |
+| **A new farm** | Edit `farm.config.js` and follow [`docs/guides/HOW-TO-DEPLOY-FOR-A-NEW-FARM.md`](docs/guides/HOW-TO-DEPLOY-FOR-A-NEW-FARM.md). |
+
+**Installing the app:** open the site in Chrome or Edge and choose **Install app** (Android: ⋮ menu → *Add to Home screen*; iPhone: Safari → Share → *Add to Home Screen*).
+
+## Documentation
+
+All setup and how-to guides live in [`docs/`](docs/README.md), grouped by topic: M-Pesa and payments, security and team, notifications and sensors, and running the app for other farms.
+
+## License
+
+Proprietary. Copyright © 2026 Kenokip Farm. All rights reserved. See [LICENSE](LICENSE).
