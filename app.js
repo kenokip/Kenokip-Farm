@@ -118,7 +118,7 @@
   // separate from PICS (the illustrated icon set) since these are actual
   // photos, resized/compressed to base64 data URIs so the app stays a
   // single self-contained file.
-  var FARM_PHOTOS = {"portraitHalf":"images/portraitHalf.jpg","heroHalf":"images/heroHalf.jpg","icons":{"chicksIcon":"images/icons-chicksIcon.jpg","growersIcon":"images/icons-growersIcon.jpg","hensIcon":"images/icons-hensIcon.jpg","cocksIcon":"images/icons-cocksIcon.jpg","feedIcon":"images/icons-feedIcon.jpg","eggsIcon":"images/icons-eggsIcon.jpg","flockIcon":"images/icons-flockIcon.jpg"},"banners":{"chicks":"images/banners-chicks.jpg","growers":"images/banners-growers.jpg","hens":"images/banners-hens.jpg","cocks":"images/banners-cocks.jpg","eggs":"images/banners-eggs.jpg","feed":"images/banners-feed.jpg","cattle":"images/banners-cattle.svg"},"lightbox":{"chicksIcon":"images/lightbox-chicksIcon.jpg","growersIcon":"images/lightbox-growersIcon.jpg","hensIcon":"images/lightbox-hensIcon.jpg","cocksIcon":"images/lightbox-cocksIcon.jpg","feedIcon":"images/lightbox-feedIcon.jpg","eggsIcon":"images/lightbox-eggsIcon.jpg","flockIcon":"images/lightbox-flockIcon.jpg","chicksBanner":"images/banners-chicks.jpg","growersBanner":"images/banners-growers.jpg","hensBanner":"images/banners-hens.jpg","cocksBanner":"images/banners-cocks.jpg","eggsBanner":"images/banners-eggs.jpg","feedBanner":"images/banners-feed.jpg","portrait":"images/lightbox-portrait.jpg","flockHero":"images/lightbox-flockIcon.jpg","gallery1_pullets":"images/lightbox-gallery1_pullets.jpg","gallery2_feeding":"images/lightbox-gallery2_feeding.jpg","gallery3_rooster":"images/lightbox-gallery3_rooster.jpg","gallery4_chicks":"images/lightbox-gallery4_chicks.jpg","gallery5_mash":"images/lightbox-gallery5_mash.jpg","eggsBannerSrc":"images/lightbox-eggsIcon.jpg"},"gallery":[{"key":"portrait","src":"images/gallery-0-src.jpg","caption":"Enock Kiplangat \u2014 founder of Kenokip Farm"},{"key":"flockHero","src":"images/gallery-1-src.jpg","caption":"Part of the flock at Kenokip Farm"},{"key":"chicksIcon","src":"images/gallery-2-src.jpg","caption":"Day-old to 8-week chicks"},{"key":"growersIcon","src":"images/gallery-3-src.jpg","caption":"Growers, 9\u201320 weeks"},{"key":"hensIcon","src":"images/gallery-4-src.jpg","caption":"Laying hens"},{"key":"cocksIcon","src":"images/gallery-5-src.jpg","caption":"Cocks"},{"key":"gallery1_pullets","src":"images/gallery-6-src.jpg","caption":"Young pullets at the feeding trough"},{"key":"gallery2_feeding","src":"images/gallery-7-src.jpg","caption":"Hens feeding"},{"key":"gallery3_rooster","src":"images/gallery-8-src.jpg","caption":"A cock in the coop"},{"key":"gallery4_chicks","src":"images/gallery-9-src.jpg","caption":"Chicks in the brooder"},{"key":"feedIcon","src":"images/gallery-10-src.jpg","caption":"Layer feed, ready to serve"},{"key":"gallery5_mash","src":"images/gallery-11-src.jpg","caption":"Mixed feed, measured out"},{"key":"eggsIcon","src":"images/gallery-12-src.jpg","caption":"Eggs collected from the farm"},{"key":"eggsBannerSrc","src":"images/gallery-13-src.jpg","caption":"A fresh tray of eggs"}]};
+  var FARM_PHOTOS = {"portraitHalf":"images/portraitHalf.jpg","heroHalf":"images/heroHalf.jpg","icons":{"chicksIcon":"images/icons-chicksIcon.jpg","growersIcon":"images/icons-growersIcon.jpg","hensIcon":"images/icons-hensIcon.jpg","cocksIcon":"images/icons-cocksIcon.jpg","feedIcon":"images/icons-feedIcon.jpg","eggsIcon":"images/icons-eggsIcon.jpg","flockIcon":"images/icons-flockIcon.jpg","cattleIcon":"images/icons-cattleIcon.jpg","calfIcon":"images/icons-calfIcon.jpg"},"banners":{"chicks":"images/banners-chicks.jpg","growers":"images/banners-growers.jpg","hens":"images/banners-hens.jpg","cocks":"images/banners-cocks.jpg","eggs":"images/banners-eggs.jpg","feed":"images/banners-feed.jpg","cattle":"images/banners-cattle.jpg","calves":"images/banners-calves.jpg"},"lightbox":{"chicksIcon":"images/lightbox-chicksIcon.jpg","growersIcon":"images/lightbox-growersIcon.jpg","hensIcon":"images/lightbox-hensIcon.jpg","cocksIcon":"images/lightbox-cocksIcon.jpg","feedIcon":"images/lightbox-feedIcon.jpg","eggsIcon":"images/lightbox-eggsIcon.jpg","flockIcon":"images/lightbox-flockIcon.jpg","chicksBanner":"images/banners-chicks.jpg","growersBanner":"images/banners-growers.jpg","hensBanner":"images/banners-hens.jpg","cocksBanner":"images/banners-cocks.jpg","eggsBanner":"images/banners-eggs.jpg","feedBanner":"images/banners-feed.jpg","portrait":"images/lightbox-portrait.jpg","flockHero":"images/lightbox-flockIcon.jpg","gallery1_pullets":"images/lightbox-gallery1_pullets.jpg","gallery2_feeding":"images/lightbox-gallery2_feeding.jpg","gallery3_rooster":"images/lightbox-gallery3_rooster.jpg","gallery4_chicks":"images/lightbox-gallery4_chicks.jpg","gallery5_mash":"images/lightbox-gallery5_mash.jpg","eggsBannerSrc":"images/lightbox-eggsIcon.jpg","cattleBanner":"images/lightbox-cattle.jpg","calvesBanner":"images/lightbox-calves.jpg","cattleIcon":"images/lightbox-cattle.jpg","calfIcon":"images/lightbox-calves.jpg"},"gallery":[{"key":"portrait","src":"images/gallery-0-src.jpg","caption":"Enock Kiplangat \u2014 founder of Kenokip Farm"},{"key":"flockHero","src":"images/gallery-1-src.jpg","caption":"Part of the flock at Kenokip Farm"},{"key":"chicksIcon","src":"images/gallery-2-src.jpg","caption":"Day-old to 8-week chicks"},{"key":"growersIcon","src":"images/gallery-3-src.jpg","caption":"Growers, 9\u201320 weeks"},{"key":"hensIcon","src":"images/gallery-4-src.jpg","caption":"Laying hens"},{"key":"cocksIcon","src":"images/gallery-5-src.jpg","caption":"Cocks"},{"key":"gallery1_pullets","src":"images/gallery-6-src.jpg","caption":"Young pullets at the feeding trough"},{"key":"gallery2_feeding","src":"images/gallery-7-src.jpg","caption":"Hens feeding"},{"key":"gallery3_rooster","src":"images/gallery-8-src.jpg","caption":"A cock in the coop"},{"key":"gallery4_chicks","src":"images/gallery-9-src.jpg","caption":"Chicks in the brooder"},{"key":"feedIcon","src":"images/gallery-10-src.jpg","caption":"Layer feed, ready to serve"},{"key":"gallery5_mash","src":"images/gallery-11-src.jpg","caption":"Mixed feed, measured out"},{"key":"eggsIcon","src":"images/gallery-12-src.jpg","caption":"Eggs collected from the farm"},{"key":"eggsBannerSrc","src":"images/gallery-13-src.jpg","caption":"A fresh tray of eggs"}]};
 
   /* ============================= UTILS ============================= */
   function uid(p){ return p+'_'+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-5); }
@@ -1204,6 +1204,7 @@
         '<button type="button" class="rail-close" data-action="close-nav-drawer" aria-label="Close menu">'+NAV_ICONS.close+'</button>'+
       '</div>'+
       '<nav aria-label="Main"><ul class="nav-list">'+desktopHtml+'</ul></nav>'+
+      (currentUser ? kemAiRailCardHTML() : '')+
       '<div class="rail-foot">'+accountFootHTML()+'<div class="sync-chip" id="sync-chip">'+syncChipHTML()+'</div></div>';
 
     // ---- Phone bottom tab bar: Home, the animals, Health, Money and
@@ -1771,7 +1772,7 @@
       LIVESTOCK_SPECIES.forEach(function(sp){
         var count = speciesPopulation(sp.key);
         if(species.indexOf(sp.key)===-1 && !count) return;
-        rows.push({key:sp.key, label:sp.label, unit:sp.plural, icon:sp.icon, count:count, image:null, nav:'livestock', species:sp});
+        rows.push({key:sp.key, label:sp.label, unit:sp.plural, icon:sp.icon, count:count, image:sp.key==='cattle' ? 'images/cattle-hero.jpg' : null, nav:'livestock', species:sp});
       });
     }
     return rows;
@@ -3999,6 +4000,20 @@
   function cattleInCalfCount(){
     return cattleActive().filter(function(a){ var s = cattleOpenService(a.id); return s && s.status==='pregnant'; }).length;
   }
+  // The farm's own Holstein photos as a banner across the top of the
+  // cattle pages (tap to see the full photo), with a short live caption.
+  function cattlePhotoBanner(key, counts){
+    var cap = '';
+    if(key==='cattle' && counts){
+      var milking = cattleActive().filter(function(a){ return cattleIsMilking(a); }).length;
+      var inCalf = (cattleData().services||[]).filter(function(sv){ return sv.status==='pregnant'; }).length;
+      cap = '<strong>Dairy herd</strong><span>'+(counts.cow||0)+' cows'+(milking?' · '+milking+' in milk':'')+(inCalf?' · '+inCalf+' in calf':'')+'</span>';
+    } else if(key==='calves'){
+      cap = '<strong>Calf corner</strong><span>Bottle feeding, step-down &amp; weaning</span>';
+    }
+    return '<div class="cattle-photo-banner" data-action="view-photo:'+key+'Banner" title="View photo">'+
+      '<img src="'+FARM_PHOTOS.banners[key]+'" alt="">'+(cap?'<div class="cattle-photo-cap">'+cap+'</div>':'')+'</div>';
+  }
   function cattleRegisterPageHTML(){
     var d = cattleData();
     var filter = ui.cattleFilter || 'all';
@@ -4062,7 +4077,7 @@
     }).join('');
     var legacy = d.herd.length ? '<div class="hint" style="margin-top:10px">You also have '+livestockHerdTotal('cattle')+' cattle recorded as group counts from before — see "Herd (group counts)" in the Viewing list. Add them here one by one to track breeding.</div>' : '';
     var soon = cattleEvents().length ? '<div style="margin-top:14px">'+cattleEventsCardHTML(3)+'</div>' : '';
-    return '<div class="cattle-tiles">'+tiles+'</div>'+soon+
+    return cattlePhotoBanner('cattle', counts)+'<div class="cattle-tiles">'+tiles+'</div>'+soon+
       '<div class="card" style="margin-top:14px"><div class="card-title"><h3>🐄 Herd register</h3>'+
         '<button class="btn sm primary" data-action="open-cattle-animal" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'Add animal</button></div>'+
         '<div class="chip-row" style="margin-bottom:12px">'+chips+'</div>'+
@@ -4168,7 +4183,7 @@
           '<button class="icon-btn" data-action="edit-cattle-animal:'+a.id+'" '+(readOnly?'disabled':'')+' title="Edit">'+ICONS.edit+'</button>'+
         '</div></td></tr>';
     }).join('');
-    return '<div class="cattle-tiles two">'+
+    return cattlePhotoBanner('calves')+'<div class="cattle-tiles two">'+
         statTile('🍼 Milk for calves today', total+' L', '<div class="hint">Set this aside before selling</div>', 'orange')+
         statTile('🐮 Calves on the bottle', String(calves.filter(calfOnBottle).length), '', 'green')+
       '</div>'+
@@ -4673,7 +4688,8 @@
       '<button class="btn sm" data-action="edit-cattle-animal:'+a.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'Edit</button>'+
       (active ? '<button class="btn sm" data-action="open-cattle-exit:'+a.id+'" '+(readOnly?'disabled':'')+'>Sold / died</button>' : '');
     var header = '<div class="card cattle-profile-head">'+
-      '<div class="cattle-profile-top"><div class="cattle-avatar">'+CATTLE_CAT_EMOJI[cat]+'</div>'+
+      '<div class="cattle-profile-top">'+(cat==='bull' ? '<div class="cattle-avatar">'+CATTLE_CAT_EMOJI[cat]+'</div>' :
+        '<div class="cattle-avatar photo" data-action="view-photo:'+(cat==='calf'?'calfIcon':'cattleIcon')+'" title="View photo"><img src="'+FARM_PHOTOS.icons[cat==='calf'?'calfIcon':'cattleIcon']+'" alt=""><i>'+CATTLE_CAT_EMOJI[cat]+'</i></div>')+
         '<div style="min-width:0"><h2 style="margin:0">'+esc(a.name||a.tag||'Unnamed')+'</h2>'+
         '<div class="hint">'+cattleCategoryLabel(a)+(a.breed?' · '+esc(a.breed):'')+(a.dob?' · '+cattleAgeText(a):'')+'</div>'+
         '<div class="chip-row" style="margin-top:8px; gap:6px">'+pills.join('')+'</div></div></div>'+
@@ -5512,13 +5528,12 @@
   // on purpose and need to look the same in light and dark mode.
   // image: a real photo where one exists (Poultry, reusing the same
   // images/banners-hens.jpg used elsewhere in the app) — Cattle gets a
-  // drawn placeholder (images/banners-cattle.svg) since there's no real
-  // photo yet; see HOW-TO-SECTOR-SWITCHER.md. A species with neither gets
+  // real Holstein photo too (images/banners-cattle.jpg). A species with neither gets
   // no image at all — the band falls back to a plain colored panel with
   // its icon rather than showing a broken image.
   // Per-species theme colors for the livestock sectors below — fixed hex
   // pairs, same reasoning as the poultry/crops ones above. Only Dairy
-  // Cattle has artwork today (banners-cattle.svg); the rest intentionally
+  // Cattle has a photo today (banners-cattle.jpg); the rest intentionally
   // have no `image` and fall back to a plain colored band with their own
   // icon (sectorChooserHTML's "no-photo" style) rather than a broken image.
   // Swap in a real photo later the same one-line way described in
@@ -10171,7 +10186,7 @@
       var sp = activeLivestockSpecies();
       if(ui.sector && ui.sector.indexOf('livestock-')===0 && sp.length===1){
         var one = sp[0];
-        return topbarHTML(esc(one.label), one.key==='cattle' ? 'Herd register, breeding &amp; calving, calf feeding and the milk log' : 'Herd, sales &amp; losses'+(one.hasJournal?', and the '+esc(one.journalLabel.toLowerCase())+' log':''), '', one.icon);
+        return topbarHTML(esc(one.label), one.key==='cattle' ? 'Herd register, breeding &amp; calving, calf feeding and the milk log' : 'Herd, sales &amp; losses'+(one.hasJournal?', and the '+esc(one.journalLabel.toLowerCase())+' log':''), '', one.key==='cattle' ? '<img src="'+FARM_PHOTOS.icons.cattleIcon+'" alt="" class="clickable" data-action="view-photo:cattleIcon" title="View photo">' : one.icon);
       }
       return topbarHTML(t('title.livestock','Livestock'),t('sub.livestock','Cattle, goats, sheep, pigs, rabbits, ducks, turkeys and more'), addType, PICS.livestockNav);
     }, panel:livestockPanel },
@@ -10497,13 +10512,40 @@
       kemAiRenderMessages();
     }, 260);
   }
+  // Leafy illustration used on the sidebar card and in the chat header
+  // (drawn here, no image file to load).
+  var KEM_LEAVES_SVG = '<svg class="kem-leaves" viewBox="0 0 120 70" aria-hidden="true">'+
+    '<path d="M60 68C58 50 52 36 38 24" fill="none" stroke="#7FB86A" stroke-width="2" stroke-linecap="round"/>'+
+    '<path d="M38 24C22 22 10 30 6 44c14 4 28-2 32-20z" fill="#3F8F4E"/><path d="M38 24C26 30 16 36 6 44" fill="none" stroke="#9BD08A" stroke-width="1.2" opacity=".7"/>'+
+    '<path d="M60 68C62 46 70 30 86 18" fill="none" stroke="#7FB86A" stroke-width="2" stroke-linecap="round"/>'+
+    '<path d="M86 18c16-6 28 0 32 12-14 8-30 6-32-12z" fill="#57A85C"/><path d="M86 18c12 2 22 6 32 12" fill="none" stroke="#B9E3A6" stroke-width="1.2" opacity=".7"/>'+
+    '<path d="M60 68C60 44 60 26 60 8" fill="none" stroke="#8CC777" stroke-width="2.2" stroke-linecap="round"/>'+
+    '<path d="M60 8c-10 6-12 20-2 30 10-8 12-22 2-30z" fill="#6DBB63"/><path d="M60 10v26" stroke="#C6EBB3" stroke-width="1.2" opacity=".7"/>'+
+    '<path d="M50 50c-10-6-22-4-28 4 8 8 22 8 28-4z" fill="#2F7A44"/><path d="M70 46c10-8 24-6 30 2-8 9-24 9-30-2z" fill="#3E9150"/>'+
+    '<circle cx="98" cy="10" r="2.2" fill="#E9B949"/><circle cx="20" cy="18" r="1.6" fill="#E9B949" opacity=".8"/><circle cx="108" cy="44" r="1.4" fill="#E9B949" opacity=".7"/></svg>';
+  var KEM_SPARK_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" opacity=".8"/></svg>';
+  function kemAiRailCardHTML(){
+    return '<div class="kem-rail-card">'+KEM_LEAVES_SVG+
+      '<div class="kem-rail-title">'+KEM_SPARK_SVG+'Kem AI Assistant</div>'+
+      '<p>Hello! I\'m Kem, your farming assistant. Ask me about eggs, feed, your herd or how to do something in the app.</p>'+
+      '<button type="button" class="kem-rail-btn" data-action="kem-ai-open">'+KEM_SPARK_SVG+'Ask Kem AI</button></div>';
+  }
+  function kemAiOpenPanel(){
+    var root = document.getElementById('kem-ai-root');
+    var panel = document.getElementById('kemai-panel');
+    if(!root || root.hidden || !panel) return;
+    kemAiOpen = true; panel.hidden = false;
+    var input = document.getElementById('kemai-input');
+    if(input) input.focus();
+    kemAiScrollToBottom();
+  }
   function kemAiRenderShell(){
     var root = document.getElementById('kem-ai-root');
     if(!root) return;
     root.innerHTML =
-      '<button type="button" class="kemai-bubble" id="kemai-bubble" title="Kem AI Assistant" aria-label="Open Kem AI Assistant">'+ICONS.kemai+'</button>'+
+      '<button type="button" class="kemai-bubble" id="kemai-bubble" title="Kem AI Assistant" aria-label="Open Kem AI Assistant">'+KEM_SPARK_SVG+'</button>'+
       '<div class="kemai-panel" id="kemai-panel" hidden>'+
-        '<div class="kemai-head"><h3>'+ICONS.kemai+'Kem AI Assistant</h3><button type="button" class="icon-btn" id="kemai-close" title="Close">'+ICONS.close+'</button></div>'+
+        '<div class="kemai-head"><div class="kemai-avatar">'+KEM_LEAVES_SVG+'</div><div class="kemai-head-text"><h3>'+KEM_SPARK_SVG+'Kem AI Assistant</h3><span>Your farming assistant · answers from your own records</span></div><button type="button" class="icon-btn" id="kemai-close" title="Close">'+ICONS.close+'</button></div>'+
         '<div class="kemai-messages" id="kemai-messages"></div>'+
         '<div class="kemai-inputrow"><input type="text" id="kemai-input" placeholder="Ask about your farm, or how to do something…" autocomplete="off"><button type="button" class="kemai-send" id="kemai-send" title="Send">'+ICONS.send+'</button></div>'+
       '</div>';
@@ -10925,6 +10967,7 @@
       case 'nav': closeNavDrawer(); goToSection(a1); break;
       case 'open-nav-drawer': openNavDrawer(); break;
       case 'close-nav-drawer': closeNavDrawer(); break;
+      case 'kem-ai-open': closeNavDrawer(); kemAiOpenPanel(); break;
       case 'view-photo': openPhotoLightbox(a1); break;
       case 'close-photo-lightbox': closePhotoLightbox(); break;
       case 'push-app-update': pushAppUpdateToEveryone(); break;

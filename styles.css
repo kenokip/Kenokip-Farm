@@ -1365,3 +1365,57 @@
   /* Dashboard "Upcoming care & events": the confirmed pregnancies further out */
   .task-group-head{ margin-top:10px; padding:8px 0 2px; font-size:11.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); }
   .task[data-action]:hover .task-title{ text-decoration:underline; }
+
+/* ==================================================================
+   KEM AI — sidebar card + chat panel (glass green) and CATTLE PHOTOS
+   ================================================================== */
+.kem-rail-card{ position:relative; margin:4px 2px 0; padding:58px 14px 14px; border-radius:16px; overflow:hidden;
+  background:linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.14); box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 8px 22px rgba(0,0,0,.18);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); color:#E8F2EB; flex:none; }
+.kem-rail-card::before{ content:""; position:absolute; inset:-40% -30% auto auto; width:160px; height:160px; border-radius:50%;
+  background:radial-gradient(circle, rgba(233,185,73,.22), transparent 70%); pointer-events:none; }
+.kem-rail-card .kem-leaves{ position:absolute; top:6px; left:50%; transform:translateX(-50%); width:120px; height:58px; }
+.kem-rail-title{ display:flex; align-items:center; gap:6px; font-weight:700; font-size:14px; color:#fff; }
+.kem-rail-title svg{ width:15px; height:15px; color:var(--gold, #E9B949); }
+.kem-rail-card p{ margin:6px 0 12px; font-size:12px; line-height:1.45; color:rgba(232,242,235,.78); }
+.kem-rail-btn{ width:100%; display:flex; align-items:center; justify-content:center; gap:7px; padding:9px 12px; border:none; border-radius:11px;
+  background:linear-gradient(135deg, #E9B949, #D49A22); color:#173A27; font-weight:700; font-size:13px; font-family:inherit; cursor:pointer;
+  box-shadow:0 4px 12px rgba(233,185,73,.28); transition:transform .12s ease, filter .12s ease; }
+.kem-rail-btn:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+.kem-rail-btn svg{ width:15px; height:15px; }
+@media (max-height:700px) and (min-width:861px){ .kem-rail-card p{ display:none; } .kem-rail-card{ padding-top:50px; } }
+
+.kemai-bubble{ background:linear-gradient(145deg, var(--forest, #173A27), #2E7D4F); color:var(--gold, #E9B949);
+  box-shadow:0 0 0 3px rgba(233,185,73,.35), var(--shadow-lg, var(--shadow)); }
+.kemai-bubble:hover{ background:linear-gradient(145deg, #1E4A32, #379160); }
+.kemai-bubble svg{ width:24px; height:24px; }
+.kemai-panel{ border-radius:18px; border:1px solid color-mix(in srgb, var(--forest, #173A27) 22%, var(--border-soft)); }
+.kemai-head{ position:relative; overflow:hidden; align-items:center; gap:12px; padding:12px 12px 12px 14px; border-bottom:none;
+  background:linear-gradient(140deg, var(--forest, #173A27), #2B6B45); color:#fff; }
+.kemai-avatar{ width:46px; height:46px; flex:none; border-radius:14px; display:grid; place-items:end center; overflow:hidden;
+  background:linear-gradient(160deg, rgba(255,255,255,.18), rgba(255,255,255,.06)); border:1px solid rgba(255,255,255,.18); }
+.kemai-avatar .kem-leaves{ width:58px; height:36px; margin-bottom:-2px; }
+.kemai-head-text{ flex:1; min-width:0; }
+.kemai-head h3{ color:#fff; }
+.kemai-head h3 svg{ width:15px; height:15px; color:var(--gold, #E9B949); }
+.kemai-head-text span{ display:block; margin-top:3px; font-size:11.5px; color:rgba(232,242,235,.75); }
+.kemai-head .icon-btn{ color:#fff; background:rgba(255,255,255,.1); border-color:transparent; }
+.kemai-head .icon-btn:hover{ background:rgba(255,255,255,.2); }
+.kemai-msg.user{ background:linear-gradient(135deg, var(--forest, #173A27), #2B6B45); color:#fff; }
+.kemai-msg.assistant{ background:color-mix(in srgb, #3F8F4E 10%, var(--surface-2)); }
+.kemai-chip:hover{ background:color-mix(in srgb, #E9B949 22%, var(--surface-2)); color:var(--ink); border-color:#E9B949; }
+.kemai-send{ background:linear-gradient(135deg, #E9B949, #D49A22); color:#173A27; }
+
+.cattle-photo-banner{ position:relative; border-radius:16px; overflow:hidden; margin-bottom:16px; cursor:zoom-in; aspect-ratio:1100/344; max-height:300px; width:100%;
+  box-shadow:0 6px 18px rgba(0,0,0,.08); }
+.cattle-photo-banner img{ display:block; width:100%; height:100%; object-fit:cover; }
+.cattle-photo-cap{ position:absolute; left:0; bottom:0; right:0; padding:30px 18px 14px; display:flex; flex-direction:column; gap:2px;
+  background:linear-gradient(to top, rgba(14,40,26,.82), rgba(14,40,26,0)); color:#fff; }
+.cattle-photo-cap strong{ font-size:17px; letter-spacing:-.01em; }
+.cattle-photo-cap span{ font-size:12.5px; color:rgba(255,255,255,.85); }
+@media (max-width:640px){ .cattle-photo-banner{ aspect-ratio:16/7; } .cattle-photo-cap strong{ font-size:15px; } }
+.cattle-avatar.photo{ position:relative; padding:0; overflow:visible; background:none; cursor:zoom-in; }
+.cattle-avatar.photo img{ width:100%; height:100%; object-fit:cover; border-radius:18px; display:block; box-shadow:0 0 0 3px var(--surface), 0 0 0 5px color-mix(in srgb, #3F8F4E 45%, transparent); }
+.cattle-avatar.photo i{ position:absolute; right:-6px; bottom:-6px; font-style:normal; font-size:16px; width:26px; height:26px; display:grid; place-items:center; border-radius:50%;
+  background:var(--surface); box-shadow:0 1px 4px rgba(0,0,0,.18); }
