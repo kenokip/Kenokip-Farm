@@ -8823,15 +8823,31 @@
     var changed = messages.filter(function(m){ return ids.indexOf(m.id)!==-1 && (m.readBy||[]).indexOf(uid)===-1; });
     changed.forEach(function(m){ m.readBy = (m.readBy||[]).concat([uid]); });
     render();
+    // Saved straight to the message (the database rules let each person add
+    // only their own name to its "read by" list), with the markMessageRead
+    // function as a fallback — so marking read works for every team
+    // member, not just the administrator.
     var call = firebase.functions().httpsCallable('markMessageRead');
-    Promise.all(changed.map(function(m){
-      return call({id:m.id}).then(function(){ return true; }).catch(function(){
-        m.readBy = (m.readBy||[]).filter(function(x){ return x!==uid; });
-        return false;
+    var lastErr = null;
+    function saveOne(m){
+      var direct = (db && firebase.firestore && firebase.firestore.FieldValue)
+        ? db.collection('messages').doc(m.id).update({ readBy: firebase.firestore.FieldValue.arrayUnion(uid) })
+        : Promise.reject(new Error('offline'));
+      return direct.then(function(){ return true; }).catch(function(e1){
+        return call({id:m.id}).then(function(){ return true; }).catch(function(e2){
+          lastErr = e2 || e1;
+          m.readBy = (m.readBy||[]).filter(function(x){ return x!==uid; });
+          return false;
+        });
       });
-    })).then(function(results){
+    }
+    Promise.all(changed.map(saveOne)).then(function(results){
       var failed = results.filter(function(ok){ return !ok; }).length;
-      if(failed){ render(); toast(failed===1 ? 'One message couldn\'t be marked as read — try again.' : failed+' messages couldn\'t be marked as read — try again.'); }
+      if(failed){
+        render();
+        var why = lastErr ? ' ('+String(lastErr.code||'').replace('functions/','')+(lastErr.message?': '+lastErr.message:'')+')' : '';
+        toast((failed===1 ? 'One message couldn\'t be marked as read' : failed+' messages couldn\'t be marked as read')+why);
+      }
       else if(changed.length>1){ toast('✅ All '+changed.length+' messages marked as read.'); }
     });
   }

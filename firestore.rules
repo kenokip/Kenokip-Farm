@@ -119,7 +119,21 @@ service cloud.firestore {
          resource.data.fromUid == request.auth.uid ||
          resource.data.toUid == request.auth.uid ||
          resource.data.toUid == 'all');
-      allow write: if false;
+      // "Mark as read": anyone the message is addressed to (or who sent it,
+      // or the administrator / co-administrator) may add THEIR OWN uid to its
+      // readBy list — nothing else in the message can change, and nobody can
+      // add or remove anyone else.
+      allow update: if request.auth != null &&
+        (request.auth.token.role == 'administrator' ||
+         request.auth.token.role == 'coadmin' ||
+         resource.data.fromUid == request.auth.uid ||
+         resource.data.toUid == request.auth.uid ||
+         resource.data.toUid == 'all') &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) &&
+        request.resource.data.readBy is list &&
+        request.resource.data.readBy.toSet().difference(resource.data.get('readBy', []).toSet()).hasOnly([request.auth.uid]) &&
+        resource.data.get('readBy', []).toSet().difference(request.resource.data.readBy.toSet()).size() == 0;
+      allow create, delete: if false;
     }
 
     // Internal bookkeeping for the one-time admin bootstrap. No client ever
