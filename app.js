@@ -118,7 +118,19 @@
   // separate from PICS (the illustrated icon set) since these are actual
   // photos, resized/compressed to base64 data URIs so the app stays a
   // single self-contained file.
-  var FARM_PHOTOS = {"portraitHalf":"images/portraitHalf.jpg","heroHalf":"images/heroHalf.jpg","icons":{"chicksIcon":"images/icons-chicksIcon.jpg","growersIcon":"images/icons-growersIcon.jpg","hensIcon":"images/icons-hensIcon.jpg","cocksIcon":"images/icons-cocksIcon.jpg","feedIcon":"images/icons-feedIcon.jpg","eggsIcon":"images/icons-eggsIcon.jpg","flockIcon":"images/icons-flockIcon.jpg","cattleIcon":"images/icons-cattleIcon.jpg","calfIcon":"images/icons-calfIcon.jpg"},"banners":{"chicks":"images/banners-chicks.jpg","growers":"images/banners-growers.jpg","hens":"images/banners-hens.jpg","cocks":"images/banners-cocks.jpg","eggs":"images/banners-eggs.jpg","feed":"images/banners-feed.jpg","cattle":"images/banners-cattle.jpg","calves":"images/banners-calves.jpg","poultryFarm":"images/poultry-farm-wide.jpg","farmhouse":"images/farmhouse-wide.jpg"},"lightbox":{"chicksIcon":"images/lightbox-chicksIcon.jpg","growersIcon":"images/lightbox-growersIcon.jpg","hensIcon":"images/lightbox-hensIcon.jpg","cocksIcon":"images/lightbox-cocksIcon.jpg","feedIcon":"images/lightbox-feedIcon.jpg","eggsIcon":"images/lightbox-eggsIcon.jpg","flockIcon":"images/lightbox-flockIcon.jpg","chicksBanner":"images/banners-chicks.jpg","growersBanner":"images/banners-growers.jpg","hensBanner":"images/banners-hens.jpg","cocksBanner":"images/banners-cocks.jpg","eggsBanner":"images/banners-eggs.jpg","feedBanner":"images/banners-feed.jpg","portrait":"images/lightbox-portrait.jpg","flockHero":"images/lightbox-flockIcon.jpg","gallery1_pullets":"images/lightbox-gallery1_pullets.jpg","gallery2_feeding":"images/lightbox-gallery2_feeding.jpg","gallery3_rooster":"images/lightbox-gallery3_rooster.jpg","gallery4_chicks":"images/lightbox-gallery4_chicks.jpg","gallery5_mash":"images/lightbox-gallery5_mash.jpg","eggsBannerSrc":"images/lightbox-eggsIcon.jpg","cattleBanner":"images/lightbox-cattle.jpg","calvesBanner":"images/lightbox-calves.jpg","cattleIcon":"images/lightbox-cattle.jpg","calfIcon":"images/lightbox-calves.jpg","poultryFarm":"images/poultry-farm.jpg","farmhouse":"images/farmhouse.jpg"},"gallery":[{"key":"portrait","src":"images/gallery-0-src.jpg","caption":"Enock Kiplangat \u2014 founder of Kenokip Farm"},{"key":"farmhouse","src":"images/farmhouse.jpg","caption":"The farmhouse at Kenokip Farm, Marumbasi"},{"key":"poultryFarm","src":"images/poultry-farm.jpg","caption":"Kenokip Golden Eggs poultry house"},{"key":"flockHero","src":"images/gallery-1-src.jpg","caption":"Part of the flock at Kenokip Farm"},{"key":"chicksIcon","src":"images/gallery-2-src.jpg","caption":"Day-old to 8-week chicks"},{"key":"growersIcon","src":"images/gallery-3-src.jpg","caption":"Growers, 9\u201320 weeks"},{"key":"hensIcon","src":"images/gallery-4-src.jpg","caption":"Laying hens"},{"key":"cocksIcon","src":"images/gallery-5-src.jpg","caption":"Cocks"},{"key":"gallery1_pullets","src":"images/gallery-6-src.jpg","caption":"Young pullets at the feeding trough"},{"key":"gallery2_feeding","src":"images/gallery-7-src.jpg","caption":"Hens feeding"},{"key":"gallery3_rooster","src":"images/gallery-8-src.jpg","caption":"A cock in the coop"},{"key":"gallery4_chicks","src":"images/gallery-9-src.jpg","caption":"Chicks in the brooder"},{"key":"feedIcon","src":"images/gallery-10-src.jpg","caption":"Layer feed, ready to serve"},{"key":"gallery5_mash","src":"images/gallery-11-src.jpg","caption":"Mixed feed, measured out"},{"key":"eggsIcon","src":"images/gallery-12-src.jpg","caption":"Eggs collected from the farm"},{"key":"eggsBannerSrc","src":"images/gallery-13-src.jpg","caption":"A fresh tray of eggs"}]};
+  var FARM_PHOTOS = {"portraitHalf":"images/portraitHalf.jpg","heroHalf":"images/heroHalf.jpg","icons":{"chicksIcon":"images/icons-chicksIcon.jpg","growersIcon":"images/icons-growersIcon.jpg","hensIcon":"images/icons-hensIcon.jpg","cocksIcon":"images/icons-cocksIcon.jpg","feedIcon":"images/icons-feedIcon.jpg","eggsIcon":"images/icons-eggsIcon.jpg","flockIcon":"images/icons-flockIcon.jpg","cattleIcon":"images/icons-cattleIcon.jpg","calfIcon":"images/icons-calfIcon.jpg","horseIcon":"images/icons-horseIcon.jpg"},"banners":{"chicks":"images/banners-chicks.jpg","growers":"images/banners-growers.jpg","hens":"images/banners-hens.jpg","cocks":"images/banners-cocks.jpg","eggs":"images/banners-eggs.jpg","feed":"images/banners-feed.jpg","cattle":"images/banners-cattle.jpg","calves":"images/banners-calves.jpg","poultryFarm":"images/poultry-farm-wide.jpg","farmhouse":"images/farmhouse-wide.jpg","horses":"images/banners-horses.jpg","foals":"images/banners-foals.jpg"},"lightbox":{"chicksIcon":"images/lightbox-chicksIcon.jpg","growersIcon":"images/lightbox-growersIcon.jpg","hensIcon":"images/lightbox-hensIcon.jpg","cocksIcon":"images/lightbox-cocksIcon.jpg","feedIcon":"images/lightbox-feedIcon.jpg","eggsIcon":"images/lightbox-eggsIcon.jpg","flockIcon":"images/lightbox-flockIcon.jpg","chicksBanner":"images/banners-chicks.jpg","growersBanner":"images/banners-growers.jpg","hensBanner":"images/banners-hens.jpg","cocksBanner":"images/banners-cocks.jpg","eggsBanner":"images/banners-eggs.jpg","feedBanner":"images/banners-feed.jpg","portrait":"images/lightbox-portrait.jpg","flockHero":"images/lightbox-flockIcon.jpg","gallery1_pullets":"images/lightbox-gallery1_pullets.jpg","gallery2_feeding":"images/lightbox-gallery2_feeding.jpg","gallery3_rooster":"images/lightbox-gallery3_rooster.jpg","gallery4_chicks":"images/lightbox-gallery4_chicks.jpg","gallery5_mash":"images/lightbox-gallery5_mash.jpg","eggsBannerSrc":"images/lightbox-eggsIcon.jpg","cattleBanner":"images/lightbox-cattle.jpg","calvesBanner":"images/lightbox-calves.jpg","cattleIcon":"images/lightbox-cattle.jpg","calfIcon":"images/lightbox-calves.jpg","poultryFarm":"images/poultry-farm.jpg","farmhouse":"images/farmhouse.jpg","horseIcon":"images/lightbox-horseIcon.jpg","horsesBanner":"images/lightbox-horses.jpg","foalsBanner":"images/lightbox-foals.jpg"},"gallery":[{"key":"portrait","src":"images/gallery-0-src.jpg","caption":"Enock Kiplangat \u2014 founder of Kenokip Farm"},{"key":"farmhouse","src":"images/farmhouse.jpg","caption":"The farmhouse at Kenokip Farm, Marumbasi"},{"key":"poultryFarm","src":"images/poultry-farm.jpg","caption":"Kenokip Golden Eggs poultry house"},{"key":"horsesBanner","src":"images/lightbox-horses.jpg","caption":"A mare and her foal in the paddock"},{"key":"foalsBanner","src":"images/lightbox-foals.jpg","caption":"A young foal by the paddock fence"},{"key":"flockHero","src":"images/gallery-1-src.jpg","caption":"Part of the flock at Kenokip Farm"},{"key":"chicksIcon","src":"images/gallery-2-src.jpg","caption":"Day-old to 8-week chicks"},{"key":"growersIcon","src":"images/gallery-3-src.jpg","caption":"Growers, 9\u201320 weeks"},{"key":"hensIcon","src":"images/gallery-4-src.jpg","caption":"Laying hens"},{"key":"cocksIcon","src":"images/gallery-5-src.jpg","caption":"Cocks"},{"key":"gallery1_pullets","src":"images/gallery-6-src.jpg","caption":"Young pullets at the feeding trough"},{"key":"gallery2_feeding","src":"images/gallery-7-src.jpg","caption":"Hens feeding"},{"key":"gallery3_rooster","src":"images/gallery-8-src.jpg","caption":"A cock in the coop"},{"key":"gallery4_chicks","src":"images/gallery-9-src.jpg","caption":"Chicks in the brooder"},{"key":"feedIcon","src":"images/gallery-10-src.jpg","caption":"Layer feed, ready to serve"},{"key":"gallery5_mash","src":"images/gallery-11-src.jpg","caption":"Mixed feed, measured out"},{"key":"eggsIcon","src":"images/gallery-12-src.jpg","caption":"Eggs collected from the farm"},{"key":"eggsBannerSrc","src":"images/gallery-13-src.jpg","caption":"A fresh tray of eggs"}]};
+  // Real photos for the livestock species that have them: the dashboard
+  // tile (hero), sector chooser + herd page banner, a second banner for the
+  // young stock page, and the round page-heading icon (a FARM_PHOTOS.icons
+  // key). Species without an entry keep their drawn icon.
+  var SPECIES_PHOTOS = {
+    cattle: { hero:'images/cattle-hero.jpg', banner:'cattle', young:'calves', icon:'cattleIcon', alt:'Holstein cow and calf at the farm' },
+    horses: { hero:'images/horses-hero.jpg', banner:'horses', young:'foals', icon:'horseIcon', alt:'A bay mare and her foal in the paddock at Kenokip Farm' }
+  };
+  function speciesPhotoIcon(key){
+    var p = SPECIES_PHOTOS[key];
+    return p ? '<img src="'+FARM_PHOTOS.icons[p.icon]+'" alt="" class="clickable" data-action="view-photo:'+p.icon+'" title="View photo">' : '';
+  }
 
   /* ============================= UTILS ============================= */
   function uid(p){ return p+'_'+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-5); }
@@ -1774,7 +1786,7 @@
       LIVESTOCK_SPECIES.forEach(function(sp){
         var count = speciesPopulation(sp.key);
         if(species.indexOf(sp.key)===-1 && !count) return;
-        rows.push({key:sp.key, label:sp.label, unit:sp.plural, icon:sp.icon, count:count, image:sp.key==='cattle' ? 'images/cattle-hero.jpg' : null, nav:'livestock', species:sp});
+        rows.push({key:sp.key, label:sp.label, unit:sp.plural, icon:sp.icon, count:count, image:SPECIES_PHOTOS[sp.key] ? SPECIES_PHOTOS[sp.key].hero : null, nav:'livestock', species:sp});
       });
     }
     return rows;
@@ -3605,7 +3617,7 @@
         if(inCalf) extra += '<div class="hint">'+inCalf+' in calf</div>';
       }
       return '<button type="button" class="stat-tile" style="text-align:left; cursor:pointer; border:none; width:100%" data-action="view-select:livestock:'+sp.key+(sp.key==='cattle'?'-register':'-herd')+'">'+
-        '<div class="pic-badge">'+sp.icon+'</div>'+
+        '<div class="pic-badge">'+(SPECIES_PHOTOS[sp.key] ? '<img src="'+FARM_PHOTOS.icons[SPECIES_PHOTOS[sp.key].icon]+'" alt="">' : sp.icon)+'</div>'+
         '<div class="stat-value num">'+total.toLocaleString()+'</div>'+
         '<div class="hint">'+sp.label+' on the farm now</div>'+extra+
       '</button>';
@@ -3629,7 +3641,11 @@
         '<button class="icon-btn" data-action="delete-livestock-herd:'+sp.key+':'+b.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.trash+'</button>'+
       '</div></td></tr>';
     }).join('');
-    return '<div class="banner">'+total.toLocaleString()+' '+(total===1?sp.singular:sp.plural)+' on the farm today.</div>'+
+    var ph = SPECIES_PHOTOS[sp.key];
+    var head = ph ? farmPhotoBannerHTML(FARM_PHOTOS.banners[ph.banner], ph.banner+'Banner', ph.alt,
+        '<strong>'+esc(sp.label)+'</strong><span>'+total.toLocaleString()+' '+(total===1?sp.singular:sp.plural)+' on the farm today</span>', '1100/429', 'center 20%')
+      : '<div class="banner">'+total.toLocaleString()+' '+(total===1?sp.singular:sp.plural)+' on the farm today.</div>';
+    return head+
       '<div class="card"><div class="card-title"><h3>'+sp.label+' herd</h3><div style="display:flex; align-items:center; gap:8px"><span class="hint">'+batches.length+' batch'+(batches.length===1?'':'es')+'</span>'+
       '<button class="btn sm primary" data-action="open-add-livestock-herd:'+sp.key+'" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'Add '+sp.plural+'</button></div></div>'+
       '<div class="table-wrap">'+
@@ -3678,7 +3694,9 @@
         '<button class="icon-btn" data-action="delete-livestock-removal:'+sp.key+':'+x.batchId+':'+x.id+'" '+(readOnly?'disabled':'')+'>'+ICONS.trash+'</button>'+
       '</div></td></tr>';
     }).join('');
-    return '<div class="card"><div class="card-title"><h3>'+sp.label+' — sold, died &amp; culled</h3><span class="hint">'+entries.length+' entries</span></div>'+
+    var yp = sp.key==='horses' && SPECIES_PHOTOS.horses;
+    return (yp ? farmPhotoBannerHTML(FARM_PHOTOS.banners[yp.young], yp.young+'Banner', 'A young foal by the paddock fence', '<strong>Sales &amp; losses</strong><span>Horses and foals that have left the farm</span>', '1100/429', 'center 15%') : '')+
+      '<div class="card"><div class="card-title"><h3>'+sp.label+' — sold, died &amp; culled</h3><span class="hint">'+entries.length+' entries</span></div>'+
       '<div class="table-wrap">'+
       (entries.length ? '<table><thead><tr><th>Date</th><th class="num">Count</th><th>Reason</th><th>Batch</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty">'+ICONS.empty+'<div>No entries yet — use "Sale / loss" on a herd batch in the Herd page.</div></div>')+
@@ -5561,7 +5579,7 @@
   // on purpose and need to look the same in light and dark mode.
   // image: a real photo where one exists (Poultry, reusing the same
   // images/banners-hens.jpg used elsewhere in the app) — Cattle gets a
-  // real Holstein photo too (images/banners-cattle.jpg). A species with neither gets
+  // real photo too (see SPECIES_PHOTOS). A species with neither gets
   // no image at all — the band falls back to a plain colored panel with
   // its icon rather than showing a broken image.
   // Per-species theme colors for the livestock sectors below — fixed hex
@@ -5597,7 +5615,7 @@
       LIVESTOCK_SPECIES.forEach(function(sp){
         if(species.indexOf(sp.key)===-1) return;
         var theme = LIVESTOCK_SECTOR_THEME[sp.key] || LIVESTOCK_SECTOR_THEME.cattle;
-        var image = sp.key==='cattle' ? FARM_PHOTOS.banners.cattle : null;
+        var image = SPECIES_PHOTOS[sp.key] ? FARM_PHOTOS.banners[SPECIES_PHOTOS[sp.key].banner] : null;
         list.push({ key:'livestock-'+sp.key, label:sp.label,
           sub: sp.key==='cattle' ? 'Cows, heifers, calves &amp; bulls · breeding, calving &amp; calf feeding · milk log' : 'Herd, sales &amp; losses'+(sp.hasJournal ? ', and a '+esc(sp.journalLabel.toLowerCase())+' log' : ''),
           icon:sp.icon, landing:'livestock', species:sp.key, image:image, theme:theme });
@@ -10219,7 +10237,7 @@
       var sp = activeLivestockSpecies();
       if(ui.sector && ui.sector.indexOf('livestock-')===0 && sp.length===1){
         var one = sp[0];
-        return topbarHTML(esc(one.label), one.key==='cattle' ? 'Herd register, breeding &amp; calving, calf feeding and the milk log' : 'Herd, sales &amp; losses'+(one.hasJournal?', and the '+esc(one.journalLabel.toLowerCase())+' log':''), '', one.key==='cattle' ? '<img src="'+FARM_PHOTOS.icons.cattleIcon+'" alt="" class="clickable" data-action="view-photo:cattleIcon" title="View photo">' : one.icon);
+        return topbarHTML(esc(one.label), one.key==='cattle' ? 'Herd register, breeding &amp; calving, calf feeding and the milk log' : 'Herd, sales &amp; losses'+(one.hasJournal?', and the '+esc(one.journalLabel.toLowerCase())+' log':''), '', SPECIES_PHOTOS[one.key] ? speciesPhotoIcon(one.key) : one.icon);
       }
       return topbarHTML(t('title.livestock','Livestock'),t('sub.livestock','Cattle, goats, sheep, pigs, rabbits, ducks, turkeys and more'), addType, PICS.livestockNav);
     }, panel:livestockPanel },
