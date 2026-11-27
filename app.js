@@ -3423,7 +3423,213 @@
       '<div class="table-wrap">'+
       (entries.length ? '<table><thead><tr><th>Date</th><th>Feed type</th><th>Fed to</th><th class="num">Quantity</th><th class="num">Cost</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty">'+ICONS.empty+'<div>No feed logged yet — track what you buy and use to see feed-per-egg, and spot waste early.</div></div>')+
-      '</div>'+pagerHtml('feed-log', feedPage.pageCount, feedPage.page)+'</div>';
+      '</div>'+pagerHtml('feed-log', feedPage.pageCount, feedPage.page)+'</div>'+
+    (sectionAllowed('flock') || state.flock.length ? feedPlannerCardHTML()+feedPlannedCardHTML() : '');
+  }
+  /* ============================= FEED PLANNER =============================
+     How much feed the poultry will need, month by month, until a date the
+     farmer picks: every live flock batch (aged from its birth date) plus any
+     chicks the farm plans to buy. Daily feed per bird follows KALRO's table
+     for layer-type and improved kienyeji chickens (12–15 g in week 1, rising
+     to 120–130 g for adults), interpolated by age; feed type follows age
+     (chick mash to 8 weeks, growers mash to 20 weeks, then layers mash).
+     Guinea fowl are counted at 80% of a chicken. Plans and bag prices live in
+     state.feedPlan (prices in KES per bag, like every stored amount). */
+  var FEED_CURVE = [[0,12],[1,15],[2,21],[3,25],[4,30],[6,40],[7,45],[8,50],[15,75],[16,80],[27,120],[28,125]];
+  var FEED_PHASES = [['chick','Chick mash','var(--chart-3)'],['grower','Growers mash','var(--chart-1)'],['layer','Layers mash','var(--chart-2)']];
+  function feedGramsPerDay(ageDays, species){
+    var w = ageDays/7, g = 125;
+    if(w<=0) g = FEED_CURVE[0][1];
+    else if(w<28){
+      for(var i=1;i<FEED_CURVE.length;i++){
+        if(w<=FEED_CURVE[i][0]){ var a=FEED_CURVE[i-1], b=FEED_CURVE[i]; g = a[1]+(b[1]-a[1])*(w-a[0])/(b[0]-a[0]); break; }
+      }
+    }
+    return species==='guineafowl' ? g*0.8 : g;
+  }
+  function feedPhaseOf(ageDays){ return ageDays<56 ? 'chick' : ageDays<140 ? 'grower' : 'layer'; }
+  function feedPlanData(){
+    var p = state.feedPlan || {};
+    return {
+      planned: Array.isArray(p.planned) ? p.planned : [],
+      prices: Object.assign({chick:3300, grower:4800, layer:4000}, p.prices||{}),
+      bagKg: Number(p.bagKg)>0 ? Number(p.bagKg) : 70,
+      waste: p.waste!=null ? Number(p.waste) : 10
+    };
+  }
+  function feedPlanDefaultUntil(){
+    var d = new Date(); d.setDate(1); d.setMonth(d.getMonth()+6); d.setDate(0);  // end of the 5th month ahead
+    return toISO(d);
+  }
+  function feedPlanUntilOptions(cur){
+    var out = [], d = new Date();
+    for(var i=1;i<=12;i++){
+      var e = new Date(d.getFullYear(), d.getMonth()+i+1, 0);
+      var iso = toISO(e);
+      out.push('<option value="'+iso+'" '+(iso===cur?'selected':'')+'>End of '+fmtDate(e,{month:'long', year:'numeric'})+'</option>');
+    }
+    return out.join('');
+  }
+  function feedPlanCompute(untilISO){
+    var fp = feedPlanData();
+    var mult = 1 + Math.max(0, fp.waste)/100;
+    var today = parseISO(todayISO()), end = parseISO(untilISO);
+    var groups = [];
+    (state.flock||[]).forEach(function(b){
+      var n = currentCount(b);
+      if(n>0 && b.birthDate) groups.push({ name:(batchSpecies(b)==='guineafowl'?'Guinea fowl':'Chickens')+' added '+dShort(b.dateAdded), birth:parseISO(b.birthDate), start:null, count:n, species:batchSpecies(b) });
+    });
+    fp.planned.forEach(function(p){
+      if(!p.date || !(p.count>0)) return;
+      var arrive = parseISO(p.date);
+      groups.push({ name:p.label||'Planned chicks', planned:true, birth:addDays(arrive, -(Number(p.ageDays)||0)), start:arrive, count:Number(p.count), species:'hen' });
+    });
+    var months = [], byKey = {}, cum = 0, stock = feedStockInfo(), runOut = null;
+    for(var d = new Date(today); d <= end; d = addDays(d,1)){
+      var key = toISO(d).slice(0,7);
+      var m = byKey[key];
+      if(!m){ m = byKey[key] = {key:key, chick:0, grower:0, layer:0, birds:0, from:toISO(d)}; months.push(m); }
+      var dayKg = 0, birds = 0;
+      groups.forEach(function(g){
+        if(g.start && d < g.start) return;
+        var age = Math.round((d - g.birth)/864e5);
+        if(age < 0) return;
+        var kg = feedGramsPerDay(age, g.species) * g.count / 1000 * mult;
+        m[feedPhaseOf(age)] += kg; dayKg += kg; birds += g.count;
+      });
+      m.birds = birds;
+      cum += dayKg;
+      if(runOut===null && stock.started && cum > stock.onHandKg) runOut = toISO(d);
+    }
+    var tot = {chick:0, grower:0, layer:0};
+    months.forEach(function(m){
+      m.total = m.chick+m.grower+m.layer;
+      m.cost = (m.chick*fp.prices.chick + m.grower*fp.prices.grower + m.layer*fp.prices.layer) / fp.bagKg;
+      tot.chick += m.chick; tot.grower += m.grower; tot.layer += m.layer;
+    });
+    tot.total = tot.chick+tot.grower+tot.layer;
+    tot.cost = (tot.chick*fp.prices.chick + tot.grower*fp.prices.grower + tot.layer*fp.prices.layer) / fp.bagKg;
+    // Dates to change feed, or to have chick mash ready, inside the window.
+    var reminders = [];
+    var todayISOv = todayISO();
+    groups.forEach(function(g){
+      [[56,'switch to growers mash'],[140,'switch to layers mash once the first eggs appear']].forEach(function(t){
+        var on = toISO(addDays(g.birth, t[0]));
+        if(on >= todayISOv && on <= untilISO) reminders.push({date:on, text:esc(g.name)+' ('+g.count+') — '+t[1]});
+      });
+      if(g.planned && toISO(g.start) >= todayISOv && toISO(g.start) <= untilISO){
+        var firstMonth = 0, a0 = Math.round((g.start - g.birth)/864e5);
+        for(var k=0;k<28;k++){ if(a0+k<56) firstMonth += feedGramsPerDay(a0+k,'hen')*g.count/1000*mult; }
+        reminders.push({date:toISO(g.start), text:esc(g.name)+' ('+g.count+') arrive — have about <strong>'+Math.ceil(firstMonth)+' kg of chick mash</strong> ready for their first 4 weeks'});
+      }
+    });
+    reminders.sort(function(a,b){ return a.date<b.date?-1:1; });
+    var peak = months.reduce(function(p,m){ return !p || m.total>p.total ? m : p; }, null);
+    return {months:months, tot:tot, fp:fp, reminders:reminders, runOut:runOut, stock:stock, peak:peak, batches:groups.filter(function(g){return !g.planned;}).length, plannedCount:groups.filter(function(g){return g.planned;}).length};
+  }
+  function feedPlanMonthLabel(key, long){ var p = key.split('-'); return fmtDate(new Date(+p[0], +p[1]-1, 1), long ? {month:'long', year:'numeric'} : {month:'short', year:'numeric'}); }
+  function feedPlannerCardHTML(){
+    var until = ui.feedPlanUntil || feedPlanDefaultUntil();
+    var r = feedPlanCompute(until);
+    var fp = r.fp;
+    var bags = function(kg){ return kg/fp.bagKg; };
+    var bagTxt = function(kg){ var b = bags(kg); return (b<1 ? b.toFixed(1) : (Math.round(b*10)/10).toFixed(1).replace(/\.0$/,''))+' bag'+(Math.abs(b-1)<0.05?'':'s'); };
+    var maxMonth = r.months.reduce(function(a,m){ return Math.max(a, m.total); }, 0) || 1;
+    var legend = '<div class="fp-legend">'+FEED_PHASES.map(function(ph){ return '<span><i style="background:'+ph[2]+'"></i>'+ph[1]+'</span>'; }).join('')+'</div>';
+    var rows = r.months.map(function(m){
+      var bar = '<div class="fp-bar" role="img" aria-label="'+m.total.toFixed(0)+' kg">'+FEED_PHASES.map(function(ph){
+        var w = m[ph[0]]/maxMonth*100; return w>0.2 ? '<span style="width:'+w.toFixed(2)+'%; background:'+ph[2]+'" title="'+ph[1]+': '+m[ph[0]].toFixed(0)+' kg"></span>' : '';
+      }).join('')+'</div>';
+      var partial = m.from.slice(8)!=='01' ? '<div class="hint">from '+dShort(m.from)+'</div>' : '';
+      return '<tr'+(r.peak && m.key===r.peak.key && r.months.length>1 ? ' class="fp-peak"' : '')+'><td><strong>'+feedPlanMonthLabel(m.key)+'</strong>'+partial+'</td>'+
+        '<td class="num fp-birds">'+m.birds.toLocaleString()+'</td>'+
+        FEED_PHASES.map(function(ph){ return '<td class="num fp-type">'+(m[ph[0]]>=0.5 ? Math.round(m[ph[0]]).toLocaleString() : '—')+'</td>'; }).join('')+
+        '<td class="num"><strong>'+Math.round(m.total).toLocaleString()+' kg</strong><div class="hint">'+bagTxt(m.total)+'</div></td>'+
+        '<td class="num">'+fmtMoney(m.cost)+'</td>'+
+        '<td class="fp-bar-cell">'+bar+'</td></tr>';
+    }).join('');
+    var totRow = '<tr class="fp-total"><td><strong>Total</strong></td><td class="fp-birds"></td>'+
+      FEED_PHASES.map(function(ph){ return '<td class="num fp-type"><strong>'+Math.round(r.tot[ph[0]]).toLocaleString()+'</strong><div class="hint">'+bagTxt(r.tot[ph[0]])+'</div></td>'; }).join('')+
+      '<td class="num"><strong>'+Math.round(r.tot.total).toLocaleString()+' kg</strong><div class="hint">'+bagTxt(r.tot.total)+'</div></td><td class="num"><strong>'+fmtMoney(r.tot.cost)+'</strong></td><td></td></tr>';
+    var stockLine;
+    if(!r.stock.started) stockLine = '<div class="stat-value num">—</div><div class="hint">Tap Restock on the Feed stock card to add what you have</div>';
+    else if(r.runOut) stockLine = '<div class="stat-value num">'+dShort(r.runOut)+'</div><div class="hint">'+r.stock.onHandKg.toFixed(0)+' kg on hand runs out '+relDays(r.runOut)+'</div>';
+    else stockLine = '<div class="stat-value num">Enough</div><div class="hint">'+r.stock.onHandKg.toFixed(0)+' kg on hand covers this whole plan</div>';
+    var tiles = '<div class="fp-tiles">'+
+      statTile('Feed needed', Math.round(r.tot.total).toLocaleString()+' kg', '<div class="hint">'+bagTxt(r.tot.total)+' of '+fp.bagKg+' kg</div>', 'green')+
+      statTile('Estimated cost', fmtMoney(r.tot.cost), '<div class="hint">at your bag prices below</div>', 'orange')+
+      statTile('Busiest month', r.peak ? feedPlanMonthLabel(r.peak.key, true).split(' ')[0] : '—', r.peak ? '<div class="hint">'+Math.round(r.peak.total).toLocaleString()+' kg · '+bagTxt(r.peak.total)+'</div>' : '', 'pink')+
+      '<div class="stat-tile'+(r.runOut && r.runOut < toISO(addDays(new Date(),14)) ? ' fp-warn' : '')+'"><div class="stat-label">Feed in store lasts until</div>'+stockLine+'</div>'+
+    '</div>';
+    var reminders = r.reminders.length ? '<ul class="fp-reminders">'+r.reminders.slice(0,12).map(function(x){ return '<li><span class="fp-date">'+dShort(x.date)+'</span><span>'+x.text+'</span></li>'; }).join('')+'</ul>'
+      : '<div class="hint">No feed changes due before '+dLong(until)+'.</div>';
+    return '<div class="card fp-card"><div class="card-title"><h3>Feed planner</h3>'+
+        '<select class="field" data-change="feed-plan-until" style="width:auto">'+feedPlanUntilOptions(until)+'</select></div>'+
+      '<p class="hint" style="margin:-4px 0 14px">How much feed all your poultry need from today until '+dLong(until)+': '+
+        r.batches+' flock batch'+(r.batches===1?'':'es')+' now'+(r.plannedCount ? ' + '+r.plannedCount+' planned batch'+(r.plannedCount===1?'':'es') : '')+'. Includes '+fp.waste+'% extra for spills and losses.</p>'+
+      tiles+
+      '<div style="margin-top:16px">'+legend+'</div>'+
+      '<div class="table-wrap" style="margin-top:8px"><table class="fp-table"><thead><tr><th>Month</th><th class="num fp-birds">Birds</th>'+
+        FEED_PHASES.map(function(ph){ return '<th class="num fp-type">'+ph[1]+' (kg)</th>'; }).join('')+
+        '<th class="num">Total</th><th class="num">Cost</th><th><span class="sr-only">Mix</span></th></tr></thead><tbody>'+rows+totRow+'</tbody></table></div>'+
+      '<h4 class="fp-sub">Dates to remember</h4>'+reminders+
+      '<div class="fp-foot"><span class="hint">Prices per '+fp.bagKg+' kg bag: chick mash '+fmtMoney(fp.prices.chick)+' · growers '+fmtMoney(fp.prices.grower)+' · layers '+fmtMoney(fp.prices.layer)+'. Daily amounts follow KALRO\'s feeding table; birds that roam and forage eat less bought feed.</span>'+
+        '<button class="btn sm" data-action="open-feed-plan-prices" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'Prices &amp; bag size</button></div>'+
+    '</div>';
+  }
+  function feedPlannedCardHTML(){
+    var fp = feedPlanData();
+    var list = fp.planned.slice().sort(function(a,b){ return a.date<b.date?-1:1; });
+    var ti = todayISO();
+    var rows = list.map(function(p){
+      var due = p.date <= ti;
+      return '<tr><td>'+dLong(p.date)+(due ? ' '+cattlePill('orange','Due') : '<div class="hint">'+relDays(p.date)+'</div>')+'</td><td>'+esc(p.label||'Planned chicks')+'</td><td class="num">'+p.count+'</td>'+
+        '<td>'+(Number(p.ageDays)>0 ? Math.round(p.ageDays/7)+' weeks old' : 'Day-old')+'</td>'+
+        '<td><div class="row-actions">'+
+          '<button class="btn sm'+(due?' primary':'')+'" data-action="feed-plan-arrived:'+p.id+'" '+(readOnly?'disabled':'')+' title="Add them to the flock">They arrived</button>'+
+          '<button class="icon-btn" data-action="open-feed-plan-batch:'+p.id+'" '+(readOnly?'disabled':'')+' title="Edit">'+ICONS.edit+'</button>'+
+          '<button class="icon-btn" data-action="delete-feed-plan-batch:'+p.id+'" '+(readOnly?'disabled':'')+' title="Remove">'+ICONS.trash+'</button>'+
+        '</div></td></tr>';
+    }).join('');
+    return '<div class="card"><div class="card-title"><h3>Planned chicks</h3>'+
+        '<button class="btn sm primary" data-action="open-feed-plan-batch" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'Plan a batch</button></div>'+
+      (list.length ? '<div class="table-wrap"><table><thead><tr><th>Arriving</th><th>Batch</th><th class="num">Birds</th><th>Age</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+        '<p class="hint" style="margin-top:10px">When they come, tap <strong>They arrived</strong> — they move into Flock (with the cost and vaccination reminders) and leave this list, so they\'re never counted twice.</p>'
+        : '<div class="empty">'+ICONS.empty+'<div>Chicks you plan to buy go here — e.g. 50 Kari kienyeji chicks in December — so the planner above counts their feed too.</div></div>')+
+    '</div>';
+  }
+  function feedPlanBatchFormHtml(id){
+    var p = id ? feedPlanData().planned.find(function(x){ return x.id===id; }) : null;
+    var nextMonth = new Date(); nextMonth.setDate(15); nextMonth.setMonth(nextMonth.getMonth()+1);
+    return '<div class="modal-head"><h3>'+(p?'Edit planned batch':'Plan a batch of chicks')+'</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<form data-form="feed-plan-batch"><input type="hidden" name="id" value="'+(p?p.id:'')+'">'+
+      '<div class="field-row"><label>Name</label><input class="field" type="text" name="label" value="'+esc(p?p.label:'')+'" placeholder="e.g. Kari kienyeji chicks" maxlength="60"></div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
+        '<div class="field-row"><label>Arriving on</label><input class="field" type="date" name="date" value="'+(p?p.date:toISO(nextMonth))+'" required></div>'+
+        '<div class="field-row"><label>Number of birds</label><input class="field" type="number" min="1" max="100000" name="count" value="'+(p?p.count:'')+'" required></div>'+
+        '<div class="field-row"><label>Age when bought (weeks)</label><input class="field" type="number" min="0" max="80" name="ageWeeks" value="'+(p?Math.round((p.ageDays||0)/7):0)+'"></div>'+
+      '</div>'+
+      '<p class="hint" style="margin-top:8px">0 weeks = day-old chicks. The planner adds their chick mash, growers mash and layers mash from the day they arrive.</p>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">'+(p?'Save':'Add to plan')+'</button></div>'+
+    '</form>';
+  }
+  function feedPlanPricesFormHtml(){
+    var fp = feedPlanData();
+    var inp = function(name, v){ return '<input class="field" type="number" min="0" step="1" name="'+name+'" value="'+Math.round(v)+'">'; };
+    return '<div class="modal-head"><h3>Feed prices &amp; bag size</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>'+
+    '<form data-form="feed-plan-prices">'+
+      '<p class="hint">Use what your feed shop charges. Prices are in KSh per bag.</p>'+
+      '<div class="field-grid">'+
+        '<div class="field-row"><label>Bag size (kg)</label>'+inp('bagKg', fp.bagKg)+'</div>'+
+        '<div class="field-row"><label>Extra for spills &amp; losses (%)</label>'+inp('waste', fp.waste)+'</div>'+
+      '</div>'+
+      '<div class="field-grid" style="margin-top:12px">'+
+        '<div class="field-row"><label>Chick mash (KSh / bag)</label>'+inp('chick', fp.prices.chick)+'</div>'+
+        '<div class="field-row"><label>Growers mash (KSh / bag)</label>'+inp('grower', fp.prices.grower)+'</div>'+
+        '<div class="field-row"><label>Layers mash (KSh / bag)</label>'+inp('layer', fp.prices.layer)+'</div>'+
+      '</div>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save</button></div>'+
+    '</form>';
   }
   function feedForOptionsHTML(x){
     var cur = (x && x.species) || 'poultry';
@@ -11400,6 +11606,28 @@
       case 'open-add-feed': openModal(feedFormHtml()); break;
       case 'edit-feed': openModal(feedFormHtml(a1)); break;
       case 'open-restock-feed': openModal(feedStockFormHtml()); break;
+      case 'open-feed-plan-batch': openModal(feedPlanBatchFormHtml(a1||null)); break;
+      case 'open-feed-plan-prices': openModal(feedPlanPricesFormHtml()); break;
+      case 'delete-feed-plan-batch':
+        confirmModal('Remove this planned batch from the feed plan?', function(){
+          mutate(function(s){ s.feedPlan = s.feedPlan || {}; s.feedPlan.planned = (s.feedPlan.planned||[]).filter(function(x){ return x.id!==a1; }); });
+          toast('Removed from the plan.');
+        });
+        break;
+      case 'feed-plan-arrived': (function(){
+        var pp = feedPlanData().planned.find(function(x){ return x.id===a1; });
+        if(!pp) return;
+        openModal(flockFormHtml(null, 'chick'));
+        var fm = document.querySelector('form[data-form="flock"]');
+        if(!fm) return;
+        var setv = function(n, v){ var el = fm.elements[n]; if(el) el.value = v; };
+        var ti = todayISO();
+        setv('count', pp.count);
+        setv('dateAdded', pp.date > ti ? ti : pp.date);
+        setv('ageWeeks', Math.round((Number(pp.ageDays)||0)/7));
+        setv('source', pp.label || 'Bought');
+        var hid = document.createElement('input'); hid.type = 'hidden'; hid.name = 'fromPlanId'; hid.value = pp.id; fm.appendChild(hid);
+      })(); break;
       case 'delete-feed':
         confirmModal('Delete this feed entry? You can restore it from Trash for 30 days.', function(){
           mutate(function(s){
@@ -12010,6 +12238,7 @@
       return;
     }
     if(name==='display-currency'){ mutate(function(s){ s.settings.displayCurrency = el.value; }); return; }
+    if(name==='feed-plan-until'){ ui.feedPlanUntil = el.value; render(); return; }
     if(name==='import-file'){ importBackupFile(el.files[0]); el.value=''; return; }
     if(name==='profile-photo-file'){ uploadProfilePhoto(el.files[0]); el.value=''; return; }
     if(name==='brooding-date' || name==='brooding-species'){
@@ -12157,12 +12386,14 @@
       var source = val('source') || '';
       var acqCostRaw = Number(val('acquisitionCost')||0), acqCurrency = val('acqCurrency');
       var autoVaccinate = !fid && val('autoVaccinate')==='1';
+      var fromPlanId = val('fromPlanId') || null;
       mutate(function(s){
         var acqCost = acqCostRaw>0 ? fromCurrency(acqCostRaw, acqCurrency) : 0;
         var b, isNew = !fid;
         if(fid){ b = s.flock.find(function(x){return x.id===fid;}); if(b){ b.gender=gender; b.count=count; b.dateAdded=dateAdded; b.birthDate=birthDate; b.source=source; } }
         else { b = {id:uid('batch'), gender:gender, count:count, dateAdded:dateAdded, birthDate:birthDate, source:source, removals:[]}; s.flock.push(b); }
         if(!b) return;
+        if(isNew && fromPlanId && s.feedPlan && Array.isArray(s.feedPlan.planned)) s.feedPlan.planned = s.feedPlan.planned.filter(function(x){ return x.id!==fromPlanId; });
         if(isNew && autoVaccinate) queueVaccinationSchedule(s, b.id, birthDate);
         b.acquisitionCost = acqCost;
         s.expenses = s.expenses || [];
@@ -12792,6 +13023,33 @@
         }
       });
       closeModal(); toast(fid ? 'Feed entry updated.' : 'Feed logged.');
+      return;
+    }
+    if(name==='feed-plan-batch'){
+      var fpId = val('id') || null, fpDate = val('date'), fpCount = Math.round(Number(val('count')||0));
+      var fpLabel = (val('label')||'').trim().slice(0,60), fpAge = Math.max(0, Math.min(80, Number(val('ageWeeks')||0)));
+      if(!fpDate){ toast('Pick the date they arrive.'); return; }
+      if(!(fpCount>0)){ toast('Enter how many birds.'); return; }
+      mutate(function(s){
+        s.feedPlan = s.feedPlan || {};
+        s.feedPlan.planned = Array.isArray(s.feedPlan.planned) ? s.feedPlan.planned : [];
+        var rec = fpId ? s.feedPlan.planned.find(function(x){ return x.id===fpId; }) : null;
+        if(!rec){ rec = {id:uid('plan')}; s.feedPlan.planned.push(rec); }
+        rec.date = fpDate; rec.count = fpCount; rec.label = fpLabel || 'Planned chicks'; rec.ageDays = Math.round(fpAge*7);
+      });
+      closeModal(); toast(fpId ? 'Plan updated.' : 'Added to the feed plan.');
+      return;
+    }
+    if(name==='feed-plan-prices'){
+      var num = function(k, lo, hi, d){ var v = Number(val(k)); return isFinite(v) && val(k)!=='' ? Math.max(lo, Math.min(hi, v)) : d; };
+      var cur = feedPlanData();
+      mutate(function(s){
+        s.feedPlan = s.feedPlan || {};
+        s.feedPlan.bagKg = num('bagKg', 1, 200, cur.bagKg);
+        s.feedPlan.waste = num('waste', 0, 50, cur.waste);
+        s.feedPlan.prices = { chick:num('chick',0,1e6,cur.prices.chick), grower:num('grower',0,1e6,cur.prices.grower), layer:num('layer',0,1e6,cur.prices.layer) };
+      });
+      closeModal(); toast('Prices saved.');
       return;
     }
     if(name==='feed-stock'){
