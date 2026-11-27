@@ -2888,9 +2888,11 @@
     var rows = broodPage.items.map(function(b){
       var hatchDate = broodingHatchDateISO(b);
       var statusHtml;
-      if(b.status==='hatched'){
+      if(b.status==='hatched' && b.endedEarly && !b.chicksAdded){
+        statusHtml = '<span class="pill" style="background:var(--surface-2); color:var(--ink-2)">Ended</span> none hatched'+(b.rebroodedTo?' · 🔁 brooded again':'');
+      } else if(b.status==='hatched'){
         statusHtml = '<span class="pill" style="background:var(--good-tint); color:var(--good)">Hatched</span> '+
-          b.chicksAdded+' chick'+(b.chicksAdded===1?'':'s')+' added'+(b.eggsNotHatched?' · '+b.eggsNotHatched+' didn\'t hatch':'');
+          b.chicksAdded+' chick'+(b.chicksAdded===1?'':'s')+' added'+(b.eggsNotHatched?' · '+b.eggsNotHatched+' didn\'t hatch':'')+(b.rebroodedTo?' · 🔁 brooded again':'');
       } else {
         var daysTo = broodingDaysToHatch(b);
         statusHtml = daysTo>0
@@ -2902,9 +2904,10 @@
         '<td class="num">'+b.eggsGiven+'</td>'+
         '<td>'+fmtDate(parseISO(hatchDate))+'</td>'+
         '<td>'+statusHtml+'</td>'+
-        '<td>'+esc(b.note||'—')+'</td>'+
+        '<td>'+esc(b.note||'—')+(b.rebroodOf ? '<div class="rebrood-tag">🔁 Round '+(b.round||2)+' · '+esc(rebroodReasonLabel(b.rebroodReason))+(b.rebroodNote?' — '+esc(b.rebroodNote):'')+'</div>' : '')+'</td>'+
         '<td><div class="row-actions">'+
           (b.status!=='hatched' ? '<button class="btn sm primary" data-action="open-resolve-brooding:'+b.id+'" '+(readOnly?'disabled':'')+'>Record hatch</button>' : '')+
+          (!b.rebroodedTo ? '<button class="btn sm" data-action="open-rebrood:'+b.id+'" '+(readOnly?'disabled':'')+' title="Put this hen on new eggs">🔁 Brood again</button>' : '')+
           '<button class="icon-btn" data-action="open-edit-brooding:'+b.id+'" title="Edit" '+(readOnly?'disabled':'')+'>'+ICONS.edit+'</button>'+
           '<button class="icon-btn" data-action="delete-brooding:'+b.id+'" title="Delete" '+(readOnly?'disabled':'')+'>'+ICONS.trash+'</button>'+
         '</div></td></tr>';
@@ -2914,7 +2917,7 @@
       : '<h3>Brooding</h3>';
     return '<div class="card"><div class="card-title"><div class="card-title-lead"><div class="pic-badge">'+PICS.brooding+'</div>'+broodingTitleHtml+'</div><div style="display:flex; align-items:center; gap:8px"><span class="hint">'+list.length+' recorded</span>'+
         '<button class="icon-btn" data-action="open-add-brooding" title="Start brooding" '+(readOnly?'disabled':'')+'>'+ICONS.plus+'</button></div></div>'+
-      '<p class="hint" style="margin-top:-6px">When a hen starts sitting on eggs, log how many she\'s given here and what type they are — the app works out the expected hatch date on its own (21 days for hen eggs, 28 for Guinea Fowl). Once it\'s time, come back and record how many didn\'t hatch; the rest are added to the flock as new chicks automatically.</p>'+
+      '<p class="hint" style="margin-top:-6px">When a hen starts sitting on eggs, log how many she\'s given here and what type they are — the app works out the expected hatch date on its own (21 days for hen eggs, 28 for Guinea Fowl). Once it\'s time, come back and record how many didn\'t hatch; the rest are added to the flock as new chicks automatically. If the eggs are clear, few hatch, or you want more chicks, tap <strong>🔁 Brood again</strong> to put the same hen on new eggs.</p>'+
       '<div class="table-wrap">'+
       (rows ? '<table><thead><tr><th>Started</th><th>Type</th><th class="num">Eggs given</th><th>Expected hatch</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty">'+ICONS.empty+'<div>No brooding hens recorded yet.</div></div>')+
@@ -3048,6 +3051,85 @@
       '<p class="hint" style="margin-top:8px">Expected to hatch around <strong id="brooding-hatch-preview">'+fmtDate(parseISO(addDaysISO(ti, EGG_INCUBATION_DAYS)))+'</strong> (<span id="brooding-incubation-days">'+EGG_INCUBATION_DAYS+'</span> days).</p>'+
       '<div class="field-row" style="margin-top:12px"><label>Note (optional)</label><input class="field" type="text" name="note" maxlength="80" placeholder="e.g. Brown hen in coop A"></div>'+
       '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Start brooding</button></div>'+
+    '</form>';
+  }
+  /* ---- Rebrood: put the same hen back on eggs ------------------------
+     From any brooding record (still sitting, or already finished) the
+     farmer can set the hen on a fresh batch of eggs and say why. A sitting
+     that is still open is closed first (how many hatched, the rest marked
+     not hatched), then a new brooding starts linked to it (rebroodOf), so
+     the hen's whole run of sittings and the reasons stay on record. */
+  var REBROOD_REASONS = [
+    ['clear', 'Eggs were clear / not fertile (seen when candling)'],
+    ['none', 'None of the eggs hatched'],
+    ['few', 'Only a few hatched'],
+    ['spoiled', 'Eggs broke, went bad or got cold'],
+    ['swap', 'Swapping to different eggs (e.g. hen eggs instead of guinea fowl)'],
+    ['more', 'I want more chicks'],
+    ['still-broody', 'Hen is still broody after hatching'],
+    ['other', 'Other reason']
+  ];
+  var REBROOD_TIPS = {
+    'clear': 'Clear eggs were never fertile. Keep a cock with the hens (about 1 cock to 10 hens, or 1 male to 4–5 guinea fowl) and set eggs less than a week old, stored somewhere cool.',
+    'none': 'Check the cock-to-hen ratio and egg freshness, and candle at day 7 next time so clear eggs come out early instead of wasting her sitting.',
+    'few': 'Give her only 10–12 eggs so she can cover them all, put feed and water right by the nest, and check her for mites — a hen that keeps leaving the nest lets eggs go cold.',
+    'spoiled': 'Mark the eggs with a pencil, keep other hens out of her nest, and remove any cracked or smelly egg straight away.',
+    'swap': 'Hen eggs hatch in 21 days; guinea fowl eggs take about 28.',
+    'more': 'If she is still caring for chicks, they lose their mother when she goes back on eggs — wait until they are 3–4 weeks old, or give them a heat source.',
+    'still-broody': 'Let her eat, drink and dust-bathe for a day or two first, and check her for mites before she settles again.',
+    'other': 'Add a short note so you remember why later.'
+  };
+  function rebroodReasonLabel(k){ var r = REBROOD_REASONS.find(function(x){ return x[0]===k; }); return r ? r[1] : 'Rebrooded'; }
+  // Days the hen has been sitting without a real break, following the
+  // chain of rebroods back while each one followed straight on.
+  function broodChainSittingDays(b){
+    var today = parseISO(todayISO()), first = parseISO(b.dateStarted), cur = b, guard = 0;
+    // A sitting that already hatched means she got off the nest to raise
+    // chicks — the count only runs while she is still sitting now.
+    if(b.status==='hatched') return 0;
+    while(cur && cur.rebroodOf && guard++ < 20){
+      var prev = (state.broodings||[]).find(function(x){ return x.id===cur.rebroodOf; });
+      if(!prev) break;
+      first = parseISO(prev.dateStarted); cur = prev;
+    }
+    return Math.max(0, daysBetween(first, today));
+  }
+  function rebroodSitHintHtml(b, species){
+    var sat = broodChainSittingDays(b);
+    if(!sat) return '';
+    var total = sat + incubationDaysFor(species||'hen');
+    return '<div class="banner rebrood-sit'+(total>42?' bad':'')+'" id="rebrood-sit" data-sat="'+sat+'">She has been sitting about <strong>'+sat+' days</strong>. With new eggs she will sit about <strong id="rebrood-total">'+total+' days</strong> in total.'+
+      '<span id="rebrood-long"'+(total>42?'':' hidden')+'> That is a long time — keep feed and water at the nest, let her off once a day, check for mites, and if she gets thin, take the eggs away.</span></div>';
+  }
+  function rebroodFormHtml(id){
+    var b = (state.broodings||[]).find(function(x){ return x.id===id; });
+    var head = '<div class="modal-head"><h3>Brood again</h3><button class="modal-close" data-action="close-modal">'+ICONS.close+'</button></div>';
+    if(!b) return head+'<p class="hint">That brooding record is no longer available.</p>';
+    var ti = todayISO();
+    var open = b.status!=='hatched';
+    var sp = broodSpecies(b);
+    var defReason = open ? 'clear' : (b.chicksAdded===0 ? 'none' : (b.chicksAdded < b.eggsGiven/2 ? 'few' : 'more'));
+    var summary = open
+      ? 'This hen started sitting on '+b.eggsGiven+' '+speciesLabel(sp).toLowerCase()+' egg'+(b.eggsGiven===1?'':'s')+' on '+fmtDate(parseISO(b.dateStarted))+'. That sitting will be closed and she starts again on new eggs.'
+      : 'Last sitting: '+b.eggsGiven+' '+speciesLabel(sp).toLowerCase()+' egg'+(b.eggsGiven===1?'':'s')+' from '+fmtDate(parseISO(b.dateStarted))+' — '+(b.chicksAdded||0)+' hatched.';
+    return head+'<p class="hint">'+summary+'</p>'+
+    '<form data-form="rebrood"><input type="hidden" name="id" value="'+b.id+'">'+
+      (open ? '<div class="field-row"><label>Eggs from this sitting that hatched</label><input class="field" type="number" min="0" max="'+b.eggsGiven+'" name="hatchedBefore" value="0"></div>'+
+        '<p class="hint" style="margin-top:6px">Usually 0. Any that hatched are added to the flock; the rest are recorded as not hatched.</p>' : '')+
+      '<div class="field-row" style="margin-top:12px"><label>Why is she brooding again?</label><select class="field" name="reason" data-change="rebrood-reason">'+
+        REBROOD_REASONS.map(function(r){ return '<option value="'+r[0]+'" '+(r[0]===defReason?'selected':'')+'>'+esc(r[1])+'</option>'; }).join('')+'</select></div>'+
+      '<div class="rebrood-tip" id="rebrood-tip">'+esc(REBROOD_TIPS[defReason])+'</div>'+
+      '<div class="field-row" style="margin-top:12px"><label>More about the reason (optional)</label><input class="field" type="text" name="reasonNote" maxlength="120" placeholder="e.g. All 9 guinea eggs clear at day 19"></div>'+
+      '<h4 style="margin:18px 0 8px; font-size:14px">New eggs</h4>'+
+      '<div class="field-grid">'+
+        '<div class="field-row"><label>Type of egg</label><select class="field" name="species" data-change="brooding-species"><option value="hen" '+(sp!=='guineafowl'||open?'selected':'')+'>Hen eggs</option><option value="guineafowl" '+(sp==='guineafowl'&&!open?'selected':'')+'>Guinea Fowl eggs</option></select></div>'+
+        '<div class="field-row"><label>Eggs given to her</label><input class="field" type="number" min="1" max="40" name="eggsGiven" value="'+Math.min(12, b.eggsGiven||10)+'" required></div>'+
+        '<div class="field-row"><label>Date put on the new eggs</label><input class="field" type="date" name="dateStarted" value="'+ti+'" min="'+b.dateStarted+'" max="'+ti+'" required data-change="brooding-date"></div>'+
+      '</div>'+
+      '<p class="hint" style="margin-top:8px">Expected to hatch around <strong id="brooding-hatch-preview">'+fmtDate(parseISO(addDaysISO(ti, EGG_INCUBATION_DAYS)))+'</strong> (<span id="brooding-incubation-days">'+EGG_INCUBATION_DAYS+'</span> days). <span id="brooding-source-hint">Hen eggs come off your egg count as "Given for brooding".</span></p>'+
+      rebroodSitHintHtml(b, 'hen')+
+      '<div class="field-row" style="margin-top:12px"><label>Note (which hen, where)</label><input class="field" type="text" name="note" maxlength="80" value="'+esc(b.note||'')+'" placeholder="e.g. Brown hen in coop A"></div>'+
+      '<div class="modal-foot"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Start brooding again</button></div>'+
     '</form>';
   }
   function resolveBroodingFormHtml(id){
@@ -11578,6 +11660,7 @@
       case 'open-add-brooding': openModal(broodingFormHtml()); break;
       case 'open-resolve-brooding': openModal(resolveBroodingFormHtml(a1)); break;
       case 'open-edit-brooding': openModal(editBroodingFormHtml(a1)); break;
+      case 'open-rebrood': openModal(rebroodFormHtml(a1)); break;
       case 'delete-brooding': {
         var delBrood = (state.broodings||[]).find(function(x){return x.id===a1;});
         var delMsg = (delBrood && delBrood.chickBatchId) ? 'Delete this brooding record? This will also remove the chicks batch it added to the flock.' : 'Delete this brooding record?';
@@ -12241,6 +12324,11 @@
     if(name==='feed-plan-until'){ ui.feedPlanUntil = el.value; render(); return; }
     if(name==='import-file'){ importBackupFile(el.files[0]); el.value=''; return; }
     if(name==='profile-photo-file'){ uploadProfilePhoto(el.files[0]); el.value=''; return; }
+    if(name==='rebrood-reason'){
+      var rtip = document.getElementById('rebrood-tip');
+      if(rtip) rtip.textContent = REBROOD_TIPS[el.value] || '';
+      return;
+    }
     if(name==='brooding-date' || name==='brooding-species'){
       var bForm = el.closest('form');
       var bDateEl = bForm ? bForm.querySelector('[name="dateStarted"]') : null;
@@ -12251,6 +12339,13 @@
       if(daysSpan) daysSpan.textContent = bDays;
       var preview = document.getElementById('brooding-hatch-preview');
       if(preview && bDateEl && bDateEl.value) preview.textContent = fmtDate(parseISO(addDaysISO(bDateEl.value, bDays)));
+      var rbSit = document.getElementById('rebrood-sit');
+      if(rbSit){
+        var rbTot = Number(rbSit.getAttribute('data-sat')||0) + bDays;
+        var rbTotEl = document.getElementById('rebrood-total'); if(rbTotEl) rbTotEl.textContent = rbTot+' days';
+        rbSit.classList.toggle('bad', rbTot>42);
+        var rbLong = document.getElementById('rebrood-long'); if(rbLong) rbLong.hidden = rbTot<=42;
+      }
       var srcHint = document.getElementById('brooding-source-hint');
       if(srcHint) srcHint.textContent = bSp==='guineafowl'
         ? 'Since these are bought-in eggs, they will not be deducted from your Egg Log — just tracked here until they hatch.'
@@ -12877,6 +12972,44 @@
         s.broodings.push({id:uid('brood'), dateStarted:bgDate, eggsGiven:bgEggs, note:bgNote, status:'pending', eggLossId:lossRecId, species:bgSpecies});
       });
       closeModal(); toast('🐔 Brooding started — expected to hatch in '+incubationDaysFor(bgSpecies)+' days.');
+      return;
+    }
+    if(name==='rebrood'){
+      var rbOldId = val('id'), rbReason = val('reason') || 'other', rbReasonNote = (val('reasonNote')||'').trim().slice(0,120);
+      var rbSpecies = val('species') || 'hen', rbNewEggs = Math.round(Number(val('eggsGiven')||0));
+      var rbStart = val('dateStarted'), rbNote = (val('note')||'').trim().slice(0,80);
+      var rbHatchedBefore = Math.max(0, Math.round(Number(val('hatchedBefore')||0)));
+      var rbErr = null, rbNewId = uid('brood'), rbChicksBefore = 0;
+      if(!(rbNewEggs>0)){ toast('Enter how many eggs she is given.'); return; }
+      if(!rbStart){ toast('Pick the date she went on the new eggs.'); return; }
+      mutate(function(s){
+        var old = (s.broodings||[]).find(function(x){ return x.id===rbOldId; });
+        if(!old){ rbErr = 'That brooding record is no longer available.'; return; }
+        if(old.rebroodedTo){ rbErr = 'This hen has already been put on new eggs from this record.'; return; }
+        if(rbStart < old.dateStarted){ rbErr = 'The new eggs can\'t start before the last sitting began.'; return; }
+        if(old.status!=='hatched'){
+          var hb = Math.min(old.eggsGiven, rbHatchedBefore);
+          rbChicksBefore = hb;
+          old.status = 'hatched'; old.endedEarly = true;
+          old.chicksAdded = hb; old.eggsNotHatched = old.eggsGiven - hb; old.resolvedDate = rbStart;
+          if(hb>0){
+            var cb = uid('batch');
+            s.flock.push({id:cb, gender:'unsexed', count:hb, dateAdded:rbStart, birthDate:rbStart, source:'Hatched from brooding', removals:[], species:broodSpecies(old)});
+            old.chickBatchId = cb;
+          }
+        }
+        old.rebroodedTo = rbNewId; old.rebroodReason = rbReason;
+        var lossId = null;
+        if(rbSpecies!=='guineafowl'){
+          var lr = {id:uid('eggloss'), date:rbStart, reason:'brooding', count:rbNewEggs, note:rbNote, species:rbSpecies};
+          s.eggLosses = s.eggLosses || []; s.eggLosses.push(lr); lossId = lr.id;
+        }
+        s.broodings.push({id:rbNewId, dateStarted:rbStart, eggsGiven:rbNewEggs, note:rbNote, status:'pending', eggLossId:lossId, species:rbSpecies,
+          rebroodOf:old.id, rebroodReason:rbReason, rebroodNote:rbReasonNote, round:(old.round||1)+1});
+      });
+      if(rbErr){ toast(rbErr); return; }
+      closeModal();
+      toast('🔁 Brooding again — '+rbNewEggs+' '+(rbSpecies==='guineafowl'?'guinea fowl':'hen')+' egg'+(rbNewEggs===1?'':'s')+', expected to hatch '+fmtDate(parseISO(addDaysISO(rbStart, incubationDaysFor(rbSpecies))))+'.'+(rbChicksBefore?' '+rbChicksBefore+' chick'+(rbChicksBefore===1?'':'s')+' from the last sitting added to the flock.':''));
       return;
     }
     if(name==='resolve-brooding'){

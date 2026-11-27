@@ -1466,3 +1466,10 @@
   .fp-legend{ font-size:11px; gap:2px 8px; }
 }
 @media (max-width:640px){ .fp-bar-cell{ min-width:64px; } }
+
+/* ---- Brood again ---- */
+.rebrood-tip{ margin-top:8px; padding:10px 12px; border-radius:10px; font-size:13px; line-height:1.45;
+  background:color-mix(in srgb, #3F8F4E 10%, var(--surface-2)); color:var(--ink); border-left:3px solid #3F8F4E; }
+.rebrood-sit{ display:block; margin-top:12px; font-weight:500; line-height:1.45; }
+.rebrood-tag{ margin-top:3px; font-size:12px; color:var(--ink-2); }
+.row-actions .btn{ white-space:nowrap; }
